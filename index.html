@@ -187,10 +187,9 @@
         <label style="font-size: 12px; color: #ccc;">選擇要加入商品的團務：</label>
         <select id="adminTargetGroup" style="margin-top: 4px;"></select>
         
-        <label style="font-size: 12px; color: #ccc;">貼上商品清單（格式：商品分類, 商品名稱, 單價, 圖片網址, 商品說明，一行一個）：</label>
-        <textarea id="batchProductsInput" rows="5" placeholder="例如：
-茶包, 潔世一, 250, https://example.com/img1.jpg, 附特典卡
-抱盒, 小立牌, 1630, https://example.com/img2.jpg, 一套共6款" style="margin-top: 4px; font-family: monospace;"></textarea>
+        <label style="font-size: 12px; color: #ccc;">直接從 Google 試算表複製整行貼上即可（支援 Tab 分隔或逗號分隔）：</label>
+        <textarea id="batchProductsInput" rows="5" placeholder="直接從試算表選取欄位貼上即可，例如：
+茶包	潔世一	250	https://...	附隨機特典*1" style="margin-top: 4px; font-family: monospace;"></textarea>
         
         <button class="primary-btn" onclick="submitBatchProducts()" style="background: #10b981;">一鍵批次新增商品</button>
         <p id="batchMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
@@ -681,7 +680,10 @@
     for (let line of lines) {
       line = line.trim();
       if (!line) continue;
-      let parts = line.split(/[,，]/);
+
+      // 自動判斷：如果是從試算表貼上，會使用 Tab (\t) 分隔；如果是手動輸入則支援逗號
+      let parts = line.includes('\t') ? line.split('\t') : line.split(/[,，]/);
+      
       if (parts.length >= 2) {
         let pCat = parts.length >= 3 ? parts[0].trim() : "一般";
         let pName = parts.length >= 3 ? parts[1].trim() : parts[0].trim();
@@ -698,7 +700,7 @@
             "圖片": pImg,
             "餘量": 0,
             "商品說明": pDesc,
-            "isExpired": false
+            "isExpired": `false`
           });
         }
       }
@@ -706,7 +708,7 @@
 
     if (newProducts.length === 0) {
       msgElem.style.color = "#f87171";
-      msgElem.innerText = "格式錯誤！請確保格式為：商品分類, 商品名稱, 單價, 圖片網址, 商品說明";
+      msgElem.innerText = "解析失敗！請確認格式是否正確。";
       return;
     }
 
