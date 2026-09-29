@@ -69,7 +69,7 @@
   <!-- 1. 填單預購區塊 -->
   <div id="preorderSection" class="section active">
     <div id="groupListView">
-      <p style="color: #aaa; font-size: 13px; margin-bottom: 8px;">🔥 請選擇參與的預購團務：</p>
+      <p style="color: #aaa; font-size: 13px; margin-bottom: 8px;">請選擇參與的預購團務：</p>
       <div id="groupCardsContainer">載入團務列表中...</div>
     </div>
 
@@ -86,7 +86,7 @@
 
       <!-- 購物車摘要 -->
       <div id="cartSummaryBox" class="cart-box">
-        <div style="font-weight: bold; margin-bottom: 6px; font-size: 13px; color: #f59e0b;">🛒 已選購明細 <span id="cartItemCount">(0件)</span></div>
+        <div style="font-weight: bold; margin-bottom: 6px; font-size: 13px; color: #f59e0b;">已選購明細 <span id="cartItemCount">(0件)</span></div>
         <div id="cartItemsList" style="margin-bottom: 8px;"></div>
         <div style="display: flex; justify-content: space-between; font-weight: bold; border-top: 1px solid #333; padding-top: 6px;">
           <span>總計金額：</span>
@@ -96,14 +96,16 @@
 
       <!-- 填寫資料表單 -->
       <div style="margin-top: 20px; background: #252525; padding: 15px; border-radius: 8px;">
-        <h4 style="font-size: 13px; margin-bottom: 10px; color: #fff; text-align: left;">📝 填寫聯絡資訊</h4>
+        <h4 style="font-size: 13px; margin-bottom: 10px; color: #fff; text-align: left;">填寫收件與聯絡資訊</h4>
         <input type="text" id="lineName" placeholder="Line / FB 暱稱 *">
         <input type="text" id="phone" placeholder="手機號碼 *">
         <input type="email" id="email" placeholder="Email (接收確認信) *">
         
-        <label style="font-size: 12px; display: flex; align-items: center; gap: 6px; margin: 10px 0; cursor: pointer;">
-          <input type="checkbox" id="agreeTerms" onchange="checkCanSubmit()"> 我已詳閱並同意代購規則與注意事項
-        </label>
+        <!-- 修正：置中對齊的條款勾選區 -->
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px 0;">
+          <input type="checkbox" id="agreeTerms" onchange="checkCanSubmit()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+          <label for="agreeTerms" style="font-size: 13px; color: #ccc; cursor: pointer; margin: 0;">我已詳閱並同意代購規則與注意事項</label>
+        </div>
         
         <button id="submitBtn" class="primary-btn" onclick="submitOrder()" disabled>確認送出預購</button>
         <p id="statusMsg" style="text-align: center; margin-top: 10px; font-size: 12px;"></p>
@@ -113,7 +115,7 @@
 
   <!-- 2. 查詢記錄區塊 -->
   <div id="querySection" class="section">
-    <p style="color: #aaa; font-size: 13px; margin-bottom: 8px;">🔍 輸入手機號碼或 Email 查詢您的歷史預購：</p>
+    <p style="color: #aaa; font-size: 13px; margin-bottom: 8px;">輸入手機號碼或 Email 查詢您的歷史預購：</p>
     <input type="text" id="searchKey" placeholder="請輸入手機或 Email">
     <button class="primary-btn" onclick="queryOrder()">開始查詢</button>
     <div id="queryResult" style="margin-top: 15px;"></div>
@@ -127,7 +129,7 @@
 
   <!-- 管理員後台登入入口 -->
   <div style="margin-top: 30px; border-top: 1px solid #333; padding-top: 15px; text-align: center;">
-    <button onclick="toggleAdminLogin()" style="background: transparent; border: none; color: #777; font-size: 11px; cursor: pointer;">🔐 管理員後台登入</button>
+    <button onclick="toggleAdminLogin()" style="background: transparent; border: none; color: #777; font-size: 11px; cursor: pointer;">管理員後台登入</button>
     
     <div id="adminLoginForm" style="display: none; margin-top: 8px;">
       <input type="password" id="adminPassword" placeholder="請輸入管理員密碼" style="max-width: 200px; display: inline-block;">
@@ -138,12 +140,12 @@
     <div id="adminDashboard" style="display: none; margin-top: 15px; text-align: left;">
       <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
       
-      <h4 style="color: #10b981; margin-bottom: 10px; text-align: center;">📦 批次新增商品工具</h4>
+      <h4 style="color: #10b981; margin-bottom: 10px; text-align: center;">批次新增商品工具</h4>
       <div style="background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
         <label style="font-size: 12px; color: #ccc;">選擇要加入商品的團務：</label>
         <select id="adminTargetGroup" style="margin-top: 4px;"></select>
         
-        <label style="font-size: 12px; color: #ccc;">貼上商品清單（格式：分類, 商品名稱, 單價, 圖片網址, 餘量，一行一個）：</label>
+        <label style="font-size: 12px; color: #ccc;">貼上商品清單（格式：商品分類, 商品名稱, 單價, 圖片網址, 餘量，一行一個）：</label>
         <textarea id="batchProductsInput" rows="5" placeholder="例如：
 立牌區, 潔世一壓克力立牌, 250, https://example.com/img1.jpg, 10
 徽章區, 絲師凜徽章, 150, https://example.com/img2.jpg, 5" style="margin-top: 4px; font-family: monospace;"></textarea>
@@ -152,7 +154,7 @@
         <p id="batchMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
       </div>
 
-      <h4 style="color: #fff; margin-bottom: 8px; text-align: center;">📋 待確認訂單管理</h4>
+      <h4 style="color: #fff; margin-bottom: 8px; text-align: center;">待確認訂單管理</h4>
       <div id="pendingOrdersList">載入中...</div>
     </div>
   </div>
@@ -218,7 +220,7 @@
           html += `
             <div onclick="selectGroup('${gName}', ${isExpired})" class="card" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; ${cardStyle}; padding:12px; border-radius:8px; margin-bottom:10px; border:1px solid #333;">
               <div style="display: flex; align-items: center; gap: 10px;">
-                ${img ? `<img src="${img}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">` : '<div style="width:50px;height:50px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;">🛒</div>'}
+                ${img ? `<img src="${img}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">` : '<div style="width:50px;height:50px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;">📦</div>'}
                 <div>
                   <div style="font-weight: bold; color: #fff; font-size: 14px;">${gName}</div>
                   <div style="font-size: 12px; margin-top: 4px;">${statusBadge} <span style="color: #aaa;">截單：${deadline}</span></div>
@@ -244,7 +246,7 @@
     selectedGroupName = groupName;
     document.getElementById('groupListView').style.display = 'none';
     document.getElementById('productOrderView').style.display = 'block';
-    document.getElementById('activeGroupTitle').innerText = "📂 " + groupName;
+    document.getElementById('activeGroupTitle').innerText = groupName;
 
     orderQuantities = {};
     activeCategory = "全部";
@@ -260,10 +262,11 @@
       if (error) throw error;
       currentProducts = products || [];
 
-      // 萃取分類
+      // 自動相容不同的分類欄位名稱（支援「分類」或「category」）
       let catSet = new Set();
       currentProducts.forEach(p => {
-        if (p["分類"]) catSet.add(p["分類"]);
+        let cat = p["分類"] || p["category"];
+        if (cat) catSet.add(cat);
       });
       currentCategories = ["全部", ...Array.from(catSet)];
 
@@ -278,7 +281,8 @@
     const tabsContainer = document.getElementById('categoryTabsContainer');
     if (!tabsContainer) return;
 
-    if (currentCategories.length <= 2) {
+    // 如果沒有自訂分類或只有全部，就不顯示分類橫條
+    if (currentCategories.length <= 1) {
       tabsContainer.style.display = 'none';
       return;
     }
@@ -303,7 +307,7 @@
 
     let filtered = currentProducts;
     if (activeCategory !== "全部") {
-      filtered = currentProducts.filter(p => p["分類"] === activeCategory);
+      filtered = currentProducts.filter(p => (p["商品分類"] || p["category"]) === activeCategory);
     }
 
     if (filtered.length === 0) {
@@ -321,7 +325,7 @@
         <div class="product-card">
           <div>
             <div class="product-img-box">
-              ${img ? `<img src="${img}" alt="商品圖片">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#555;">📦 暫無圖片</div>'}
+              ${img ? `<img src="${img}" alt="商品圖片">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#555;">暫無圖片</div>'}
               ${img ? `<button class="zoom-btn" onclick="openLightbox('${img}')">🔍</button>` : ''}
             </div>
             <div class="product-name">#${p.id || (originalIndex+1)} ${p["商品名稱"]}</div>
@@ -492,7 +496,7 @@
       if (groups && groups.length > 0) {
         let html = "<p style='color:#aaa; font-size:13px; margin-bottom:8px;'>請選擇要查看餘量的團務：</p>";
         groups.forEach(g => {
-          html += `<button onclick="loadSurplusProducts('${g["團務名稱"]}')" style="display:block; width:100%; margin-bottom:6px; padding:10px; background:#242424; color:white; border:1px solid #444; border-radius:6px; text-align:left; cursor:pointer;">📦 ${g["團務名稱"]}</button>`;
+          html += `<button onclick="loadSurplusProducts('${g["團務名稱"]}')" style="display:block; width:100%; margin-bottom:6px; padding:10px; background:#242424; color:white; border:1px solid #444; border-radius:6px; text-align:left; cursor:pointer;">${g["團務名稱"]}</button>`;
         });
         container.innerHTML = html;
       } else { container.innerHTML = "<p style='color:#aaa;'>目前沒有團務。</p>"; }
@@ -508,7 +512,7 @@
       if (error) throw error;
       currentSurplusProducts = products || [];
 
-      let html = `<h4 style="color:#fff; margin: 10px 0;">📂 ${groupName} 現貨餘量</h4>`;
+      let html = `<h4 style="color:#fff; margin: 10px 0;">${groupName} 餘量</h4>`;
       if (currentSurplusProducts.length > 0) {
         html += `<div style="background:#252525; padding:10px; margin-bottom:10px; border-radius:6px;">
           <input type="text" id="surplus_name" placeholder="Line / FB 暱稱 *" style="margin-bottom:6px;">
@@ -518,7 +522,7 @@
           html += `<div style="background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
             <div>
               <div style="font-weight:bold; font-size:13px; color:#fff;">${p["商品名稱"]}</div>
-              <div style="color:#10b981; font-size:12px;">$${p["單價"]} | <span style="color:#f59e0b;">剩餘庫存：${p["餘量"]} 個</span></div>
+              <div style="color:#10b981; font-size:12px;">$${p["單價"]} | <span style="color:#f59e0b;">餘量：${p["餘量"]} 個</span></div>
             </div>
             <select id="surplus_qty_${index}" style="width: 80px; padding: 4px;">
               <option value="0">0 個</option>`;
@@ -526,7 +530,7 @@
           html += `</select></div>`;
         });
         html += `<button class="primary-btn" onclick="submitSurplusClaim()" style="margin-top:10px;">確認送出餘量認領</button>`;
-      } else { html += "<p style='color:#aaa; font-size:12px;'>目前此團務沒有剩餘庫存囉！</p>"; }
+      } else { html += "<p style='color:#aaa; font-size:12px;'>目前此團務沒有餘量囉！</p>"; }
       container.innerHTML = html;
     } catch (err) { container.innerHTML = "<p style='color:#f87171;'>載入餘量商品失敗。</p>"; }
   }
@@ -598,7 +602,7 @@
         if (pName && !isNaN(pPrice)) {
           newProducts.push({
             "團務名稱": targetGroup,
-            "分類": pCat,
+            "商品分類": pCat,
             "商品名稱": pName,
             "單價": pPrice,
             "圖片": pImg,
@@ -611,7 +615,7 @@
 
     if (newProducts.length === 0) {
       msgElem.style.color = "#f87171";
-      msgElem.innerText = "格式錯誤！請確保格式為：分類, 商品名稱, 單價, 圖片網址, 餘量";
+      msgElem.innerText = "格式錯誤！請確保格式為：商品分類, 商品名稱, 單價, 圖片網址, 餘量";
       return;
     }
 
