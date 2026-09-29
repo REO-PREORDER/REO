@@ -578,5 +578,311 @@
       document.getElementById('lightbox').style.display = 'none';
     }
   </script>
+  <!-- ================= 完整整合版程式碼（Supabase 架構） ================= -->
+<script>
+  // 全域變數
+  var orderQuantities = {};
+  var currentProducts = [];
+  var selectedGroupName = "";
+  var activeGroupName = "";
+  var currentGroupProductList = [];
+
+  // 1. 當網頁載入完成時，開始載入團務列表
+  window.addEventListener('DOMContentLoaded', () => {
+    loadGroupList();
+  });
+
+  // 2. 抓取團務列表 (對應你的 Supabase 的 groups 表格)
+  async function loadGroupList() {
+    var container = document.getElementById('groupCardsContainer');
+    if (!container) {
+      console.error("找不到 ID 為 'groupCardsContainer' 的元素！");
+      return;
+    } 
+    container.innerHTML = "載入團務列表中...";
+    
+    try {
+      // 假設你的 Supabase 已經全域初始化為 supabase
+      const { data: groups, error } = await supabase.from('groups').select('*');
+      if (error) throw error;
+      
+      console.log("Supabase 成功回傳資料：", groups);
+      
+      if (groups && groups.length > 0) {
+        var html = "";
+        groups.forEach(function(groupObj) {
+          var gName = groupObj.團務名稱 || "未命名團務";
+          var glmg = groupObj.圖片 || "";
+          var gDeadline = groupObj.截單時間 || "未定";
+          var isExpired = groupObj.isExpired || false;
+          var statusBadge = isExpired ? '<span style="color:#f87171;">已結單</span>' : '<span style="color:#4ade80;">開團中</span>';
+          var cardStyle = isExpired ? 'opacity: 0.5; background: #1a1a1a;' : 'background: #242424;';
+          
+          html += `
+            <div onclick="selectGroup('${gName}')" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; margin-bottom: 8px; border-radius: 8px; border: 1px solid #444; cursor: pointer; ${cardStyle}">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                ${glmg ? `<img src="${glmg}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">` : '<div style="width:50px;height:50px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;">🛒</div>'}
+                <div>
+                  <div style="font-weight: bold; color: #fff; font-size: 14px;">${gName}</div>
+                  <div style="font-size: 12px; margin-top: 4px;">${statusBadge} <span style="color: #aaa;">截單：${gDeadline}</span></div>
+                </div>
+              </div>
+              <div style="color: #888;">➔</div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      } else {
+        container.innerHTML = "<div style='text-align:center; color:#aaa; padding:20px;'>目前沒有進行中的團務。</div>";
+      }
+    } catch (err) {
+      console.error("Supabase 查詢失敗：", err);
+      container.innerHTML = `<div style="color: #f87171; text-align:center; padding:20px;">載入失敗：${err.message}</div>`;
+    }
+  }
+
+  // 3. 點擊團務切換畫面的選取函數
+  function selectGroup(groupName) {
+    console.log("選擇了團務：", groupName);
+    selectedGroupName = groupName;
+    // 這裡可依需求加入切換顯示預購商品表單的邏輯
+  }
+
+  // 4. 燈箱圖片檢視
+  function openLightbox(url) {
+    var imgElem = document.getElementById('lightbox-img');
+    var boxElem = document.getElementById('lightbox');
+    if (imgElem) imgElem.src = url;
+    if (boxElem) boxElem.style.display = 'flex';
+  }
+
+  function closeLightbox() {
+    var boxElem = document.getElementById('lightbox');
+    if (boxElem) boxElem.style.display = 'none';
+  }
+
+  // 5. 數量增減與購物車連動
+  function changeQty(index, delta) {
+    if (!orderQuantities[index]) orderQuantities[index] = 0;
+    orderQuantities[index] += delta;
+    if (orderQuantities[index] < 0) orderQuantities[index] = 0;
+
+    var displayElem = document.getElementById('qty_val_' + index);
+    if (displayElem) {
+      displayElem.innerText = orderQuantities[index];
+    }
+    updateCartSummary();
+    checkCanSubmit();
+  }
+
+  function updateCartSummary() {
+    var cartBox = document.getElementById('cartSummaryBox');
+    var cartItemsList = document.getElementById('cartItemsList');
+    var cartItemCount = document.getElementById('cartItemCount');
+    var cartTotalPrice = document.getElementById('cartTotalPrice');
+
+    if (!cartBox) return;
+
+    var html = "";
+    var totalCount = 0;
+    var totalPrice = 0;
+
+    currentProducts.forEach(function(p, index) {
+      var qty = orderQuantities[index] || 0;
+      if (qty > 0) {
+        totalCount += qty;
+        var subtotal = qty * p.price;
+        totalPrice += subtotal;
+        html += `<div class="cart-item-row" style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:12px;">
+                  <span>#${index+1} ${p.name} x ${qty}</span>
+                  <span style="font-weight: bold; color: #f87171;">$${subtotal}</span>
+                 </div>`;
+      }
+    });
+
+    if (totalCount > 0) {
+      cartBox.style.display = 'block';
+      if (cartItemsList) cartItemsList.innerHTML = html;
+      if (cartItemCount) cartItemCount.innerText = `(${totalCount}件)`;
+      if (cartTotalPrice) cartTotalPrice.innerText = `$${totalPrice}`;
+    } else {
+      cartBox.style.display = 'none';
+    }
+  }
+
+  function checkCanSubmit() {
+    var agreeElem = document.getElementById('agreeTerms');
+    var submitBtn = document.getElementById('submitBtn');
+    if (!submitBtn) return;
+
+    var agree = agreeElem ? agreeElem.checked : true;
+    var hasSelected = Object.values(orderQuantities).some(q => q > 0);
+    
+    if (selectedGroupName && agree && hasSelected) {
+      submitBtn.disabled = false;
+    } else {
+      submitBtn.disabled = true;
+    }
+  }
+
+  // 6. 送出預購訂單 (改用 Supabase 寫入 orders 表格)
+  async function submitOrder() {
+    var lineName = document.getElementById('lineName').value.trim();
+    var phone = document.getElementById('phone').value.trim();
+    var email = document.getElementById('email').value.trim();
+    var statusMsg = document.getElementById('statusMsg');
+
+    if (!selectedGroupName || !lineName || !phone || !email) {
+      alert("請完整填寫暱稱、手機與 Email 資訊！");
+      return;
+    }
+
+    var selectedItems = [];
+    currentProducts.forEach(function(p, index) {
+      var qty = orderQuantities[index] || 0;
+      if (qty > 0 && !p.isExpired) {
+        selectedItems.push({ name: p.name, price: p.price, qty: qty });
+      }
+    });
+
+    if (selectedItems.length === 0) {
+      alert("請至少選擇一項商品的數量！");
+      return;
+    }
+
+    document.getElementById('submitBtn').disabled = true;
+    if (statusMsg) {
+      statusMsg.style.color = "#d1d5db";
+      statusMsg.innerHTML = "正在送出預購資料...";
+    }
+
+    try {
+      // 透過 Supabase 寫入訂單資料
+      const { data, error } = await supabase.from('orders').insert([
+        {
+          group_name: selectedGroupName,
+          line_name: lineName,
+          phone: phone,
+          email: email,
+          items: selectedItems,
+          status: "待確認",
+          created_at: new Date().toISOString()
+        }
+      ]);
+
+      if (error) throw error;
+
+      if (statusMsg) {
+        statusMsg.style.color = "#4ade80";
+        statusMsg.innerHTML = "✓ 預購已登記！若未收到確認信請利用本網站查詢功能。";
+      }
+      document.getElementById('lineName').value = "";
+      document.getElementById('phone').value = "";
+      document.getElementById('email').value = "";
+      if (document.getElementById('agreeTerms')) document.getElementById('agreeTerms').checked = false;
+      orderQuantities = {};
+      updateCartSummary();
+      checkCanSubmit();
+    } catch (err) {
+      console.error("送出預購失敗：", err);
+      if (statusMsg) {
+        statusMsg.style.color = "#f87171";
+        statusMsg.innerHTML = "送出失敗：" + err.message;
+      }
+      document.getElementById('submitBtn').disabled = false;
+    }
+  }
+
+  // 7. 前端訂單查詢功能 (透過 Supabase 查詢 orders 表格)
+  async function queryOrder() {
+    var key = document.getElementById('searchKey').value.trim();
+    var resultDiv = document.getElementById('queryResult');
+    
+    if (!key) {
+      alert("請輸入查詢用的手機號碼或 Email！");
+      return;
+    }
+
+    if (resultDiv) resultDiv.innerHTML = "查詢中請稍候...";
+
+    try {
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*')
+        .or(`phone.eq.${key},email.eq.${key}`);
+
+      if (error) throw error;
+
+      if (orders && orders.length > 0) {
+        var html = "";
+        orders.forEach(function(o) {
+          var statusClass = o.status === "已成立" ? "status-confirmed" : (o.status === "已取消" ? "status-cancelled" : "status-pending");
+          
+          // 組裝商品明細 HTML
+          var productHtml = "";
+          if (o.items && Array.isArray(o.items)) {
+            o.items.forEach(i => {
+              productHtml += `<div>• ${i.name} x ${i.qty} ($${i.price * i.qty})</div>`;
+            });
+          }
+
+          var totalPrice = o.items ? o.items.reduce((sum, item) => sum + (item.price * item.qty), 0) : 0;
+
+          html += `<div class="order-card" style="background:#242424; padding:10px; margin-bottom:8px; border-radius:6px; font-size:12px; border:1px solid #444;">
+                    <div><b>團務名稱：</b>${o.group_name}</div>
+                    <div style="margin: 6px 0;"><b>預購項目：</b></div>
+                    <div style="background: #1a1a1a; padding: 8px; border-radius: 6px; margin-bottom: 6px;">${productHtml}</div>
+                    <div><b>金額總計：</b>$${totalPrice}</div>
+                    <div><b>登記時間：</b>${new Date(o.created_at).toLocaleString()}</div>
+                    <div><b>處理狀態：</b><span class="${statusClass}">${o.status}</span></div>
+                   </div>`;
+        });
+        if (resultDiv) resultDiv.innerHTML = html;
+      } else {
+        if (resultDiv) resultDiv.innerHTML = `<p style="color:#f87171; text-align:center;">查無相關訂單紀錄。</p>`;
+      }
+    } catch (err) {
+      console.error("查詢失敗：", err);
+      if (resultDiv) resultDiv.innerHTML = `<p style="color:#f87171; text-align:center;">查詢發生錯誤：${err.message}</p>`;
+    }
+  }
+
+  // 8. 切換檢視畫面 (填單預購 / 查詢記錄 / 餘量認領)
+  function switchView(mode) {
+    var groupListSec = document.getElementById('groupListSection');
+    var querySec = document.getElementById('querySection');
+    var surplusSec = document.getElementById('surplusSection');
+
+    if (groupListSec) groupListSec.style.display = 'none';
+    if (querySec) querySec.style.display = 'none';
+    if (surplusSec) surplusSec.style.display = 'none';
+
+    var btnPreorder = document.getElementById('btnPreorder');
+    var btnQuery = document.getElementById('btnQuery');
+    var btnSurplus = document.getElementById('btnSurplus');
+
+    var inactiveBg = '#2b2b2b';
+    var inactiveOpacity = '0.5';
+    var activeBg = '#1a73e8';
+    var activeOpacity = '1';
+
+    if (btnPreorder) { btnPreorder.style.backgroundColor = inactiveBg; btnPreorder.style.opacity = inactiveOpacity; }
+    if (btnQuery) { btnQuery.style.backgroundColor = inactiveBg; btnQuery.style.opacity = inactiveOpacity; }
+    if (btnSurplus) { btnSurplus.style.backgroundColor = inactiveBg; btnSurplus.style.opacity = inactiveOpacity; }
+
+    if (mode === 'preorder' && groupListSec) {
+      groupListSec.style.display = 'block';
+      if (btnPreorder) { btnPreorder.style.backgroundColor = activeBg; btnPreorder.style.opacity = activeOpacity; }
+      loadGroupList();
+    } else if (mode === 'query' && querySec) {
+      querySec.style.display = 'block';
+      if (btnQuery) { btnQuery.style.backgroundColor = activeBg; btnQuery.style.opacity = activeOpacity; }
+    } else if (mode === 'surplus' && surplusSec) {
+      surplusSec.style.display = 'block';
+      if (btnSurplus) { btnSurplus.style.backgroundColor = activeBg; btnSurplus.style.opacity = activeOpacity; }
+      // 如果有餘量團務載入函式可在此呼叫
+    }
+  }
+</script>
 </body>
 </html>
