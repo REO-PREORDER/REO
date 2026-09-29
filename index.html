@@ -29,9 +29,10 @@
     .status-cancelled { color: #ef4444; font-weight: bold; }
 
     /* 分類標籤列 */
-    .category-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 4px; }
-    .category-btn { background: #2b2b2b; color: #aaa; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; white-space: nowrap; }
-    .category-btn.active { background: #10b981; color: #fff; font-weight: bold; }
+    .category-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 15px; padding-bottom: 4px; scrollbar-width: none; }
+    .category-tabs::-webkit-scrollbar { display: none; }
+    .category-btn { background: #2b2b2b; color: #aaa; border: none; padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; white-space: nowrap; font-weight: 500; }
+    .category-btn.active { background: #1a73e8; color: #fff; font-weight: bold; }
 
     /* 雙欄商品卡片網格 */
     .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -101,7 +102,7 @@
         <input type="text" id="phone" placeholder="手機號碼 *">
         <input type="email" id="email" placeholder="Email (接收確認信) *">
         
-        <!-- 修正：置中對齊的條款勾選區 -->
+        <!-- 置中對齊的條款勾選區 -->
         <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px 0;">
           <input type="checkbox" id="agreeTerms" onchange="checkCanSubmit()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
           <label for="agreeTerms" style="font-size: 13px; color: #ccc; cursor: pointer; margin: 0;">我已詳閱並同意代購規則與注意事項</label>
@@ -147,8 +148,8 @@
         
         <label style="font-size: 12px; color: #ccc;">貼上商品清單（格式：商品分類, 商品名稱, 單價, 圖片網址, 餘量，一行一個）：</label>
         <textarea id="batchProductsInput" rows="5" placeholder="例如：
-立牌區, 潔世一壓克力立牌, 250, https://example.com/img1.jpg, 10
-徽章區, 絲師凜徽章, 150, https://example.com/img2.jpg, 5" style="margin-top: 4px; font-family: monospace;"></textarea>
+茶包, 潔世一, 250, https://example.com/img1.jpg, 0
+抱盒, 小立牌, 1630, https://example.com/img2.jpg, 0" style="margin-top: 4px; font-family: monospace;"></textarea>
         
         <button class="primary-btn" onclick="submitBatchProducts()" style="background: #10b981;">一鍵批次新增商品</button>
         <p id="batchMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
@@ -220,7 +221,7 @@
           html += `
             <div onclick="selectGroup('${gName}', ${isExpired})" class="card" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; ${cardStyle}; padding:12px; border-radius:8px; margin-bottom:10px; border:1px solid #333;">
               <div style="display: flex; align-items: center; gap: 10px;">
-                ${img ? `<img src="${img}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">` : '<div style="width:50px;height:50px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;">📦</div>'}
+                ${img ? `<img src="${img}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">` : '<div style="width:50px;height:50px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;">🛒</div>'}
                 <div>
                   <div style="font-weight: bold; color: #fff; font-size: 14px;">${gName}</div>
                   <div style="font-size: 12px; margin-top: 4px;">${statusBadge} <span style="color: #aaa;">截單：${deadline}</span></div>
@@ -262,11 +263,11 @@
       if (error) throw error;
       currentProducts = products || [];
 
-      // 自動相容不同的分類欄位名稱（支援「分類」或「category」）
+      // 精確對應 Supabase 中的「商品分類」欄位
       let catSet = new Set();
       currentProducts.forEach(p => {
-        let cat = p["分類"] || p["category"];
-        if (cat) catSet.add(cat);
+        let cat = p["商品分類"];
+        if (cat) catSet.add(cat.trim());
       });
       currentCategories = ["全部", ...Array.from(catSet)];
 
@@ -281,7 +282,6 @@
     const tabsContainer = document.getElementById('categoryTabsContainer');
     if (!tabsContainer) return;
 
-    // 如果沒有自訂分類或只有全部，就不顯示分類橫條
     if (currentCategories.length <= 1) {
       tabsContainer.style.display = 'none';
       return;
@@ -307,7 +307,10 @@
 
     let filtered = currentProducts;
     if (activeCategory !== "全部") {
-      filtered = currentProducts.filter(p => (p["商品分類"] || p["category"]) === activeCategory);
+      filtered = currentProducts.filter(p => {
+        let cat = p["商品分類"];
+        return cat && cat.trim() === activeCategory;
+      });
     }
 
     if (filtered.length === 0) {
@@ -512,7 +515,7 @@
       if (error) throw error;
       currentSurplusProducts = products || [];
 
-      let html = `<h4 style="color:#fff; margin: 10px 0;">${groupName} 餘量</h4>`;
+      let html = `<h4 style="color:#fff; margin: 10px 0;">${groupName} 現貨餘量</h4>`;
       if (currentSurplusProducts.length > 0) {
         html += `<div style="background:#252525; padding:10px; margin-bottom:10px; border-radius:6px;">
           <input type="text" id="surplus_name" placeholder="Line / FB 暱稱 *" style="margin-bottom:6px;">
@@ -522,7 +525,7 @@
           html += `<div style="background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
             <div>
               <div style="font-weight:bold; font-size:13px; color:#fff;">${p["商品名稱"]}</div>
-              <div style="color:#10b981; font-size:12px;">$${p["單價"]} | <span style="color:#f59e0b;">餘量：${p["餘量"]} 個</span></div>
+              <div style="color:#10b981; font-size:12px;">$${p["單價"]} | <span style="color:#f59e0b;">剩餘庫存：${p["餘量"]} 個</span></div>
             </div>
             <select id="surplus_qty_${index}" style="width: 80px; padding: 4px;">
               <option value="0">0 個</option>`;
@@ -530,7 +533,7 @@
           html += `</select></div>`;
         });
         html += `<button class="primary-btn" onclick="submitSurplusClaim()" style="margin-top:10px;">確認送出餘量認領</button>`;
-      } else { html += "<p style='color:#aaa; font-size:12px;'>目前此團務沒有餘量囉！</p>"; }
+      } else { html += "<p style='color:#aaa; font-size:12px;'>目前此團務沒有剩餘庫存囉！</p>"; }
       container.innerHTML = html;
     } catch (err) { container.innerHTML = "<p style='color:#f87171;'>載入餘量商品失敗。</p>"; }
   }
