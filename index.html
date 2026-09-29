@@ -10,7 +10,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: #121212; color: #e0e0e0; padding: 20px; display: flex; justify-content: center; }
     .container { width: 100%; max-width: 600px; background: #1e1e1e; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-    h2, h3 { text-align: center; color: #fff; margin-bottom: 15px; }
+    h2, h3, h4 { text-align: center; color: #fff; margin-bottom: 15px; }
     
     /* 頂部切換按鈕列 */
     .nav-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
@@ -75,7 +75,7 @@
 
       <!-- 填寫資料表單 -->
       <div style="margin-top: 20px; background: #252525; padding: 15px; border-radius: 8px;">
-        <h4 style="font-size: 13px; margin-bottom: 10px; color: #fff;">📝 填寫收件與聯絡資訊</h4>
+        <h4 style="font-size: 13px; margin-bottom: 10px; color: #fff; text-align: left;">📝 填寫收件與聯絡資訊</h4>
         <input type="text" id="lineName" placeholder="Line / FB 暱稱 *">
         <input type="text" id="phone" placeholder="手機號碼 *">
         <input type="email" id="email" placeholder="Email (接收確認信) *">
@@ -113,7 +113,24 @@
       <button onclick="verifyAdmin()" style="padding: 10px 15px; background: #374151; color: white; border: none; border-radius: 6px; cursor: pointer;">登入</button>
     </div>
 
+    <!-- 管理員後台控制面板 -->
     <div id="adminDashboard" style="display: none; margin-top: 15px; text-align: left;">
+      <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
+      <h4 style="color: #10b981; margin-bottom: 10px;">📦 批次新增商品工具</h4>
+      <div style="background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+        <label style="font-size: 12px; color: #ccc;">選擇要加入商品的團務：</label>
+        <select id="adminTargetGroup" style="margin-top: 4px;"></select>
+        
+        <label style="font-size: 12px; color: #ccc;">貼上商品清單（格式：商品名稱, 價格，一行一個）：</label>
+        <textarea id="batchProductsInput" rows="5" placeholder="例如：
+周邊小卡A款, 150
+壓克力立牌, 450
+限定抱枕, 890" style="margin-top: 4px; font-family: monospace;"></textarea>
+        
+        <button class="primary-btn" onclick="submitBatchProducts()" style="background: #10b981;">一鍵批次新增商品</button>
+        <p id="batchMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
+      </div>
+
       <h4 style="color: #fff; margin-bottom: 8px;">📋 待確認訂單管理</h4>
       <div id="pendingOrdersList">載入中...</div>
     </div>
@@ -127,7 +144,7 @@
 
 <!-- JavaScript 邏輯區塊 -->
 <script>
-  // 初始化 Supabase 用戶端 (改名為 db 以避免與全域衝突)
+  // 初始化 Supabase 用戶端
   const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -172,8 +189,12 @@
       const { data: groups, error } = await db.from('groups').select('*');
       if (error) throw error;
 
+      let adminGroupSelect = document.getElementById('adminTargetGroup');
+      if (adminGroupSelect) adminGroupSelect.innerHTML = "";
+
       if (groups && groups.length > 0) {
         let html = "";
+        let selectHtml = "";
         groups.forEach(g => {
           let gName = g["團務名稱"];
           let img = g["圖片"] || "";
@@ -194,10 +215,13 @@
               <div style="color: #888;">➔</div>
             </div>
           `;
+          selectHtml += `<option value="${gName}">${gName}</option>`;
         });
         container.innerHTML = html;
+        if (adminGroupSelect) adminGroupSelect.innerHTML = selectHtml;
       } else {
         container.innerHTML = "<p style='text-align:center; color:#aaa;'>目前沒有進行中的團務。</p>";
+        if (adminGroupSelect) adminGroupSelect.innerHTML = "<option value=''>目前無團務可選</option>";
       }
     } catch (err) {
       console.error(err);
@@ -530,6 +554,59 @@
       document.getElementById('adminDashboard').style.display = 'block';
       loadPendingOrders();
     } else { alert("密碼錯誤！"); }
+  }
+
+  // 批次新增商品進 Supabase
+  async function submitBatchProducts() {
+    let targetGroup = document.getElementById('adminTargetGroup').value;
+    let rawText = document.getElementById('batchProductsInput').value.trim();
+    let msgElem = document.getElementById('batchMsg');
+
+    if (!targetGroup) { alert("請先選擇團務！"); return; }
+    if (!rawText) { alert("請輸入要新增的商品資料！"); return; }
+
+    msgElem.style.color = "#aaa";
+    msgElem.innerText = "正在批次新增商品...";
+
+    let lines = rawText.split('\n');
+    let newProducts = [];
+
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      // 支援用逗號或全形逗號分隔
+      let parts = line.split(/[,，]/);
+      if (parts.length >= 2) {
+        let pName = parts[0].trim();
+        let pPrice = parseFloat(parts[1].trim());
+        if (pName && !isNaN(pPrice)) {
+          newProducts.push({
+            "團務名稱": targetGroup,
+            "商品名稱": pName,
+            "價格": pPrice
+          });
+        }
+      }
+    }
+
+    if (newProducts.length === 0) {
+      msgElem.style.color = "#f87171";
+      msgElem.innerText = "格式錯誤！請確保每行格式為：商品名稱, 價格";
+      return;
+    }
+
+    try {
+      const { error } = await db.from('products').insert(newProducts);
+      if (error) throw error;
+
+      msgElem.style.color = "#10b981";
+      msgElem.innerText = `✓ 成功批次新增 ${newProducts.length} 項商品！`;
+      document.getElementById('batchProductsInput').value = "";
+    } catch (err) {
+      console.error(err);
+      msgElem.style.color = "#f87171";
+      msgElem.innerText = "新增失敗：" + err.message;
+    }
   }
 
   async function loadPendingOrders() {
