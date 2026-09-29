@@ -476,7 +476,12 @@
       if (qty > 0) {
         let category = p["商品分類"] || "";
         let finalName = category ? `[${category}] ${p["商品名稱"]}` : p["商品名稱"];
-        selectedItems.push({ name: finalName, price: p["單價"], qty: qty });
+        selectedItems.push({ 
+          name: finalName, 
+          price: p["單價"], 
+          qty: qty, 
+          image: p["圖片"] || "" 
+        });
         totalPrice += qty * p["單價"];
       }
     });
@@ -523,7 +528,14 @@
         orders.forEach(o => {
           let statusClass = o["處理狀態"] === "已成立" ? "status-confirmed" : (o["處理狀態"] === "已取消" ? "status-cancelled" : "status-pending");
           let itemsHtml = "";
-          o["訂單內容"].forEach(i => { itemsHtml += `<div>• ${i.name} x ${i.qty} ($${i.price * i.qty})</div>`; });
+          o["訂單內容"].forEach(i => { 
+            let imgTag = i.image ? `<img src="${i.image}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openLightbox('${i.image}')">` : '<div style="width:32px;height:32px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;">無圖</div>';
+            itemsHtml += `
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                ${imgTag}
+                <div style="flex: 1;">${i.name} x ${i.qty} ($${i.price * i.qty})</div>
+              </div>`; 
+          });
           html += `
             <div class="card" style="font-size: 12px; background:#242424; padding:10px; border-radius:8px; margin-bottom:10px;">
               <div><b>團務名稱：</b>${o["團務名稱"]}</div>
@@ -602,7 +614,12 @@
       if (qty > 0) {
         let category = p["商品分類"] || "";
         let finalName = category ? `[${category}] ${p["商品名稱"]}` : p["商品名稱"];
-        selectedItems.push({ name: finalName, price: p["單價"], qty: qty });
+        selectedItems.push({ 
+          name: finalName, 
+          price: p["單價"], 
+          qty: qty, 
+          image: p["圖片"] || "" 
+        });
         totalPrice += qty * p["單價"];
       }
     });
@@ -700,7 +717,14 @@
         let html = "";
         data.forEach(o => {
           let itemsHtml = "";
-          o["訂單內容"].forEach(i => { itemsHtml += `<div>• ${i.name} x ${i.qty} ($${i.price * i.qty})</div>`; });
+          o["訂單內容"].forEach(i => { 
+            let imgTag = i.image ? `<img src="${i.image}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openLightbox('${i.image}')">` : '<div style="width:32px;height:32px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;">無圖</div>';
+            itemsHtml += `
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                ${imgTag}
+                <div style="flex: 1;">${i.name} x ${i.qty} ($${i.price * i.qty})</div>
+              </div>`; 
+          });
           html += `
             <div style="background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; font-size:12px;">
               <div><b>時間：</b>${new Date(o.created_at).toLocaleString()} | <b>團名：</b>${o["團務名稱"]}</div>
