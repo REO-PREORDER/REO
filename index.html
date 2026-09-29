@@ -3,59 +3,39 @@
 <head>
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
- <script>
-  // ==========================================
-  // 🌐 升級版 Google Script Run 獨立網站代理模擬器
-  // ==========================================
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxEzXIo7gW5-EKxAe5iWP3EVQouHeLoAS5g5VvHFcVL9mzR8dvXPUNhWzAts9xI-DpL/exec";
+<!-- 1. 引入 Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  window.google = {
-    script: {
-      run: (function() {
-        function createRunner(successHandler, failureHandler) {
-          return new Proxy({}, {
-            get(target, prop) {
-              // 支援鏈結寫法（例如連續呼叫 withSuccessHandler / withFailureHandler）
-              if (prop === 'withSuccessHandler') {
-                return function(cb) { return createRunner(cb, failureHandler); };
-              }
-              if (prop === 'withFailureHandler') {
-                return function(cb) { return createRunner(successHandler, cb); };
-              }
-              
-              // 當執行真正的後端函數名稱時
-              return function(...args) {
-                fetch(APPS_SCRIPT_URL, {
-                  method: 'POST',
-                  body: JSON.stringify({ functionName: prop, args: args })
-                })
-                .then(res => res.json())
-                .then(data => {
-                  if (data.status === 'success') {
-                    if (typeof successHandler === 'function') {
-                      successHandler(data.result);
-                    }
-                  } else {
-                    console.error("後端執行錯誤:", data.message);
-                    if (typeof failureHandler === 'function') {
-                      failureHandler(new Error(data.message));
-                    }
-                  }
-                })
-                .catch(err => {
-                  console.error("網路請求失敗:", err);
-                  if (typeof failureHandler === 'function') {
-                    failureHandler(err);
-                  }
-                });
-              };
-            }
-          });
-        }
-        return createRunner(null, null);
-      })()
+<script>
+  // 2. 初始化 Supabase（請把下面兩行換成你在 Supabase 後台複製的資料）
+  const SUPABASE_URL = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo'
+  const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo'
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  // 3. 讀取資料並顯示在畫面上
+  async function loadProducts() {
+    try {
+      // 假設你的資料表名稱是 products
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+
+      if (error) throw error
+
+      console.log('成功取得資料：', data)
+      
+      // 呼叫你原本寫好的畫面渲染函式（請確保你的程式碼後面有對應的渲染函式，或是直接在這裡處理畫面）
+      // renderProducts(data);
+
+    } catch (err) {
+      console.error('載入失敗：', err.message)
     }
-  };
+  }
+
+  // 網頁一打開就執行
+  window.addEventListener('DOMContentLoaded', () => {
+    loadProducts()
+  })
 </script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; max-width: 650px; margin: auto; background-color: #121212; color: #e0e0e0; }
