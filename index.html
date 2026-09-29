@@ -3,83 +3,11 @@
 <head>
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- 1. 引入 Supabase JS SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <title>REO代購 預購系統</title>
+  
+  <!-- 1. 引入 Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script>
-  // 2. 初始化 Supabase（請填入你從 Supabase 後台複製的 URL 與 Anon Key）
-  const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co'
-  const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo'
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-  // 3. 當網頁載入完成時，開始載入團務列表
-  window.addEventListener('DOMContentLoaded', () => {
-    loadGroupList();
-  });
-
-  // 4. 抓取團務列表函式（對應你 Supabase 的 groups 表格與中文欄位）
-  async function loadGroupList() {
-    var container = document.getElementById('groupCardsContainer');
-    if (!container) {
-      console.error("找不到 ID 為 'groupCardsContainer' 的元素！");
-      return;
-    }
-    
-    container.innerHTML = "載入團務列表中...";
-
-    try {
-      const { data: groups, error } = await supabase
-        .from('groups')
-        .select('*');
-
-      if (error) throw error;
-
-      console.log("Supabase 成功回傳資料：", groups);
-
-      if (groups && groups.length > 0) {
-        var html = "";
-        groups.forEach(function(groupObj) {
-          // 對應你的 Supabase 欄位名稱
-          var gName = groupObj.團務名稱 || "未命名團務";
-          var gImg = groupObj.圖片 || "";
-          var gDeadline = groupObj.截單時間 || "未定";
-          var isExpired = groupObj.isExpired || false;
-
-          var statusBadge = isExpired ? 
-            `<span class="badge-status" style="background:rgba(107,114,128,0.2); color:#9ca3af; border-color:rgba(107,114,128,0.4);">已結單</span>` : 
-            `<span class="badge-status">開團中</span>`;
-            
-          var cardStyle = isExpired ? `opacity: 0.55; background: #1a1a1a;` : ``;
-
-          html += `<div class="group-card" style="${cardStyle}" onclick="selectGroup('${gName}')">
-                    ${gImg ? `<img src="${gImg}" class="group-thumb">` : `<div class="group-thumb" style="display:flex;align-items:center;justify-content:center;color:#3b82f6;font-size:20px;">🛒</div>`}
-                    <div class="group-info">
-                      <div class="group-title">${gName}</div>
-                      <div class="group-meta-row">
-                        ${statusBadge}
-                        <span class="badge-deadline">截單：${gDeadline}</span>
-                      </div>
-                    </div>
-                    <div style="color: #6b7280; font-weight: bold;">❯</div>
-                  </div>`;
-        });
-        container.innerHTML = html;
-      } else {
-        container.innerHTML = `<p style="text-align:center; color:#9ca3af;">目前沒有進行中的團務。</p>`;
-      }
-
-    } catch (err) {
-      console.error("Supabase 查詢失敗：", err);
-      container.innerHTML = `<p style="text-align:center; color:#ef4444;">載入失敗: ${err.message}</p>`;
-    }
-  }
-
-  // 點擊團務切換畫面的選取函數
-  function selectGroup(groupName) {
-    console.log("選擇了團務：", groupName);
-    // 這裡可以保留你原本的畫面切換邏輯
-  }
-</script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; max-width: 650px; margin: auto; background-color: #121212; color: #e0e0e0; }
     .card { background: #1e1e1e; padding: 16px; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.6); border: 1px solid #2c2c2c; }
@@ -111,1059 +39,125 @@
     .badge-status { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
     .badge-deadline { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.4); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
 
-    /* ── 第二層：內頁標題與優化返回按鈕（避免手機版擠壓） ── */
-    .inner-header { 
-      background: #252525; 
-      padding: 12px 14px; 
-      border-radius: 12px; 
-      border: 1px solid #374151; 
-      margin-bottom: 16px; 
-      display: flex; 
-      flex-direction: column; 
-      gap: 8px; 
-    }
-    .back-btn-row { display: flex; align-items: center; }
-    .back-btn-absolute { 
-      background: #374151; 
-      border: none; 
-      color: #ffffff; 
-      padding: 6px 12px; 
-      border-radius: 6px; 
-      font-weight: bold; 
-      cursor: pointer; 
-      font-size: 12px; 
-      width: auto; 
-      margin: 0; 
-    }
-    .back-btn-absolute:active { background: #4b5563; }
-    .active-group-title { 
-      font-weight: bold; 
-      font-size: 14px; 
-      color: #ffffff; 
-      word-break: break-all; 
-      line-height: 1.4; 
-      text-align: left; 
-    }
-
     .form-group { margin-bottom: 16px; }
     label { font-weight: 600; display: block; margin-bottom: 6px; color: #d1d5db; font-size: 14px; }
     input[type="text"], input[type="email"], select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #374151; border-radius: 8px; font-size: 15px; background: #2b2b2b; color: #ffffff; }
-    input[type="text"]:focus, input[type="email"]:focus { border-color: #3b82f6; outline: none; }
-
-    /* ── 資訊公告區塊 ── */
-    .info-box { background-color: #26221b; border: 1px solid #59451d; padding: 12px 14px; border-radius: 10px; margin-bottom: 15px; font-size: 13px; color: #d1d5db; }
-    .info-box-title { font-weight: 700; color: #fbbf24; margin-bottom: 8px; font-size: 14px; }
-    .terms-content p { margin: 6px 0; line-height: 1.4; }
-
-    /* ── 分類篩選列 ── */
-    .category-filter { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 15px; }
-    .cat-btn { 
-  width: auto; 
-  flex-shrink: 0;
-  padding: 6px 14px; 
-  border-radius: 20px; 
-  border: 1px solid #374151; 
-  background: #2a2a2a; 
-  color: #9ca3af; 
-  font-size: 13px; 
-  font-weight: bold; 
-  cursor: pointer; 
-  white-space: nowrap; 
-  transition: all 0.2s; 
-}
-    .cat-btn.active { background: #ffffff; color: #121212; border-color: #ffffff; }
-
-    /* ── 商品網格（強制手機版維持一排兩個，如需一排一個可改 minmax） ── */
-    .product-grid { 
-      display: grid; 
-      grid-template-columns: repeat(2, 1fr); 
-      gap: 10px; 
-      margin-bottom: 20px; 
-    }
-    @media (max-width: 360px) { 
-      .product-grid { grid-template-columns: 1fr; } /* 極窄手機才改為一排一個 */ 
-    }
-
-    .product-item { border: 1px solid #374151; padding: 10px; border-radius: 12px; background: #252525; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
     
-    .img-container { position: relative; width: 100%; height: 130px; background: #1a1a1a; border-radius: 8px; overflow: hidden; cursor: pointer; }
-    .product-img { width: 100%; height: 100%; object-fit: contain; }
-    .img-badge { position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.7); color: white; padding: 1px 5px; border-radius: 4px; font-size: 9px; z-index: 2; }
-    .img-zoom-icon { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; z-index: 2; }
-    
-    /* 圖片切換左右按鈕 */
-    .img-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; width: 22px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; z-index: 3; border-radius: 4px; }
-    .img-nav-prev { left: 2px; }
-    .img-nav-next { right: 2px; }
-    .img-nav-btn:hover { background: rgba(0,0,0,0.8); }
-
-    .product-category-tag { font-size: 10px; background: #374151; color: #9ca3af; padding: 2px 5px; border-radius: 4px; display: inline-block; margin-bottom: 2px; }
-    .product-name { font-weight: 700; font-size: 13px; color: #f3f4f6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; }
-    .product-desc { 
-  font-size: 11px; 
-  color: #9ca3af; 
-  margin-top: 2px; 
-  margin-bottom: 4px; 
-  line-height: 1.3;
-  word-break: break-all;
-}
-    .product-price { color: #f87171; font-weight: 700; font-size: 14px; }
-    .expired-tag { color: white; background: #4b5563; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; margin-bottom: 2px; }
-    
-    .qty-controller { 
-  display: flex; 
-  align-items: center !important; /* 💡 強制垂直置中，防止被其他樣式覆蓋 */
-  justify-content: space-between; 
-  background: #1e1e1e; 
-  border-radius: 20px; 
-  padding: 4px 6px; /* 調整上下左右內距，讓外框留點呼吸空間 */
-  border: 1px solid #374151; 
-  margin-top: 4px; 
-}
-
-.qty-btn { 
-  width: 34px; 
-  height: 34px; 
-  border-radius: 50%; 
-  border: none; 
-  background: #2a2a2a; 
-  color: #ffffff; 
-  font-weight: bold; 
-  font-size: 18px; 
-  cursor: pointer; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center;
-  align-self: center; /* 💡 確保按鈕自己在格子內乖乖置中 */
-  margin: 0;
-}
-    .qty-btn:active { background: #4b5563; }
-    .qty-display { 
-  font-weight: bold; 
-  font-size: 13px; 
-  width: 24px; 
-  text-align: center; 
-  color: #ffffff; 
-  align-self: center; /* 💡 確保數字也乖乖置中 */
-}
-    /* ── 購物車明細小幫手區塊 ── */
-    .cart-summary-box { background: #22252a; border: 1px solid #3b82f6; border-radius: 12px; padding: 14px; margin-bottom: 15px; }
-    .cart-title { font-weight: bold; color: #60a5fa; margin-bottom: 8px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
-    .cart-items-list { font-size: 13px; color: #d1d5db; max-height: 150px; overflow-y: auto; margin-bottom: 8px; }
-    .cart-item-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #374151; }
-    .cart-total-row { display: flex; justify-content: space-between; font-weight: bold; color: #ffffff; font-size: 14px; padding-top: 6px; border-top: 1px solid #4b5563; }
-
-    /* ── 燈箱 Modal ── */
-    #lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 999; }
-    #lightbox img { max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 8px; }
-    #lightbox-close { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); color: white; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; }
-
-    .agree-box { display: flex; align-items: center; gap: 10px; margin-top: 15px; font-weight: 600; font-size: 14px; cursor: pointer; color: #e5e7eb; }
-    
-    button { width: 100%; background-color: #3b82f6; color: white; padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; transition: opacity 0.2s; }
-    button:disabled { background-color: #374151; color: #6b7280; cursor: not-allowed; }
-    .msg { text-align: center; font-weight: bold; margin-top: 15px; font-size: 14px; }
-
-    .status-confirmed { color: #4ade80; font-weight: bold; }
-    .status-cancelled { color: #f87171; font-weight: bold; }
-    .status-pending { color: #fbbf24; font-weight: bold; }
-    .order-card { border: 1px solid #374151; padding: 12px; border-radius: 8px; margin-bottom: 10px; background: #252525; font-size: 13px; line-height: 1.6; color: #d1d5db; }
-    /* 未選中的按鈕（比較透明、暗色） */
-.tab-btn-inactive {
-  background-color: #2b2b2b !important;
-  opacity: 0.5 !important;
-  color: #ccc !important;
-}
-
-/* 被選中的按鈕（深色、突顯） */
-.tab-btn-active {
-  background-color: #1a73e8 !important;
-  opacity: 1 !important;
-  color: #fff !important;
-  font-weight: bold !important;
-}
+    button { width: 100%; background-color: #3b82f6; color: white; padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; }
   </style>
 </head>
 <body>
 
-// 1. 初始化 Supabase
-const SUPABASE_URL = '你的_SUPABASE_URL';
-const SUPABASE_ANON_KEY = '你的_SUPABASE_ANON_KEY';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <div class="card">
+    <h2>REO代購 預購填單</h2>
 
-// 2. 當網頁載入完成時，開始載入團務列表
-window.addEventListener('DOMContentLoaded', () => {
-  loadGroups();
-});
-
-// 3. 抓取團務列表函式
-async function loadGroups() {
-  const container = document.getElementById('groupCardsContainer');
-  try {
-    // 假設你在 Supabase 建立了一張叫 groups 的資料表
-    const { data, error } = await supabase
-      .from('groups')
-      .select('*');
-
-    if (error) throw error;
-
-    if (!data || data.length === 0) {
-      container.innerHTML = '目前沒有進行中的預購團務。';
-      return;
-    }
-
-    // 將資料渲染成卡片並放入畫面上
-    container.innerHTML = data.map(group => `
-      <div class="group-card" onclick="selectGroup('${group.id}', '${group.name}')" style="background: #1f2937; padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer;">
-        <h3>${group.name}</h3>
-        <p>${group.description || '點擊進入填單'}</p>
-      </div>
-    `).join('');
-
-  } catch (err) {
-    console.error('載入團務失敗：', err.message);
-    container.innerHTML = '載入團務失敗，請稍後再試。';
-  }
-}
-
-  <!-- ════ 頁面三：查詢紀錄區塊 ════ -->
-  <div id="querySection" style="display: none;">
-    <div class="form-group">
-      <label>查詢憑證 (手機號碼 或 Email)</label>
-      <input type="text" id="searchKey" placeholder="輸入當時填寫的手機或信箱">
+    <div class="tab-buttons" style="display: flex; gap: 10px; margin-bottom: 15px;">
+      <button id="btnPreorder" class="tab-btn active">填單預購</button>
+      <button id="btnQuery" class="tab-btn">查詢紀錄</button>
+      <button id="btnSurplus" class="tab-btn">餘量認領</button>
     </div>
-    <button onclick="queryOrder()">查詢我的預購狀態</button>
-    <div id="queryResult" style="margin-top: 15px;"></div>
+    
+    <!-- ════ 頁面一：團務卡片清單 ════ -->
+    <div id="groupListSection">
+      <label style="margin-bottom: 10px;">🔥 請選擇參與的預購團務：</label>
+      <div id="groupCardsContainer">載入團務列表中...</div>
+    </div>
+
+    <!-- ════ 頁面二：商品選購與填單內頁 ════ -->
+    <div id="orderFormSection" style="display: none;">
+      <div class="inner-header">
+        <button onclick="backToGroupList()">❮ 返回團務列表</button>
+        <span class="active-group-title" id="activeGroupTitleText"></span>
+      </div>
+    </div>
+
+    <!-- ════ 頁面三：查詢紀錄區塊 ════ -->
+    <div id="querySection" style="display: none;">
+      <div class="form-group">
+        <label>查詢憑證 (手機號碼 或 Email)</label>
+        <input type="text" id="searchKey" placeholder="輸入當時填寫的手機或信箱">
+      </div>
+      <button onclick="queryOrder()">查詢我的預購狀態</button>
+      <div id="queryResult" style="margin-top: 15px;"></div>
+    </div>
   </div>
 
-</div>
-
-<!-- 🖼️ 放大圖片燈箱 -->
-<div id="lightbox" onclick="closeLightbox()">
-  <button id="lightbox-close" onclick="closeLightbox()">×</button>
-  <img id="lightbox-img" src="">
-</div>
-
-<!-- === 餘量認領專區 === -->
-<div id="surplusSection" style="display: none;">
-    <h3 style="color: orange; margin-top: 20px;">餘量認領專區</h3>
-    <div id="surplusGroupList">載入團務中...</div>
-    <div id="surplusProductList"></div>
-</div>
-
-<script>
-var currentProducts = [];
-var selectedGroupName = "";
-var orderQuantities = {}; 
-var currentCategory = "全部";
-var currentImageIndexes = {}; 
-
-window.onload = function() {
-  loadGroupList();
-};
-
-async function loadGroupList() {
-  var container = document.getElementById('groupCardsContainer');
-  if (!container) {
-    console.error("找不到 ID 為 'groupCardsContainer' 的元素，請檢查 HTML！");
-    return;
-  }
-  
-  container.innerHTML = "載入團務列表中...";
-
-  try {
-    // 從 Supabase 的 groups 資料表抓取資料
-    const { data: groups, error } = await supabase
-      .from('groups')
-      .select('*');
-
-    if (error) throw error;
-
-    console.log("Supabase 成功回傳資料：", groups);
-
-    if (groups && groups.length > 0) {
-      var html = "";
-      
-      // 依照你的欄位名稱（團務名稱、圖片等）來組合卡片
-      groups.forEach(function(groupObj) {
-        var gName = groupObj.團務名稱 || "未命名團務";
-        var gImg = groupObj.圖片 || "";
-        var gDeadline = groupObj.截單時間 || "未定"; // 如果沒有這個欄位會自動顯示未定
-        var isExpired = groupObj.isExpired || false;
-
-        var statusBadge = isExpired ? 
-          `<span class="badge-status" style="background:rgba(107,114,128,0.2); color:#9ca3af; border-color:rgba(107,114,128,0.4);">已結單</span>` : 
-          `<span class="badge-status">開團中</span>`;
-          
-        var cardStyle = isExpired ? `opacity: 0.55; background: #1a1a1a;` : ``;
-
-        html += `<div class="group-card" style="${cardStyle}" onclick="selectGroup('${gName}')">
-                  ${gImg ? `<img src="${gImg}" class="group-thumb">` : `<div class="group-thumb" style="display:flex;align-items:center;justify-content:center;color:#3b82f6;font-size:20px;">🛒</div>`}
-                  <div class="group-info">
-                    <div class="group-title">${gName}</div>
-                    <div class="group-meta-row">
-                      ${statusBadge}
-                      <span class="badge-deadline">截單：${gDeadline}</span>
-                    </div>
-                  </div>
-                  <div style="color: #6b7280; font-weight: bold;">❯</div>
-                </div>`;
-      });
-      container.innerHTML = html;
-    } else {
-      container.innerHTML = `<p style="text-align:center; color:#9ca3af;">目前沒有進行中的團務。</p>`;
-    }
-
-  } catch (err) {
-    console.error("Supabase 查詢失敗：", err);
-    container.innerHTML = `<p style="text-align:center; color:#ef4444;">載入失敗: ${err.message}</p>`;
-  }
-}
-
-function selectGroup(groupName) {
-    selectedGroupName = groupName;
-    orderQuantities = {};
-    currentCategory = "全部";
-    currentImageIndexes = {};
-
-    // 逐一檢查並防範 null 錯誤，如果找不到會在 F12 報錯提示
-    var mainTabs = document.getElementById('mainTabs');
-    var groupListSec = document.getElementById('groupListSection');
-    var querySec = document.getElementById('querySection');
-    var orderFormSec = document.getElementById('orderFormSection');
-    var titleText = document.getElementById('activeGroupTitleText');
-
-    if (mainTabs) mainTabs.style.display = 'none'; 
-    else console.error("❌ 錯誤：找不到 ID 為 'mainTabs' 的 HTML 元素");
-
-    if (groupListSec) groupListSec.style.display = 'none'; 
-    else console.error("❌ 錯誤：找不到 ID 為 'groupListSection' 的 HTML 元素");
-
-    if (querySec) querySec.style.display = 'none'; 
-    else console.error("❌ 錯誤：找不到 ID 為 'querySection' 的 HTML 元素");
-
-    if (orderFormSec) orderFormSec.style.display = 'block'; 
-    else console.error("❌ 錯誤：找不到 ID 為 'orderFormSection' 的 HTML 元素");
-
-    if (titleText) titleText.innerText = groupName; 
-    else console.error("❌ 錯誤：找不到 ID 為 'activeGroupTitleText' 的 HTML 元素");
-
-    loadProductsForGroup(groupName);
-}
-
-function backToGroupList() {
-    var mainTabs = document.getElementById('mainTabs');
-    var orderFormSec = document.getElementById('orderFormSection');
-    var groupListSec = document.getElementById('groupListSection');
-
-    if (mainTabs) {
-        mainTabs.style.display = 'flex';
-    } else {
-        console.error("❌ 錯誤：返回時找不到 ID 為 'mainTabs' 的元素");
-    }
-
-    if (orderFormSec) {
-        orderFormSec.style.display = 'none';
-    } else {
-        console.error("❌ 錯誤：返回時找不到 ID 為 'orderFormSection' 的元素");
-    }
-
-    if (groupListSec) {
-        groupListSec.style.display = 'block';
-    } else {
-        console.error("❌ 錯誤：返回時找不到 ID 為 'groupListSection' 的元素");
-    }
-
-    loadGroupList();
-}
-
-function switchMainTab(tab) {
-  if (tab === 'order') {
-    document.getElementById('groupListSection').style.display = 'block';
-    document.getElementById('querySection').style.display = 'none';
-    document.getElementById('tabOrderBtn').classList.add('active');
-    document.getElementById('tabQueryBtn').classList.remove('active');
-  } else {
-    document.getElementById('groupListSection').style.display = 'none';
-    document.getElementById('querySection').style.display = 'block';
-    document.getElementById('tabOrderBtn').classList.remove('active');
-    document.getElementById('tabQueryBtn').classList.add('active');
-  }
-}
-
-function loadProductsForGroup(groupName) {
-  var productListDiv = document.getElementById('productList');
-  var catFilterDiv = document.getElementById('categoryFilter');
-  var groupNoteDiv = document.getElementById('groupNoteContent');
-  
-  productListDiv.innerHTML = "正在載入商品清單...";
-  groupNoteDiv.innerHTML = "載入中...";
-  updateCartSummary();
-
-  google.script.run.withSuccessHandler(function(res) {
-    if(res.success) {
-      currentProducts = res.products;
-      
-      currentProducts.forEach((_, idx) => { currentImageIndexes[idx] = 0; });
-      
-      var noteText = res.groupNote || "本團無特殊備註事項。";
-      groupNoteDiv.innerHTML = `<p>${noteText.replace(/\n/g, '<br>')}</p>`;
-      
-      var categories = ["全部"];
-      currentProducts.forEach(function(p) {
-        var cat = p.category || "一般商品";
-        if (!categories.includes(cat)) {
-          categories.push(cat);
-        }
-      });
-
-      var catHtml = "";
-      categories.forEach(function(cat) {
-        var count = cat === "全部" ? currentProducts.length : currentProducts.filter(p => (p.category || "一般商品") === cat).length;
-        var activeClass = cat === currentCategory ? "active" : "";
-        catHtml += `<button class="cat-btn ${activeClass}" onclick="filterCategory('${cat}', this)">${cat} (${count})</button>`;
-      });
-      catFilterDiv.innerHTML = catHtml;
-
-      renderProducts(currentProducts);
-      updateCartSummary();
-    } else {
-      productListDiv.innerHTML = `<p style="color:#f87171; grid-column: span 2;">${res.msg}</p>`;
-      groupNoteDiv.innerHTML = "無法載入備註";
-    }
-  }).getGroupProducts(groupName);
-}
-
-function filterCategory(cat, btnElem) {
-  currentCategory = cat;
-  var buttons = document.querySelectorAll('.cat-btn');
-  buttons.forEach(b => b.classList.remove('active'));
-  btnElem.classList.add('active');
-  renderProducts(currentProducts);
-}
-
-function renderProducts(products) {
-  var productListDiv = document.getElementById('productList');
-  var html = "";
-
-  var filteredProducts = products.filter(function(p) {
-    if (currentCategory === "全部") return true;
-    return (p.category || "一般商品") === currentCategory;
-  });
-
-  if (filteredProducts.length === 0) {
-    productListDiv.innerHTML = `<p style="color:#9ca3af; grid-column: span 2; text-align:center;">此分類目前沒有商品。</p>`;
-    return;
-  }
-
-  filteredProducts.forEach(function(p) {
-    var realIndex = currentProducts.indexOf(p);
-    var currentQty = orderQuantities[realIndex] || 0;
-    
-    var imgUrls = p.imgUrls || [];
-    var imgIdx = currentImageIndexes[realIndex] || 0;
-    var currentImgUrl = imgUrls.length > 0 ? imgUrls[imgIdx] : "";
-    var imgCountText = imgUrls.length > 0 ? `${imgIdx + 1}/${imgUrls.length}` : "1/1";
-    
-    var categoryText = p.category || "一般商品";
-    var descText = p.desc || "";
-
-    var navButtonsHtml = "";
-    if (imgUrls.length > 1) {
-      navButtonsHtml = `
-        <button class="img-nav-btn img-nav-prev" onclick="event.stopPropagation(); changeImage(${realIndex}, -1)">❮</button>
-        <button class="img-nav-btn img-nav-next" onclick="event.stopPropagation(); changeImage(${realIndex}, 1)">❯</button>
-      `;
-    }
-
-    if(p.isExpired) {
-      html += `<div class="product-item" style="opacity: 0.5;">
-                <div>
-                  <div class="img-container" ${currentImgUrl ? `onclick="openLightbox('${currentImgUrl}')"` : ''}>
-                    ${currentImgUrl ? `<img src="${currentImgUrl}" class="product-img" id="img_elem_${realIndex}">` : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#6b7280;font-size:12px;">無圖片</div>`}
-                    <div class="img-badge" id="badge_${realIndex}">${imgCountText}</div>
-                    <div class="img-zoom-icon">🔍</div>
-                    ${navButtonsHtml}
-                  </div>
-                  <div style="margin-top:4px;"><span class="product-category-tag">${categoryText}</span> <span class="expired-tag">已截止</span></div>
-                  <div class="product-name">#${realIndex+1} ${p.name}</div>
-                  ${descText ? `<div class="product-desc">${descText}</div>` : ''}
-                  <div class="product-price">$${p.price}</div>
-                </div>
-              </div>`;
-    } else {
-      html += `<div class="product-item">
-                <div>
-                  <div class="img-container" ${currentImgUrl ? `onclick="openLightbox('${currentImgUrl}')"` : ''}>
-                    ${currentImgUrl ? `<img src="${currentImgUrl}" class="product-img" id="img_elem_${realIndex}">` : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#6b7280;font-size:12px;">無圖片</div>`}
-                    <div class="img-badge" id="badge_${realIndex}">${imgCountText}</div>
-                    <div class="img-zoom-icon">🔍</div>
-                    ${navButtonsHtml}
-                  </div>
-                  <div style="margin-top:4px;"><span class="product-category-tag">${categoryText}</span></div>
-                  <div class="product-name">#${realIndex+1} ${p.name}</div>
-                  ${descText ? `<div class="product-desc">${descText}</div>` : ''}
-                  <div class="product-price">$${p.price}</div>
-                </div>
-                <div>
-                  <div class="qty-controller">
-                    <button class="qty-btn" onclick="changeQty(${realIndex}, -1)">−</button>
-                    <span class="qty-display" id="qty_val_${realIndex}">${currentQty}</span>
-                    <button class="qty-btn" onclick="changeQty(${realIndex}, 1)">＋</button>
-                  </div>
-                </div>
-              </div>`;
-    }
-  });
-  productListDiv.innerHTML = html;
-}
-
-function changeImage(realIndex, direction) {
-  var p = currentProducts[realIndex];
-  if (!p || !p.imgUrls || p.imgUrls.length <= 1) return;
-  
-  var len = p.imgUrls.length;
-  var idx = currentImageIndexes[realIndex] || 0;
-  
-  idx += direction;
-  if (idx < 0) idx = len - 1;
-  if (idx >= len) idx = 0;
-  
-  currentImageIndexes[realIndex] = idx;
-  
-  var imgElem = document.getElementById('img_elem_' + realIndex);
-  var badgeElem = document.getElementById('badge_' + realIndex);
-  var containerElem = imgElem ? imgElem.parentElement : null;
-  
-  if (imgElem) imgElem.src = p.imgUrls[idx];
-  if (badgeElem) badgeElem.innerText = `${idx + 1}/${len}`;
-  if (containerElem) containerElem.setAttribute('onclick', `openLightbox('${p.imgUrls[idx]}')`);
-}
-
-function openLightbox(url) {
-  document.getElementById('lightbox-img').src = url;
-  document.getElementById('lightbox').style.display = 'flex';
-}
-function closeLightbox() {
-  document.getElementById('lightbox').style.display = 'none';
-}
-
-function changeQty(index, delta) {
-  if (!orderQuantities[index]) orderQuantities[index] = 0;
-  orderQuantities[index] += delta;
-  if (orderQuantities[index] < 0) orderQuantities[index] = 0;
-
-  var displayElem = document.getElementById('qty_val_' + index);
-  if (displayElem) {
-    displayElem.innerText = orderQuantities[index];
-  }
-  updateCartSummary();
-  checkCanSubmit();
-}
-
-function updateCartSummary() {
-  var cartBox = document.getElementById('cartSummaryBox');
-  var cartItemsList = document.getElementById('cartItemsList');
-  var cartItemCount = document.getElementById('cartItemCount');
-  var cartTotalPrice = document.getElementById('cartTotalPrice');
-
-  var html = "";
-  var totalCount = 0;
-  var totalPrice = 0;
-
-  currentProducts.forEach(function(p, index) {
-    var qty = orderQuantities[index] || 0;
-    if (qty > 0) {
-      totalCount += qty;
-      var subtotal = qty * p.price;
-      totalPrice += subtotal;
-      html += `<div class="cart-item-row">
-                <span>#${index+1} ${p.name} x ${qty}</span>
-                <span style="font-weight: bold; color: #f87171;">$${subtotal}</span>
-               </div>`;
-    }
-  });
-
-  if (totalCount > 0) {
-    cartBox.style.display = 'block';
-    cartItemsList.innerHTML = html;
-    cartItemCount.innerText = `(${totalCount}件)`;
-    cartTotalPrice.innerText = `$${totalPrice}`;
-  } else {
-    cartBox.style.display = 'none';
-  }
-}
-
-function checkCanSubmit() {
-  var agree = document.getElementById('agreeTerms').checked;
-  var submitBtn = document.getElementById('submitBtn');
-  var hasSelected = Object.values(orderQuantities).some(q => q > 0);
-  
-  if (selectedGroupName && agree && hasSelected) {
-    submitBtn.disabled = false;
-  } else {
-    submitBtn.disabled = true;
-  }
-}
-
-function submitOrder() {
-  var lineName = document.getElementById('lineName').value.trim();
-  var phone = document.getElementById('phone').value.trim();
-  var email = document.getElementById('email').value.trim();
-  var statusMsg = document.getElementById('statusMsg');
-
-  if(!selectedGroupName || !lineName || !phone || !email) {
-    alert("請完整填寫暱稱、手機與 Email 資訊！");
-    return;
-  }
-
-  var selectedItems = [];
-  currentProducts.forEach(function(p, index) {
-    var qty = orderQuantities[index] || 0;
-    if(qty > 0 && !p.isExpired) {
-      selectedItems.push({ name: p.name, price: p.price, qty: qty });
-    }
-  });
-
-  if(selectedItems.length === 0) {
-    alert("請至少選擇一項商品的數量！");
-    return;
-  }
-
-  document.getElementById('submitBtn').disabled = true;
-  statusMsg.style.color = "#d1d5db";
-  statusMsg.innerHTML = "正在送出預購資料並發送確認信...";
-
-  google.script.run.withSuccessHandler(function(res) {
-    if(res.success) {
-      statusMsg.style.color = "#4ade80";
-      statusMsg.innerHTML = "✓ 預購已登記！若未收到確認信請至垃圾郵件或利用本網站查詢功能。";
-      document.getElementById('lineName').value = "";
-      document.getElementById('phone').value = "";
-      document.getElementById('email').value = "";
-      document.getElementById('agreeTerms').checked = false;
-      orderQuantities = {};
-      updateCartSummary();
-      renderProducts(currentProducts);
-      checkCanSubmit();
-    } else {
-      statusMsg.style.color = "#f87171";
-      statusMsg.innerHTML = res.msg;
-      document.getElementById('submitBtn').disabled = false;
-    }
-  }).submitOrder({ groupName: selectedGroupName, lineName: lineName, phone: phone, email: email, items: selectedItems });
-}
-
-function queryOrder() {
-  var key = document.getElementById('searchKey').value.trim();
-  var resultDiv = document.getElementById('queryResult');
-  
-  if (!key) {
-    alert("請輸入查詢用的手機號碼或 Email！");
-    return;
-  }
-
-  resultDiv.innerHTML = "查詢中請稍候...";
-
-  google.script.run.withSuccessHandler(function(res) {
-    if (res.success) {
-      var html = "";
-      res.orders.forEach(function(o) {
-        var statusClass = o.status === "已成立" ? "status-confirmed" : (o.status === "已取消" ? "status-cancelled" : "status-pending");
-        html += `<div class="order-card">
-                  <div><b>團務名稱：</b>${o.group}</div>
-                  <div style="margin: 6px 0;"><b>預購項目：</b></div>
-                  <div style="background: #1a1a1a; padding: 8px; border-radius: 6px; margin-bottom: 6px;">${o.productHtml}</div>
-                  <div><b>金額總計：</b>$${o.price}</div>
-                  <div><b>登記時間：</b>${o.time}</div>
-                  <div><b>處理狀態：</b><span class="${statusClass}">${o.status}</span></div>
-                </div>`;
-      });
-      resultDiv.innerHTML = html;
-    } else {
-      resultDiv.innerHTML = `<p style="color:#f87171; text-align:center;">${res.msg}</p>`;
-    }
-  }).checkOrderStatus(key);
-}
-</script>
-
-<!-- ================= 步驟二：HTML 畫面區塊（放在 script 下方、body 上方） ================= -->
-<div id="adminSection" style="margin-top: 30px; padding: 15px; border-top: 1px solid #444; text-align: center;">
-  <button onclick="toggleAdminLogin()" style="background: transparent; border: none; color: #888; font-size: 12px; cursor: pointer;">🔐 管理員後台登入</button>
-  
-  <div id="adminLoginForm" style="display: none; margin-top: 10px;">
-    <input type="password" id="adminPassword" placeholder="請輸入管理員密碼" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
-    <button onclick="verifyAdmin()" style="padding: 5px 10px; background: #374151; color: white; border: none; border-radius: 4px;">登入</button>
-  </div>
-
-  <div id="adminDashboard" style="display: none; margin-top: 15px; text-align: left;">
-    <h3 style="font-size: 14px; color: #fff; margin-bottom: 10px;">📋 待確認訂單列表</h3>
-    <div id="pendingOrdersList">載入中...</div>
-  </div>
-</div>
-
-<!-- ================= 步驟三：JavaScript 互動邏輯（用新的 script 標籤包起來） ================= -->
-<script>
-  function toggleAdminLogin() {
-    var form = document.getElementById('adminLoginForm');
-    if (form.style.display === 'none' || form.style.display === '') {
-      form.style.display = 'block';
-    } else {
-      form.style.display = 'none';
-    }
-  }
-
-  function verifyAdmin() {
-    var pwd = document.getElementById('adminPassword').value;
-    var validPasswords = ["841250"]; // 可自行修改密碼
-    
-    if (validPasswords.includes(pwd)) { 
-      document.getElementById('adminLoginForm').style.display = 'none';
-      document.getElementById('adminDashboard').style.display = 'block';
-      loadPendingOrders(); 
-    } else {
-      alert("密碼錯誤！");
-    }
-  }
-
-  function loadPendingOrders() {
-    document.getElementById('pendingOrdersList').innerHTML = "載入中...";
-    google.script.run
-      .withSuccessHandler(function(res) {
-        if (res.success) {
-          var html = "";
-          if (res.orders && res.orders.length > 0) {
-            // 頂部批次操作工具列與全選框
-            html += `<div style="display: flex; justify-content: space-between; align-items: center; background: #374151; padding: 8px 10px; border-radius: 6px; margin-bottom: 10px;">
-                       <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                         <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)" style="cursor: pointer;"> 全選
-                       </label>
-                       <div style="display: flex; gap: 6px;">
-                         <button onclick="batchConfirm()" style="background: #10B981; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">✔️ 批量確認</button>
-                         <button onclick="batchDelete()" style="background: #EF4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">❌ 批量刪除</button>
-                       </div>
-                     </div>`;
-
-            res.orders.forEach(function(order) {
-              if (order.status === "待確認") {
-                html += `<div style="background: #2a2a2a; padding: 10px; margin-bottom: 10px; border-radius: 6px; font-size: 12px; border: 1px solid #444;">
-                           <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #444; padding-bottom: 6px; margin-bottom: 6px;">
-                             <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                               <input type="checkbox" class="order-checkbox" value="${order.rowIndex}" style="cursor: pointer;">
-                               <b>時間：</b>${order.time}
-                             </label>
-                             <span style="color: #aaa;">團名：${order.group}</span>
-                           </div>
-                           <div><b>買家：</b>${order.name} | ${order.phone} / ${order.email}</div>
-                           <div style="margin: 5px 0;">${order.productHtml}</div>
-                           
-                           <div style="display: flex; gap: 8px; margin-top: 8px;">
-                             <button onclick="confirmOrder('${order.rowIndex}')" style="flex: 1; background: #10B981; color: white; border: none; padding: 6px; border-radius: 4px; cursor: pointer;">✔️ 單筆確認</button>
-                             <button onclick="deleteOrder('${order.rowIndex}')" style="flex: 1; background: #EF4444; color: white; border: none; padding: 6px; border-radius: 4px; cursor: pointer;">❌ 刪除訂單</button>
-                           </div>
-                         </div>`;
-              }
-            });
-          }
-          document.getElementById('pendingOrdersList').innerHTML = html || "目前沒有待確認的訂單！";
-        } else {
-          document.getElementById('pendingOrdersList').innerHTML = "載入失敗：" + res.msg;
-        }
-      })
-      .getPendingOrders();
-  }
-
-  // 全選 / 取消全選功能
-  function toggleSelectAll(master) {
-    var checkboxes = document.querySelectorAll('.order-checkbox');
-    checkboxes.forEach(function(cb) {
-      cb.checked = master.checked;
-    });
-  }
-
-  // 取得所有被勾選的訂單列數
-  function getSelectedRows() {
-    var checkboxes = document.querySelectorAll('.order-checkbox:checked');
-    var rows = [];
-    checkboxes.forEach(function(cb) {
-      rows.push(cb.value);
-    });
-    return rows;
-  }
-
-  function batchConfirm() {
-    var rows = getSelectedRows();
-    if (rows.length === 0) {
-      alert("請至少勾選一筆訂單！");
-      return;
-    }
-    if (!confirm("確定要將選中的 " + rows.length + " 筆訂單全部確認嗎？")) return;
-    
-    google.script.run
-      .withSuccessHandler(function(res) {
-        alert(res.msg);
-        loadPendingOrders();
-      })
-      .adminBatchConfirmOrders(rows);
-  }
-
-  function batchDelete() {
-    var rows = getSelectedRows();
-    if (rows.length === 0) {
-      alert("請至少勾選一筆訂單！");
-      return;
-    }
-    if (!confirm("⚠️ 確定要刪除選中的 " + rows.length + " 筆訂單嗎？此動作無法復原！")) return;
-    
-    google.script.run
-      .withSuccessHandler(function(res) {
-        alert(res.msg);
-        loadPendingOrders();
-      })
-      .adminBatchDeleteOrders(rows);
-  }
-
-  function confirmOrder(rowIndex) {
-    if (!confirm("確定要確認這筆訂單嗎？")) return;
-    google.script.run
-      .withSuccessHandler(function(res) {
-        alert(res.msg);
-        loadPendingOrders(); 
-      })
-      .adminConfirmOrder(rowIndex);
-  }
-
-  function deleteOrder(rowIndex) {
-    if (!confirm("⚠️ 確定要刪除這筆訂單嗎？此動作無法復原！")) return;
-    google.script.run
-      .withSuccessHandler(function(res) {
-        alert(res.msg);
-        loadPendingOrders(); 
-      })
-      .adminDeleteOrder(rowIndex);
-  }
-  // 切換上方三個大按鈕（填單預購 / 查詢記錄 / 餘量認領）
- function switchView(mode) {
-    var groupListSec = document.getElementById('groupListSection');
-    var orderFormSec = document.getElementById('orderFormSection');
-    var querySec = document.getElementById('querySection');
-    var surplusSec = document.getElementById('surplusSection');
-
-    if (groupListSec) groupListSec.style.display = 'none';
-    if (orderFormSec) orderFormSec.style.display = 'none';
-    if (querySec) querySec.style.display = 'none';
-    if (surplusSec) surplusSec.style.display = 'none';
-
-    var btnPreorder = document.getElementById('btnPreorder');
-    var btnQuery = document.getElementById('btnQuery');
-    var btnSurplus = document.getElementById('btnSurplus');
-
-    var inactiveBg = '#2b2b2b';
-    var inactiveOpacity = '0.5';
-    var activeBg = '#1a73e8';
-    var activeOpacity = '1';
-
-    if (btnPreorder) { btnPreorder.style.backgroundColor = inactiveBg; btnPreorder.style.opacity = inactiveOpacity; }
-    if (btnQuery) { btnQuery.style.backgroundColor = inactiveBg; btnQuery.style.opacity = inactiveOpacity; }
-    if (btnSurplus) { btnSurplus.style.backgroundColor = inactiveBg; btnSurplus.style.opacity = inactiveOpacity; }
-
-    if (mode === 'preorder' && groupListSec) {
-      groupListSec.style.display = 'block';
-      if (btnPreorder) { btnPreorder.style.backgroundColor = activeBg; btnPreorder.style.opacity = activeOpacity; }
-      
-      // 💡 關鍵：這裡必須加上載入預購團務的函式！
-      loadGroupList(); // 請確認你抓取預購團務的函式名稱是什麼（例如 loadGroupList 或 loadPreorderGroups）
-
-    } else if (mode === 'query' && querySec) {
-      querySec.style.display = 'block';
-      if (btnQuery) { btnQuery.style.backgroundColor = activeBg; btnQuery.style.opacity = activeOpacity; }
-    } else if (mode === 'surplus' && surplusSec) {
-      surplusSec.style.display = 'block';
-      if (btnSurplus) { btnSurplus.style.backgroundColor = activeBg; btnSurplus.style.opacity = activeOpacity; }
-      loadSurplusGroups();
-    }
-  }
-
-  // 網頁一打開時執行
-window.onload = function() {
-  // 顯示載入中動畫（例如轉圈圈或 skeleton）
-  document.getElementById("loading-spinner").style.display = "block";
-
-  google.script.run
-    .withSuccessHandler(function(data) {
-      // 隱藏載入中動畫
-      document.getElementById("loading-spinner").style.display = "none";
-
-      // 📦 把後端一次打包傳來的資料存到全域變數，隨點隨用，不用再問後端！
-      window.shopData = data;
-      
-      // 渲染畫面（例如初始化團務選單、商品列表）
-      renderGroups(data.groups);
-    })
-    .withFailureHandler(function(err) {
-      console.error("載入失敗：", err);
-      alert("載入資料發生錯誤，請重新整理網頁。");
-    })
-    .getInitialData();
-};
-
-  // 獨立出按鈕渲染函式，讓程式碼更乾淨
-  function renderGroupButtons(groups) {
-    var html = "<p style='font-size: 13px; color: #aaa; margin-bottom: 8px;'>請選擇要查看餘量的團務：</p>";
-    groups.forEach(function(g) {
-      html += `<button onclick="loadSurplusProductsForGroup('${g}')" style="display: block; width: 100%; margin-bottom: 6px; padding: 10px; background: #2a2a2a; color: white; border: 1px solid #444; border-radius: 6px; text-align: left; cursor: pointer;">📦 ${g}</button>`;
-    });
-    document.getElementById('surplusGroupList').innerHTML = html;
-  }
-
-  // 全域變數，用來記住目前載入的商品清單與當前團名
-  let currentGroupProductList = [];
-  let activeGroupName = "";
-
-  // 呼叫後端取得該團務 G 欄 > 0 的現貨商品
-  function loadSurplusProductsForGroup(groupName) {
-    activeGroupName = groupName;
-    document.getElementById('surplusProductList').innerHTML = "<div style='color: #aaa; text-align: center; padding: 20px;'>載入中...</div>";
-    
-    google.script.run
-      .withSuccessHandler(function(res) {
-        if (res.success) {
-          currentGroupProductList = res.products || [];
-          
-          var html = `<h4 style="color: #fff; margin: 10px 0;">📂 ${groupName} 餘量商品</h4>`;
-          
-          if (currentGroupProductList.length > 0) {
-            // 💡 1. 統一的個資填寫區塊 (置頂在商品清單上方)
-            html += `
-              <div style="background: #1e1e1e; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #555;">
-                <div style="font-weight: bold; color: #F59E0B; margin-bottom: 8px; font-size: 13px;">📝 請先填寫您的聯絡資訊（只需填一次）</div>
-                <input type="text" id="batch_buyer_name" placeholder="Line / FB 名稱 *" style="width: 100%; padding: 6px; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #555; color: white; border-radius: 4px; font-size: 12px;">
-                <input type="text" id="batch_buyer_phone" placeholder="手機號碼 *" style="width: 100%; padding: 6px; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #555; color: white; border-radius: 4px; font-size: 12px;">
-                <input type="email" id="batch_buyer_email" placeholder="Email (接收確認信)" style="width: 100%; padding: 6px; background: #1a1a1a; border: 1px solid #555; color: white; border-radius: 4px; font-size: 12px;">
-              </div>
-            `;
-
-            // 💡 2. 商品列表（僅保留數量選擇）
-            currentGroupProductList.forEach(function(p, index) {
-              html += `<div style="background: #2a2a2a; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444;">
-                         <div style="display: flex; gap: 10px; align-items: center;">
-                           ${p.image ? `<img src="${p.image}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">` : ''}
-                           <div style="flex: 1; font-size: 12px;">
-                             <div style="font-weight: bold; font-size: 13px; color: #fff;">${p.name}</div>
-                             <div style="color: #10B981; margin: 2px 0;">單價：$${p.price} | <span style="color: #F59E0B; font-weight: bold;">餘量：${p.stock} 個</span></div>
-                           </div>
-                           <div style="text-align: right;">
-                             <label style="display: block; font-size: 10px; color: #aaa; margin-bottom: 2px;">選擇數量</label>
-                             <select id="batch_qty_${index}" onchange="updateBatchSummary()" style="padding: 5px; background: #1a1a1a; color: white; border: 1px solid #555; border-radius: 4px; font-size: 12px;">
-                               <option value="0">0 個</option>`;
-              
-              for (var q = 1; q <= p.stock; q++) {
-                html += `<option value="${q}">${q} 個</option>`;
-              }
-              
-              html += `      </select>
-                           </div>
-                         </div>
-                       </div>`;
-            });
-
-            // 💡 3. 底部懸浮結帳列與總計
-            html += `
-              <div id="batch-footer-bar" style="position: sticky; bottom: 0; background: #18181b; border-top: 1px solid #444; padding: 12px; margin-top: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -4px 10px rgba(0,0,0,0.3);">
-                <div>
-                  <div style="font-size: 11px; color: #aaa;">已選購總計</div>
-                  <div style="font-size: 14px; font-weight: bold; color: #fff;">
-                    <span id="batch_total_count" style="color: #F59E0B;">0</span> 件 | NT$ <span id="batch_total_price" style="color: #F59E0B;">0</span>
-                  </div>
-                </div>
-                <button onclick="submitBatchSurplusClaim()" style="background: #F59E0B; color: #111; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">確認送出全部認領</button>
-              </div>
-            `;
-
-          } else {
-            html += "<p style='color: #aaa; font-size: 12px;'>目前這個團務沒有餘量囉！</p>";
-          }
-          
-          document.getElementById('surplusProductList').innerHTML = html;
-        } else {
-          document.getElementById('surplusProductList').innerHTML = "載入失敗：" + res.msg;
-        }
-      })
-      .getSurplusProducts(groupName);
-  }
-
-  // 即時計算總件數與總金額
-  function updateBatchSummary() {
-    let totalCount = 0;
-    let totalPrice = 0;
-
-    currentGroupProductList.forEach(function(p, index) {
-      const qtySelect = document.getElementById(`batch_qty_${index}`);
-      const qty = qtySelect ? parseInt(qtySelect.value) || 0 : 0;
-      totalCount += qty;
-      totalPrice += qty * p.price;
+  <script>
+    // 2. 初始化 Supabase（已修正 URL 格式，移除了多餘的 /rest/v1/）
+    const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 3. 當網頁載入完成時，開始載入團務列表
+    window.addEventListener('DOMContentLoaded', () => {
+      loadGroupList();
     });
 
-    const countEl = document.getElementById('batch_total_count');
-    const priceEl = document.getElementById('batch_total_price');
-    if (countEl) countEl.innerText = totalCount;
-    if (priceEl) priceEl.innerText = totalPrice;
-  }
-
-  // 提交整批認領訂單
-  function submitBatchSurplusClaim() {
-    var name = document.getElementById('batch_buyer_name').value.trim();
-    var phone = document.getElementById('batch_buyer_phone').value.trim();
-    var email = document.getElementById('batch_buyer_email').value.trim();
-    
-    if (!name || !phone) {
-      alert("請完整填寫「Line / FB 名稱」與「手機號碼」！");
-      return;
-    }
-
-    // 收集所有選擇數量 > 0 的商品
-    let selectedItems = [];
-    currentGroupProductList.forEach(function(p, index) {
-      const qtySelect = document.getElementById(`batch_qty_${index}`);
-      const qty = qtySelect ? parseInt(qtySelect.value) || 0 : 0;
-      if (qty > 0) {
-        selectedItems.push({
-          rowIndex: p.rowIndex,
-          name: p.name,
-          price: p.price,
-          quantity: qty
-        });
+    // 4. 抓取團務列表函式（對應 Supabase 的 groups 表格與中文欄位）
+    async function loadGroupList() {
+      var container = document.getElementById('groupCardsContainer');
+      if (!container) {
+        console.error("找不到 ID 為 'groupCardsContainer' 的元素！");
+        return;
       }
-    });
+      
+      container.innerHTML = "載入團務列表中...";
 
-    if (selectedItems.length === 0) {
-      alert("您尚未選擇任何欲認領的商品！");
-      return;
+      try {
+        const { data: groups, error } = await supabase
+          .from('groups')
+          .select('*');
+
+        if (error) throw error;
+
+        console.log("Supabase 成功回傳資料：", groups);
+
+        if (groups && groups.length > 0) {
+          var html = "";
+          groups.forEach(function(groupObj) {
+            // 對應你的 Supabase 欄位名稱
+            var gName = groupObj.團務名稱 || "未命名團務";
+            var gImg = groupObj.圖片 || "";
+            var gDeadline = groupObj.截單時間 || "未定";
+            var isExpired = groupObj.isExpired || false;
+
+            var statusBadge = isExpired ? 
+              `<span class="badge-status" style="background:rgba(107,114,128,0.2); color:#9ca3af; border-color:rgba(107,114,128,0.4);">已結單</span>` : 
+              `<span class="badge-status">開團中</span>`;
+              
+            var cardStyle = isExpired ? `opacity: 0.55; background: #1a1a1a;` : ``;
+
+            html += `<div class="group-card" style="${cardStyle}" onclick="selectGroup('${gName}')">
+                      ${gImg ? `<img src="${gImg}" class="group-thumb">` : `<div class="group-thumb" style="display:flex;align-items:center;justify-content:center;color:#3b82f6;font-size:20px;">🛒</div>`}
+                      <div class="group-info">
+                        <div class="group-title">${gName}</div>
+                        <div class="group-meta-row">
+                          ${statusBadge}
+                          <span class="badge-deadline">截單：${gDeadline}</span>
+                        </div>
+                      </div>
+                      <div style="color: #6b7280; font-weight: bold;">❯</div>
+                    </div>`;
+          });
+          container.innerHTML = html;
+        } else {
+          container.innerHTML = `<p style="text-align:center; color:#9ca3af;">目前沒有進行中的團務。</p>`;
+        }
+
+      } catch (err) {
+        console.error("Supabase 查詢失敗：", err);
+        container.innerHTML = `<p style="text-align:center; color:#ef4444;">載入失敗: ${err.message}</p>`;
+      }
     }
 
-    if (!confirm("確定要送出這筆包含 " + selectedItems.length + " 項商品的餘量認領嗎？")) return;
+    function selectGroup(groupName) {
+      console.log("選擇了團務：", groupName);
+    }
 
-    var orderData = {
-      group: activeGroupName,
-      name: name,
-      phone: phone,
-      email: email,
-      items: selectedItems
-    };
-
-    google.script.run
-      .withSuccessHandler(function(res) {
-        alert(res.msg);
-        if (res.success) {
-          loadSurplusProductsForGroup(activeGroupName); // 重新整理該團列表與庫存
-        }
-      })
-      .withFailureHandler(function(err) {
-        alert("發生系統錯誤：" + err.message);
-      })
-      .submitSurplusOrder(orderData);
-  }
-</script>
-
+    function backToGroupList() {
+      document.getElementById('groupListSection').style.display = 'block';
+      document.getElementById('orderFormSection').style.display = 'none';
+    }
+  </script>
 </body>
 </html>
