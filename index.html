@@ -195,6 +195,14 @@
         <p id="batchMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
       </div>
 
+      <!-- 已成立商品總喊單數量統計區塊 -->
+      <h4 style="color: #f59e0b; margin-bottom: 8px; text-align: center;">📊 已成立訂單商品總數量統計</h4>
+      <div style="background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+        <label style="font-size: 12px; color: #ccc;">選擇要統計的團務：</label>
+        <select id="adminStatsGroup" style="margin-top: 4px;" onchange="loadOrderStats()"></select>
+        <div id="orderStatsResult" style="margin-top: 10px; font-size: 12px;">請選擇團務以查看統計</div>
+      </div>
+
       <h4 style="color: #fff; margin-bottom: 8px; text-align: center;">待確認訂單管理</h4>
       <div id="pendingOrdersList">載入中...</div>
     </div>
@@ -248,10 +256,12 @@
       groupsData = groups || [];
 
       let adminGroupSelect = document.getElementById('adminTargetGroup');
+      let adminStatsGroup = document.getElementById('adminStatsGroup');
       if (adminGroupSelect) adminGroupSelect.innerHTML = "";
+      if (adminStatsGroup) adminStatsGroup.innerHTML = "<option value=''>請選擇團務</option>";
 
       if (groupsData.length > 0) {
-        let html = "", selectHtml = "";
+        let html = "", selectHtml = "", statsHtml = "<option value=''>請選擇團務</option>";
         groupsData.forEach(g => {
           let gName = g["團務名稱"];
           let img = g["圖片"] || "";
@@ -273,9 +283,11 @@
             </div>
           `;
           selectHtml += `<option value="${gName}">${gName}</option>`;
+          statsHtml += `<option value="${gName}">${gName}</option>`;
         });
         container.innerHTML = html;
         if (adminGroupSelect) adminGroupSelect.innerHTML = selectHtml;
+        if (adminStatsGroup) adminStatsGroup.innerHTML = statsHtml;
       } else {
         container.innerHTML = "<p style='text-align:center; color:#aaa;'>目前沒有進行中的團務。</p>";
       }
@@ -741,6 +753,52 @@
         container.innerHTML = html;
       } else { container.innerHTML = "<p style='color:#aaa; font-size:12px;'>目前沒有待確認的訂單。</p>"; }
     } catch (err) { container.innerHTML = "<p style='color:#f87171;'>載入訂單失敗。</p>"; }
+  }
+
+  // 修改：只讀取處理狀態為「已成立」的訂單進行商品數量統計
+  async function loadOrderStats() {
+    let groupName = document.getElementById('adminStatsGroup').value;
+    let resultContainer = document.getElementById('orderStatsResult');
+    if (!groupName) {
+      resultContainer.innerHTML = "請選擇團務以查看統計";
+      return;
+    }
+
+    resultContainer.innerHTML = "統計計算中...";
+    try {
+      const { data: orders, error } = await db.from('orders').select('*').eq('團務名稱', groupName).eq('處理狀態', '已成立');
+      if (error) throw error;
+
+      let statsMap = {};
+      if (orders && orders.length > 0) {
+        orders.forEach(o => {
+          if (o["訂單內容"] && Array.isArray(o["訂單內容"])) {
+            o["訂單內容"].forEach(item => {
+              let itemName = item.name;
+              let itemQty = parseInt(item.qty) || 0;
+              statsMap[itemName] = (statsMap[itemName] || 0) + itemQty;
+            });
+          }
+        });
+      }
+
+      let keys = Object.keys(statsMap);
+      if (keys.length > 0) {
+        let html = `<div style="background:#18181b; padding:8px; border-radius:6px; border:1px solid #444;">`;
+        keys.forEach(name => {
+          html += `<div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #333;">
+            <span>${name}</span>
+            <span style="color: #4ade80; font-weight: bold;">總計：${statsMap[name]} 個</span>
+          </div>`;
+        });
+        html += `</div>`;
+        resultContainer.innerHTML = html;
+      } else {
+        resultContainer.innerHTML = "<p style='color:#aaa;'>目前此團務尚無「已成立」的訂單紀錄。</p>";
+      }
+    } catch (err) {
+      resultContainer.innerHTML = "<p style='color:#f87171;'>載入統計失敗。</p>";
+    }
   }
 
   async function updateOrderStatus(orderId, newStatus) {
