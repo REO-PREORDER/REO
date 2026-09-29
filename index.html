@@ -57,7 +57,7 @@
       <div id="groupCardsContainer">載入團務列表中...</div>
     </div>
 
-    <!-- 商品與填單子畫面 (選定團務後展開) -->
+    <!-- 商品與填單子畫面 -->
     <div id="productOrderView" style="display: none;">
       <button onclick="backToGroupList()" style="background: transparent; border: none; color: #1a73e8; cursor: pointer; margin-bottom: 10px;">← 返回選擇其他團務</button>
       <h3 id="activeGroupTitle" style="color: #10b981; text-align: left;"></h3>
@@ -104,7 +104,7 @@
     <div id="surplusProductList" style="margin-top: 15px;"></div>
   </div>
 
-  <!-- 管理員後台登入入口 (頁面最下方) -->
+  <!-- 管理員後台登入入口 -->
   <div style="margin-top: 30px; border-top: 1px solid #333; padding-top: 15px; text-align: center;">
     <button onclick="toggleAdminLogin()" style="background: transparent; border: none; color: #777; font-size: 11px; cursor: pointer;">🔐 管理員後台登入</button>
     
@@ -127,7 +127,7 @@
 
 <!-- JavaScript 邏輯區塊 -->
 <script>
-  // 初始化 Supabase 用戶端（確保全域只宣告一次）
+  // 初始化 Supabase 用戶端
   const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -205,7 +205,6 @@
     }
   }
 
-  // 選擇團務並載入對應商品
   async function selectGroup(groupName, isExpired) {
     if (isExpired) {
       alert("此團務已結單，無法再進行預購！");
@@ -269,7 +268,6 @@
     selectedGroupName = "";
   }
 
-  // 燈箱控制
   function openLightbox(url) {
     document.getElementById('lightbox-img').src = url;
     document.getElementById('lightbox').style.display = 'flex';
@@ -278,7 +276,6 @@
     document.getElementById('lightbox').style.display = 'none';
   }
 
-  // 數量增減與購物車連動
   function changeQty(index, delta) {
     if (!orderQuantities[index]) orderQuantities[index] = 0;
     orderQuantities[index] += delta;
@@ -334,7 +331,6 @@
     }
   }
 
-  // 送出預購訂單
   async function submitOrder() {
     let lineName = document.getElementById('lineName').value.trim();
     let phone = document.getElementById('phone').value.trim();
@@ -374,7 +370,7 @@
       if (error) throw error;
 
       statusMsg.style.color = "#10b981";
-      statusMsg.innerText = "✓ 預購登記成功！您可透過查詢功能確認訂單狀態。";
+      statusMsg.innerText = "✓ 預購登記成功！";
       document.getElementById('lineName').value = "";
       document.getElementById('phone').value = "";
       document.getElementById('email').value = "";
@@ -390,17 +386,12 @@
     }
   }
 
-  // 2. 訂單查詢功能
   async function queryOrder() {
     let key = document.getElementById('searchKey').value.trim();
     let resultDiv = document.getElementById('queryResult');
-    if (!key) {
-      alert("請輸入手機或 Email！");
-      return;
-    }
+    if (!key) { alert("請輸入手機或 Email！"); return; }
 
     resultDiv.innerHTML = "查詢中...";
-
     try {
       const { data: orders, error } = await supabase
         .from('orders')
@@ -414,9 +405,7 @@
         orders.forEach(o => {
           let statusClass = o["處理狀態"] === "已成立" ? "status-confirmed" : (o["處理狀態"] === "已取消" ? "status-cancelled" : "status-pending");
           let itemsHtml = "";
-          o["訂單內容"].forEach(i => {
-            itemsHtml += `<div>• ${i.name} x ${i.qty} ($${i.price * i.qty})</div>`;
-          });
+          o["訂單內容"].forEach(i => { itemsHtml += `<div>• ${i.name} x ${i.qty} ($${i.price * i.qty})</div>`; });
 
           html += `
             <div class="card" style="font-size: 12px;">
@@ -424,7 +413,6 @@
               <div style="margin: 6px 0;"><b>預購項目：</b></div>
               <div style="background: #121212; padding: 6px; border-radius: 4px; margin-bottom: 6px;">${itemsHtml}</div>
               <div><b>金額總計：</b>$${o["總金額"]}</div>
-              <div><b>登記時間：</b>${new Date(o.created_at).toLocaleString()}</div>
               <div><b>處理狀態：</b><span class="${statusClass}">${o["處理狀態"]}</span></div>
             </div>
           `;
@@ -434,12 +422,10 @@
         resultDiv.innerHTML = "<p style='color:#f87171; text-align:center;'>查無相關預購紀錄。</p>";
       }
     } catch (err) {
-      console.error(err);
       resultDiv.innerHTML = "<p style='color:#f87171; text-align:center;'>查詢發生錯誤。</p>";
     }
   }
 
-  // 3. 餘量認領功能
   async function loadSurplusGroups() {
     let container = document.getElementById('surplusGroupList');
     container.innerHTML = "載入中...";
@@ -468,10 +454,7 @@
 
     try {
       const { data: products, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('團務名稱', groupName)
-        .gt('庫存餘量', 0);
+        .from('products').select('*').eq('團務名稱', groupName).gt('庫存餘量', 0);
 
       if (error) throw error;
       currentSurplusProducts = products || [];
@@ -482,7 +465,6 @@
           <div style="background:#252525; padding:10px; margin-bottom:10px; border-radius:6px;">
             <input type="text" id="surplus_name" placeholder="Line / FB 暱稱 *" style="margin-bottom:6px;">
             <input type="text" id="surplus_phone" placeholder="手機號碼 *" style="margin-bottom:6px;">
-            <input type="email" id="surplus_email" placeholder="Email (接收確認信)">
           </div>
         `;
         currentSurplusProducts.forEach((p, index) => {
@@ -494,9 +476,7 @@
               </div>
               <select id="surplus_qty_${index}" style="width: 80px; padding: 4px;">
                 <option value="0">0 個</option>`;
-          for(let i=1; i<=p["庫存餘量"]; i++) {
-            html += `<option value="${i}">${i} 個</option>`;
-          }
+          for(let i=1; i<=p["庫存餘量"]; i++) { html += `<option value="${i}">${i} 個</option>`; }
           html += `</select></div>`;
         });
         html += `<button class="primary-btn" onclick="submitSurplusClaim()" style="margin-top:10px;">確認送出餘量認領</button>`;
@@ -512,12 +492,7 @@
   async function submitSurplusClaim() {
     let name = document.getElementById('surplus_name').value.trim();
     let phone = document.getElementById('surplus_phone').value.trim();
-    let email = document.getElementById('surplus_email').value.trim();
-
-    if (!name || !phone) {
-      alert("請填寫 Line 暱稱與手機號碼！");
-      return;
-    }
+    if (!name || !phone) { alert("請填寫暱稱與手機號碼！"); return; }
 
     let selectedItems = [];
     let totalPrice = 0;
@@ -529,22 +504,13 @@
       }
     });
 
-    if (selectedItems.length === 0) {
-      alert("請選擇欲認領的商品數量！");
-      return;
-    }
+    if (selectedItems.length === 0) { alert("請選擇欲認領的商品數量！"); return; }
 
     try {
       const { error } = await supabase.from('orders').insert([{
-        "團務名稱": activeSurplusGroup,
-        "買家名稱": name,
-        "手機號碼": phone,
-        "Email": email,
-        "訂單內容": selectedItems,
-        "總金額": totalPrice,
-        "處理狀態": "待確認"
+        "團務名稱": activeSurplusGroup, "買家名稱": name, "手機號碼": phone,
+        "訂單內容": selectedItems, "總金額": totalPrice, "處理狀態": "待確認"
       }]);
-
       if (error) throw error;
       alert("✓ 餘量認領登記成功！");
       loadSurplusProducts(activeSurplusGroup);
@@ -553,21 +519,17 @@
     }
   }
 
-  // 管理員後台登入與控制
   function toggleAdminLogin() {
     let form = document.getElementById('adminLoginForm');
     form.style.display = form.style.display === 'none' ? 'block' : 'none';
   }
 
   async function verifyAdmin() {
-    let pwd = document.getElementById('adminPassword').value;
-    if (pwd === "841250") { 
+    if (document.getElementById('adminPassword').value === "841250") { 
       document.getElementById('adminLoginForm').style.display = 'none';
       document.getElementById('adminDashboard').style.display = 'block';
       loadPendingOrders();
-    } else {
-      alert("密碼錯誤！");
-    }
+    } else { alert("密碼錯誤！"); }
   }
 
   async function loadPendingOrders() {
@@ -599,25 +561,17 @@
       } else {
         container.innerHTML = "<p style='color:#aaa; font-size:12px;'>目前沒有待確認的訂單。</p>";
       }
-    } catch (err) {
-      container.innerHTML = "<p style='color:#f87171;'>載入訂單失敗。</p>";
-    }
+    } catch (err) { container.innerHTML = "<p style='color:#f87171;'>載入訂單失敗。</p>"; }
   }
 
   async function updateOrderStatus(orderId, newStatus) {
     if (!confirm(`確定要將此訂單改為「${newStatus}」嗎？`)) return;
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ "處理狀態": newStatus })
-        .eq('id', orderId);
-
+      const { error } = await supabase.from('orders').update({ "處理狀態": newStatus }).eq('id', orderId);
       if (error) throw error;
       alert("狀態更新成功！");
       loadPendingOrders();
-    } catch (err) {
-      alert("更新失敗：" + err.message);
-    }
+    } catch (err) { alert("更新失敗：" + err.message); }
   }
 </script>
 
