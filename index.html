@@ -117,7 +117,7 @@
           <b>【下單規範】</b> 到貨皆個別私訊通知，請於通知當天開始計算7天內完成下單，超過期限則加收$20/天倉儲費。
         </div>
 
-        <!-- 團務備註框（動態讀取資料庫） -->
+        <!-- 團務備註框 -->
         <div style="font-size: 12px; color: #aaa; margin-bottom: 4px;">團務備註</div>
         <div id="activeGroupRemark" class="remark-box">載入中...</div>
 
@@ -291,7 +291,6 @@
     document.getElementById('productOrderView').style.display = 'block';
     document.getElementById('activeGroupTitle').innerText = groupName;
 
-    // 尋找對應團務的備註
     let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
     let remarkText = (currentGroupObj && currentGroupObj["團務備註"]) ? currentGroupObj["團務備註"] : "本團務無特殊備註事項。";
     document.getElementById('activeGroupRemark').innerText = remarkText;
@@ -437,8 +436,10 @@
         totalCount += qty;
         let subtotal = qty * p["單價"];
         totalPrice += subtotal;
+        let category = p["商品分類"] || "";
+        let displayName = category ? `[${category}] ${p["商品名稱"]}` : p["商品名稱"];
         html += `<div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px;">
-                  <span>#${p.id || (index+1)} ${p["商品名稱"]} x ${qty}</span>
+                  <span>#${p.id || (index+1)} ${displayName} x ${qty}</span>
                   <span style="color: #f87171; font-weight: bold;">$${subtotal}</span>
                  </div>`;
       }
@@ -473,7 +474,9 @@
     currentProducts.forEach((p, index) => {
       let qty = orderQuantities[index] || 0;
       if (qty > 0) {
-        selectedItems.push({ name: p["商品名稱"], price: p["單價"], qty: qty });
+        let category = p["商品分類"] || "";
+        let finalName = category ? `[${category}] ${p["商品名稱"]}` : p["商品名稱"];
+        selectedItems.push({ name: finalName, price: p["單價"], qty: qty });
         totalPrice += qty * p["單價"];
       }
     });
@@ -597,7 +600,9 @@
     currentSurplusProducts.forEach((p, index) => {
       let qty = parseInt(document.getElementById(`surplus_qty_${index}`).value) || 0;
       if (qty > 0) {
-        selectedItems.push({ name: p["商品名稱"], price: p["單價"], qty: qty });
+        let category = p["商品分類"] || "";
+        let finalName = category ? `[${category}] ${p["商品名稱"]}` : p["商品名稱"];
+        selectedItems.push({ name: finalName, price: p["單價"], qty: qty });
         totalPrice += qty * p["單價"];
       }
     });
