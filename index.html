@@ -243,91 +243,45 @@
 </head>
 <body>
 
-<div class="card">
-  <h2>REO代購 預購填單</h2>
+// 1. 初始化 Supabase
+const SUPABASE_URL = '你的_SUPABASE_URL';
+const SUPABASE_ANON_KEY = '你的_SUPABASE_ANON_KEY';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
- <div class="tab-buttons" style="display: flex; gap: 10px; margin-bottom: 15px;">
-    <!-- 確保一定要有 id="btnPreorder", id="btnQuery", id="btnSurplus" -->
-    <button id="btnPreorder" onclick="switchView('preorder')">填單預購</button>
-    <button id="btnQuery" onclick="switchView('query')">查詢紀錄</button>
-    <button id="btnSurplus" onclick="switchView('surplus')">餘量認領</button>
-</div>
-  
-  <!-- ════ 頁面一：團務卡片清單 ════ -->
-  <div id="groupListSection">
-    <label style="margin-bottom: 10px;">🔥 請選擇參與的預購團務：</label>
-    <div id="groupCardsContainer">載入團務列表中...</div>
-  </div>
+// 2. 當網頁載入完成時，開始載入團務列表
+window.addEventListener('DOMContentLoaded', () => {
+  loadGroups();
+});
 
-  <!-- ════ 頁面二：商品選購與填單內頁 ════ -->
-  <div id="orderFormSection" style="display: none;">
-    <div class="inner-header">
-      <div class="back-btn-row">
-        <button class="back-btn-absolute" onclick="backToGroupList()">❮ 返回團務列表</button>
+// 3. 抓取團務列表函式
+async function loadGroups() {
+  const container = document.getElementById('groupCardsContainer');
+  try {
+    // 假設你在 Supabase 建立了一張叫 groups 的資料表
+    const { data, error } = await supabase
+      .from('groups')
+      .select('*');
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      container.innerHTML = '目前沒有進行中的預購團務。';
+      return;
+    }
+
+    // 將資料渲染成卡片並放入畫面上
+    container.innerHTML = data.map(group => `
+      <div class="group-card" onclick="selectGroup('${group.id}', '${group.name}')" style="background: #1f2937; padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer;">
+        <h3>${group.name}</h3>
+        <p>${group.description || '點擊進入填單'}</p>
       </div>
-      <span class="active-group-title" id="activeGroupTitleText"></span>
-    </div>
+    `).join('');
 
-    <div class="form-group" style="margin-top: 16px;">
-      <label>買家暱稱 (LINE / FB)</label>
-      <input type="text" id="lineName" placeholder="請輸入您的Line社群/FB暱稱">
-    </div>
-    
-    <div class="form-group">
-      <label>手機號碼</label>
-      <input type="text" id="phone" placeholder="09xxxxxxxx">
-    </div>
-
-    <div class="form-group">
-      <label>電子信箱 (將寄送喊單明細)</label>
-      <input type="email" id="email" placeholder="name@example.com">
-    </div>
-
-    <div class="info-box">
-      <div class="info-box-title">📜 代購須知</div>
-      <div class="terms-content">
-        <p><b>【初次交易】</b> 請務必主動私訊填寫實名表單再填單，後台無實名紀錄者即便送出喊單，一律取消喊單。</p>
-        <p><b>【訂單明細寄送】</b> 送出喊單後，我方將於結單前確認是否成立並發送郵件。</p>
-        <p><b>【訂金規範】</b> 如需匯款訂金之團務，將於結單前私訊收取訂金，請於結單時間前完成，逾時未完成則視同放棄並取消喊單。</p>
-        <p><b>【商品狀況】</b> 無收取包材費。默認廠損（溢色、小刮痕等），完美主義者請繞道。</p>
-        <p><b>【商品不確定風險】</b> 成團需求/湊件需求/砍單/官方送錯貨/集運方送錯貨等意外問題將構成訂單成立再取消之因素，恕無法提供任何補償。</p>
-        <p><b>【法規聲明】</b> 我方屬依消費者要求所為之「跨境客製化給付」，不適用七天鑑賞期。</p>
-        <p><b>【物流風險】</b> 賣貨便物流遺失/受損補償皆依平台規定，如需全額保值請事先告知並補足運費差額。</p>
-        <p><b>【未成年條款】</b> 未成年人喊單視同<b>已獲監護人同意</b>。若事後家長以不知情為由要求取消，因涉及虛偽勾選（施用詐術），我方將依法究責並聲請支付命令求償，恕不接受事後協商。</p>
-        <p><b>【發票】</b> 完成取貨付款即開立電子發票。</p>
-        <p><b>【下單規範】</b> 到貨皆個別私訊通知，請於通知當天開始計算7天內完成下單，超過期限則加收$20/天倉儲費。</p>
-      </div>
-    </div>
-
-    <div class="info-box">
-      <div class="info-box-title">📌 團務備註</div>
-      <div class="terms-content" id="groupNoteContent">載入中...</div>
-    </div>
-
-    <hr style="border:0; border-top:1px solid #374151; margin:15px 0;">
-    
-    <label style="margin-bottom: 8px;">下單區選購</label>
-    <div class="category-filter" id="categoryFilter"></div>
-    <div class="product-grid" id="productList">正在載入商品清單...</div>
-
-    <!-- 🛒 購物車清單總覽區塊 -->
-    <div class="cart-summary-box" id="cartSummaryBox" style="display: none;">
-      <div class="cart-title">🛒 已選購商品清單 <span id="cartItemCount">(0件)</span></div>
-      <div class="cart-items-list" id="cartItemsList"></div>
-      <div class="cart-total-row">
-        <span>預估總金額：</span>
-        <span id="cartTotalPrice" style="color: #f87171;">$0</span>
-      </div>
-    </div>
-
-    <label class="agree-box">
-      <input type="checkbox" id="agreeTerms" onchange="checkCanSubmit()">
-      我已詳細閱讀並同意上述代購須知所有規範
-    </label>
-
-    <button id="submitBtn" onclick="submitOrder()" disabled>確認送出預購</button>
-    <div id="statusMsg" class="msg"></div>
-  </div>
+  } catch (err) {
+    console.error('載入團務失敗：', err.message);
+    container.innerHTML = '載入團務失敗，請稍後再試。';
+  }
+}
 
   <!-- ════ 頁面三：查詢紀錄區塊 ════ -->
   <div id="querySection" style="display: none;">
