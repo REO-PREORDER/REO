@@ -319,7 +319,7 @@ window.onload = function() {
   loadGroupList();
 };
 
-function loadGroupList() {
+async function loadGroupList() {
   var container = document.getElementById('groupCardsContainer');
   if (!container) {
     console.error("找不到 ID 為 'groupCardsContainer' 的元素，請檢查 HTML！");
@@ -328,47 +328,51 @@ function loadGroupList() {
   
   container.innerHTML = "載入團務列表中...";
 
-  google.script.run
-    .withSuccessHandler(function(res) {
-      console.log("後端成功回傳資料：", res); // 可以在 F12 主控台看有沒有拿到資料
-      
-      if(res && res.success && res.groups && res.groups.length > 0) {
-        var html = "";
-        res.groups.forEach(function(groupObj) {
-          var gName = typeof groupObj === 'object' ? groupObj.name : groupObj;
-          var gImg = (typeof groupObj === 'object' && groupObj.imgUrl) ? groupObj.imgUrl : "";
-          var gDeadline = (typeof groupObj === 'object' && groupObj.deadlineStr) ? groupObj.deadlineStr : "未定";
-          var isExpired = (typeof groupObj === 'object' && groupObj.isExpired) ? groupObj.isExpired : false;
+  try {
+    // 改用 Supabase 查詢 groups 資料表
+    const { data: groups, error } = await supabase
+      .from('groups')
+      .select('*');
 
-          var statusBadge = isExpired ? 
-            `<span class="badge-status" style="background:rgba(107,114,128,0.2); color:#9ca3af; border-color:rgba(107,114,128,0.4);">已結單</span>` : 
-            `<span class="badge-status">開團中</span>`;
-            
-          var cardStyle = isExpired ? `opacity: 0.55; background: #1a1a1a;` : ``;
+    if (error) throw error;
 
-          html += `<div class="group-card" style="${cardStyle}" onclick="selectGroup('${gName}')">
-                    ${gImg ? `<img src="${gImg}" class="group-thumb">` : `<div class="group-thumb" style="display:flex;align-items:center;justify-content:center;color:#3b82f6;font-size:20px;">🛒</div>`}
-                    <div class="group-info">
-                      <div class="group-title">${gName}</div>
-                      <div class="group-meta-row">
-                        ${statusBadge}
-                        <span class="badge-deadline">截單：${gDeadline}</span>
-                      </div>
+    console.log("Supabase 成功回傳資料：", groups);
+
+    if (groups && groups.length > 0) {
+      var html = "";
+      groups.forEach(function(groupObj) {
+        var gName = groupObj.name || "";
+        var gImg = groupObj.imgUrl || "";
+        var gDeadline = groupObj.deadlineStr || "未定";
+        var isExpired = groupObj.isExpired || false;
+
+        var statusBadge = isExpired ? 
+          `<span class="badge-status" style="background:rgba(107,114,128,0.2); color:#9ca3af; border-color:rgba(107,114,128,0.4);">已結單</span>` : 
+          `<span class="badge-status">開團中</span>`;
+          
+        var cardStyle = isExpired ? `opacity: 0.55; background: #1a1a1a;` : ``;
+
+        html += `<div class="group-card" style="${cardStyle}" onclick="selectGroup('${gName}')">
+                  ${gImg ? `<img src="${gImg}" class="group-thumb">` : `<div class="group-thumb" style="display:flex;align-items:center;justify-content:center;color:#3b82f6;font-size:20px;">🛒</div>`}
+                  <div class="group-info">
+                    <div class="group-title">${gName}</div>
+                    <div class="group-meta-row">
+                      ${statusBadge}
+                      <span class="badge-deadline">截單：${gDeadline}</span>
                     </div>
-                    <div style="color: #6b7280; font-weight: bold;">❯</div>
-                  </div>`;
-        });
-        container.innerHTML = html;
-      } else {
-        container.innerHTML = `<p style="text-align:center; color:#9ca3af;">目前沒有進行中的團務。</p>`;
-      }
-    })
-    .withFailureHandler(function(err) {
-      // 如果後端程式碼噴錯，這裡會抓到並顯示在畫面上，方便除錯
-      console.error("後端呼叫失敗：", err);
-      container.innerHTML = `<p style="text-align:center; color:#ef4444;">載入失敗: ${err.message}</p>`;
-    })
-    .getGroupList();
+                  </div>
+                  <div style="color: #6b7280; font-weight: bold;">❯</div>
+                </div>`;
+      });
+      container.innerHTML = html;
+    } else {
+      container.innerHTML = `<p style="text-align:center; color:#9ca3af;">目前沒有進行中的團務。</p>`;
+    }
+
+  } catch (err) {
+    console.error("Supabase 查詢失敗：", err);
+    container.innerHTML = `<p style="text-align:center; color:#ef4444;">載入失敗: ${err.message}</p>`;
+  }
 }
 
 function selectGroup(groupName) {
