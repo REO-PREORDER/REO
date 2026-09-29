@@ -187,10 +187,10 @@
         <label style="font-size: 12px; color: #ccc;">選擇要加入商品的團務：</label>
         <select id="adminTargetGroup" style="margin-top: 4px;"></select>
         
-        <label style="font-size: 12px; color: #ccc;">貼上商品清單（格式：商品分類, 商品名稱, 單價, 圖片網址, 餘量, 商品說明，一行一個）：</label>
+        <label style="font-size: 12px; color: #ccc;">貼上商品清單（格式：商品分類, 商品名稱, 單價, 圖片網址, 商品說明，一行一個）：</label>
         <textarea id="batchProductsInput" rows="5" placeholder="例如：
-茶包, 潔世一, 250, https://example.com/img1.jpg, 0, 附特典卡
-抱盒, 小立牌, 1630, https://example.com/img2.jpg, 0, 一套共6款" style="margin-top: 4px; font-family: monospace;"></textarea>
+茶包, 潔世一, 250, https://example.com/img1.jpg, 附特典卡
+抱盒, 小立牌, 1630, https://example.com/img2.jpg, 一套共6款" style="margin-top: 4px; font-family: monospace;"></textarea>
         
         <button class="primary-btn" onclick="submitBatchProducts()" style="background: #10b981;">一鍵批次新增商品</button>
         <p id="batchMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
@@ -687,8 +687,7 @@
         let pName = parts.length >= 3 ? parts[1].trim() : parts[0].trim();
         let pPrice = parts.length >= 3 ? parseFloat(parts[2].trim()) : parseFloat(parts[1].trim());
         let pImg = parts.length >= 4 ? parts[3].trim() : "";
-        let pStock = parts.length >= 5 ? parseInt(parts[4].trim()) : 0;
-        let pDesc = parts.length >= 6 ? parts[5].trim() : "";
+        let pDesc = parts.length >= 5 ? parts[4].trim() : "";
 
         if (pName && !isNaN(pPrice)) {
           newProducts.push({
@@ -697,7 +696,7 @@
             "商品名稱": pName,
             "單價": pPrice,
             "圖片": pImg,
-            "餘量": isNaN(pStock) ? 0 : pStock,
+            "餘量": 0,
             "商品說明": pDesc,
             "isExpired": false
           });
@@ -707,7 +706,7 @@
 
     if (newProducts.length === 0) {
       msgElem.style.color = "#f87171";
-      msgElem.innerText = "格式錯誤！請確保格式為：商品分類, 商品名稱, 單價, 圖片網址, 餘量, 商品說明";
+      msgElem.innerText = "格式錯誤！請確保格式為：商品分類, 商品名稱, 單價, 圖片網址, 商品說明";
       return;
     }
 
