@@ -109,10 +109,10 @@
 
       <!-- 填寫資料表單 -->
       <div style="margin-top: 20px; background: #252525; padding: 15px; border-radius: 8px;">
-        <h4 style="font-size: 13px; margin-bottom: 10px; color: #fff; text-align: left;">📝 填寫收件與聯絡資訊</h4>
+        <h4 style="font-size: 13px; margin-bottom: 10px; color: #fff; text-align: left;">📝 填寫資訊</h4>
         <input type="text" id="lineName" placeholder="Line / FB 暱稱 *">
         <input type="text" id="phone" placeholder="手機號碼 *">
-        <input type="email" id="email" placeholder="Email (接收確認信) *">
+        <input type="email" id="email" placeholder="Email *">
         
         <label style="font-size: 12px; display: flex; align-items: center; gap: 6px; margin: 10px 0; cursor: pointer;">
           <input type="checkbox" id="agreeTerms" onchange="checkCanSubmit()"> 我已詳閱並同意代購規則與注意事項
@@ -512,11 +512,11 @@
     let container = document.getElementById('surplusProductList');
     container.innerHTML = "載入餘量商品中...";
     try {
-      const { data: products, error } = await db.from('products').select('*').eq('團務名稱', groupName).gt('庫存餘量', 0);
+      const { data: products, error } = await db.from('products').select('*').eq('團務名稱', groupName).gt('餘量', 0);
       if (error) throw error;
       currentSurplusProducts = products || [];
 
-      let html = `<h4 style="color:#fff; margin: 10px 0;">📂 ${groupName} 現貨餘量</h4>`;
+      let html = `<h4 style="color:#fff; margin: 10px 0;"> ${groupName} 餘量</h4>`;
       if (currentSurplusProducts.length > 0) {
         html += `<div style="background:#252525; padding:10px; margin-bottom:10px; border-radius:6px;">
           <input type="text" id="surplus_name" placeholder="Line / FB 暱稱 *" style="margin-bottom:6px;">
@@ -526,15 +526,15 @@
           html += `<div style="background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
             <div>
               <div style="font-weight:bold; font-size:13px; color:#fff;">${p["商品名稱"]}</div>
-              <div style="color:#10b981; font-size:12px;">$${p["價格"]} | <span style="color:#f59e0b;">剩餘：${p["庫存餘量"]} 個</span></div>
+              <div style="color:#10b981; font-size:12px;">$${p["價格"]} | <span style="color:#f59e0b;">剩餘：${p["餘量"]} 個</span></div>
             </div>
             <select id="surplus_qty_${index}" style="width: 80px; padding: 4px;">
               <option value="0">0 個</option>`;
-          for(let i=1; i<=p["庫存餘量"]; i++) { html += `<option value="${i}">${i} 個</option>`; }
+          for(let i=1; i<=p["餘量"]; i++) { html += `<option value="${i}">${i} 個</option>`; }
           html += `</select></div>`;
         });
         html += `<button class="primary-btn" onclick="submitSurplusClaim()" style="margin-top:10px;">確認送出餘量認領</button>`;
-      } else { html += "<p style='color:#aaa; font-size:12px;'>目前此團務沒有剩餘庫存囉！</p>"; }
+      } else { html += "<p style='color:#aaa; font-size:12px;'>目前此團務沒有餘量囉！</p>"; }
       container.innerHTML = html;
     } catch (err) { container.innerHTML = "<p style='color:#f87171;'>載入餘量商品失敗。</p>"; }
   }
