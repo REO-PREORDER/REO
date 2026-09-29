@@ -7,13 +7,6 @@
   
  <!-- 1. 引入 Supabase JS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-
-<script>
-  // 2. 初始化 Supabase（請填入你從 Supabase 後台複製的 URL 與 Anon Key）
-  const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co'
-  const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo'
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
   // 3. 當網頁載入完成時，開始載入團務列表
   window.addEventListener('DOMContentLoaded', () => {
     loadGroupList();
