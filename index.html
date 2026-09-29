@@ -127,11 +127,9 @@
 
 <!-- JavaScript 邏輯區塊 -->
 <script>
-  // ================= ⚠️ 請在此填入你的 Supabase 設定 =================
+  // 初始化 Supabase 用戶端（確保全域只宣告一次）
   const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
-  
-  // 初始化 Supabase 用戶端
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // 全域變數
@@ -469,7 +467,6 @@
     container.innerHTML = "載入餘量商品中...";
 
     try {
-      // 假設資料庫中篩選 庫存餘量 > 0 的商品
       const { data: products, error } = await supabase
         .from('products')
         .select('*')
@@ -564,7 +561,7 @@
 
   async function verifyAdmin() {
     let pwd = document.getElementById('adminPassword').value;
-    if (pwd === "841250") { // 可自行修改密碼
+    if (pwd === "841250") { 
       document.getElementById('adminLoginForm').style.display = 'none';
       document.getElementById('adminDashboard').style.display = 'block';
       loadPendingOrders();
@@ -577,12 +574,6 @@
     let container = document.getElementById('pendingOrdersList');
     container.innerHTML = "載入中...";
     try {
-      const { data: orders, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('處理status', '待確認'); // 若表格欄位為 "處理狀態" 請依實際調整
-
-      // 註：若 Supabase 欄位包含中文，直接用對應名稱
       const { data, err } = await supabase.from('orders').select('*').eq('處理狀態', '待確認');
       if (err) throw err;
 
