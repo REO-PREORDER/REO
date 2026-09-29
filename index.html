@@ -127,11 +127,14 @@
 
 <!-- JavaScript 邏輯區塊 -->
 <script>
-  // 初始化 Supabase 用戶端
+  // 初始化 Supabase 用戶端（防重複宣告）
   const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+  
+  if (!window.supabaseClient) {
+    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  const supabase = window.supabaseClient;
   // 全域變數
   let orderQuantities = {};
   let currentProducts = [];
