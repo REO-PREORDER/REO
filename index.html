@@ -20,6 +20,8 @@
     .section.active { display: block; }
     
     input, select, textarea { width: 100%; padding: 10px; margin-bottom: 10px; background: #121212; border: 1px solid #444; color: white; border-radius: 6px; font-size: 14px; }
+    input::placeholder, textarea::placeholder { color: #666; }
+    
     button.primary-btn { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
     button.primary-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
     
@@ -28,10 +30,16 @@
     .status-confirmed { color: #10b981; font-weight: bold; }
     .status-cancelled { color: #ef4444; font-weight: bold; }
 
+    /* 代購須知與備註框樣式 */
+    .notice-box { background: #18181b; border: 1px solid #b45309; border-radius: 8px; padding: 12px; margin-bottom: 15px; font-size: 12px; line-height: 1.6; color: #d1d5db; }
+    .notice-box b { color: #f59e0b; }
+    .remark-box { background: #18181b; border: 1px solid #b45309; border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 12px; line-height: 1.5; color: #d1d5db; white-space: pre-wrap; }
+
     /* 分類標籤列 */
-    .category-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 15px; padding-bottom: 4px; scrollbar-width: none; }
-    .category-tabs::-webkit-scrollbar { display: none; }
-    .category-btn { background: #2b2b2b; color: #aaa; border: none; padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; white-space: nowrap; font-weight: 500; }
+    .category-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 15px; padding-bottom: 6px; scrollbar-width: thin; }
+    .category-tabs::-webkit-scrollbar { height: 6px; }
+    .category-tabs::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+    .category-btn { background: #2b2b2b; color: #aaa; border: none; padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; white-space: nowrap; font-weight: 500; transition: 0.2s; }
     .category-btn.active { background: #1a73e8; color: #fff; font-weight: bold; }
 
     /* 雙欄商品卡片網格 */
@@ -76,10 +84,52 @@
 
     <!-- 商品與填單子畫面 -->
     <div id="productOrderView" style="display: none;">
-      <button onclick="backToGroupList()" style="background: transparent; border: none; color: #1a73e8; cursor: pointer; margin-bottom: 10px;">← 返回選擇其他團務</button>
-      <h3 id="activeGroupTitle" style="color: #10b981; text-align: left; margin-bottom: 10px;"></h3>
+      
+      <!-- 頂部返回與標題區塊 -->
+      <div style="background: #18181b; border: 1px solid #333; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+        <button onclick="backToGroupList()" style="background: #2b2b2b; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; margin-bottom: 8px;">← 返回團務列表</button>
+        <div id="activeGroupTitle" style="color: #fff; font-weight: bold; font-size: 15px;"></div>
+      </div>
 
-      <!-- 分類標籤按鈕列 -->
+      <!-- 表單資料填寫區 -->
+      <div style="background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">買家暱稱 (LINE / FB)</label>
+        <input type="text" id="lineName" placeholder="請輸入您的Line社群/FB暱稱">
+        
+        <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">手機號碼</label>
+        <input type="text" id="phone" placeholder="09xxxxxxxx">
+        
+        <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">電子信箱 (將寄送喊單明細)</label>
+        <input type="email" id="email" placeholder="name@example.com">
+
+        <!-- 代購須知框 -->
+        <div style="font-size: 12px; color: #aaa; margin-top: 12px; margin-bottom: 4px;">代購須知</div>
+        <div class="notice-box">
+          <b>【初次交易】</b> 請務必主動私訊填寫實名表單再填單，後台無實名紀錄者即便送出喊單，一律取消喊單。<br><br>
+          <b>【訂單明細寄送】</b> 送出喊單後，我方將於結單前確認是否成立並發送郵件。<br><br>
+          <b>【訂金規範】</b> 如需匯款訂金之團務，將於結單前私訊收取訂金，請於結單時間前完成，逾時未完成則視同放棄並取消喊單。<br><br>
+          <b>【商品狀況】</b> 無收取包材費。默認廠損（溢色、小刮痕等），完美主義者請繞道。<br><br>
+          <b>【商品不確定風險】</b> 成團需求/湊件需求/砍單/官方送錯貨/集運方送錯貨等意外問題將構成訂單成立再取消之因素，恕無法提供任何補償。<br><br>
+          <b>【法規聲明】</b> 我方屬依消費者要求所為之「跨境客製化給付」，不適用七天鑑賞期。<br><br>
+          <b>【物流風險】</b> 賣貨便物流遺失/受損補償皆依平台規定，如需全額保值請事先告知並補足運費差額。<br><br>
+          <b>【未成年條款】</b> 未成年喊單視同已獲監護人同意。若事後家長以不知情為由要求取消，因涉及虛偽勾選（施用詐術），我方將依法究責並聲請支付命令求償，恕不接受事後協商。<br><br>
+          <b>【發票】</b> 完成取貨付款即開立電子發票。<br><br>
+          <b>【下單規範】</b> 到貨皆個別私訊通知，請於通知當天開始計算7天內完成下單，超過期限則加收$20/天倉儲費。
+        </div>
+
+        <!-- 團務備註框（動態讀取資料庫） -->
+        <div style="font-size: 12px; color: #aaa; margin-bottom: 4px;">團務備註</div>
+        <div id="activeGroupRemark" class="remark-box">載入中...</div>
+
+        <!-- 完美置中的同意條款 -->
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 15px 0;">
+          <input type="checkbox" id="agreeTerms" onchange="checkCanSubmit()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+          <label for="agreeTerms" style="font-size: 13px; color: #ccc; cursor: pointer; margin: 0;">我已詳閱並同意代購規則與注意事項</label>
+        </div>
+      </div>
+
+      <!-- 商品分類列 -->
+      <div style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #fff;">下單區選購</div>
       <div id="categoryTabsContainer" class="category-tabs"></div>
 
       <!-- 雙欄商品網格 -->
@@ -95,22 +145,12 @@
         </div>
       </div>
 
-      <!-- 填寫資料表單 -->
-      <div style="margin-top: 20px; background: #252525; padding: 15px; border-radius: 8px;">
-        <h4 style="font-size: 13px; margin-bottom: 10px; color: #fff; text-align: left;">填寫收件與聯絡資訊</h4>
-        <input type="text" id="lineName" placeholder="Line / FB 暱稱 *">
-        <input type="text" id="phone" placeholder="手機號碼 *">
-        <input type="email" id="email" placeholder="Email (接收確認信) *">
-        
-        <!-- 置中對齊的條款勾選區 -->
-        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px 0;">
-          <input type="checkbox" id="agreeTerms" onchange="checkCanSubmit()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
-          <label for="agreeTerms" style="font-size: 13px; color: #ccc; cursor: pointer; margin: 0;">我已詳閱並同意代購規則與注意事項</label>
-        </div>
-        
+      <!-- 送出按鈕 -->
+      <div style="margin-top: 20px;">
         <button id="submitBtn" class="primary-btn" onclick="submitOrder()" disabled>確認送出預購</button>
         <p id="statusMsg" style="text-align: center; margin-top: 10px; font-size: 12px;"></p>
       </div>
+
     </div>
   </div>
 
@@ -178,6 +218,7 @@
   let selectedGroupName = "";
   let activeSurplusGroup = "";
   let currentSurplusProducts = [];
+  let groupsData = [];
 
   window.addEventListener('DOMContentLoaded', () => { loadGroupList(); });
 
@@ -204,13 +245,14 @@
     try {
       const { data: groups, error } = await db.from('groups').select('*');
       if (error) throw error;
+      groupsData = groups || [];
 
       let adminGroupSelect = document.getElementById('adminTargetGroup');
       if (adminGroupSelect) adminGroupSelect.innerHTML = "";
 
-      if (groups && groups.length > 0) {
+      if (groupsData.length > 0) {
         let html = "", selectHtml = "";
-        groups.forEach(g => {
+        groupsData.forEach(g => {
           let gName = g["團務名稱"];
           let img = g["圖片"] || "";
           let deadline = g["截單時間"] || "未定";
@@ -249,6 +291,11 @@
     document.getElementById('productOrderView').style.display = 'block';
     document.getElementById('activeGroupTitle').innerText = groupName;
 
+    // 尋找對應團務的備註
+    let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
+    let remarkText = (currentGroupObj && currentGroupObj["團務備註"]) ? currentGroupObj["團務備註"] : "本團務無特殊備註事項。";
+    document.getElementById('activeGroupRemark').innerText = remarkText;
+
     orderQuantities = {};
     activeCategory = "全部";
     await loadProducts(groupName);
@@ -263,13 +310,16 @@
       if (error) throw error;
       currentProducts = products || [];
 
-      // 精確對應 Supabase 中的「商品分類」欄位
-      let catSet = new Set();
+      let catCounts = {};
       currentProducts.forEach(p => {
-        let cat = p["商品分類"];
-        if (cat) catSet.add(cat.trim());
+        let cat = p["商品分類"] || "一般";
+        catCounts[cat] = (catCounts[cat] || 0) + 1;
       });
-      currentCategories = ["全部", ...Array.from(catSet)];
+
+      currentCategories = [{ name: "全部", count: currentProducts.length }];
+      Object.keys(catCounts).forEach(cat => {
+        currentCategories.push({ name: cat, count: catCounts[cat] });
+      });
 
       renderCategoryTabs();
       renderProductGrid();
@@ -289,9 +339,9 @@
     tabsContainer.style.display = 'flex';
 
     let html = "";
-    currentCategories.forEach(cat => {
-      let isActive = (cat === activeCategory) ? 'active' : '';
-      html += `<button class="category-btn ${isActive}" onclick="filterCategory('${cat}')">${cat}</button>`;
+    currentCategories.forEach(catObj => {
+      let isActive = (catObj.name === activeCategory) ? 'active' : '';
+      html += `<button class="category-btn ${isActive}" onclick="filterCategory('${catObj.name}')">${catObj.name} (${catObj.count})</button>`;
     });
     tabsContainer.innerHTML = html;
   }
@@ -308,8 +358,8 @@
     let filtered = currentProducts;
     if (activeCategory !== "全部") {
       filtered = currentProducts.filter(p => {
-        let cat = p["商品分類"];
-        return cat && cat.trim() === activeCategory;
+        let cat = p["商品分類"] || "一般";
+        return cat === activeCategory;
       });
     }
 
