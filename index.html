@@ -380,7 +380,7 @@
               ${img ? `<img src="${img}" alt="商品圖片">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#555;">暫無圖片</div>'}
               ${img ? `<button class="zoom-btn" onclick="openLightbox('${img}')">🔍</button>` : ''}
             </div>
-            <div class="product-name">#${p.id || (originalIndex+1)} ${p["商品名稱"]}</div>
+            <div class="product-name">${p["商品名稱"]}</div>
           </div>
           <div>
             <div class="product-price">$${p["單價"]}</div>
@@ -439,7 +439,7 @@
         let category = p["商品分類"] || "";
         let displayName = category ? `[${category}] ${p["商品名稱"]}` : p["商品名稱"];
         html += `<div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px;">
-                  <span>#${p.id || (index+1)} ${displayName} x ${qty}</span>
+                  <span>${displayName} x ${qty}</span>
                   <span style="color: #f87171; font-weight: bold;">$${subtotal}</span>
                  </div>`;
       }
@@ -529,7 +529,7 @@
           let statusClass = o["處理狀態"] === "已成立" ? "status-confirmed" : (o["處理狀態"] === "已取消" ? "status-cancelled" : "status-pending");
           let itemsHtml = "";
           o["訂單內容"].forEach(i => { 
-            let imgTag = i.image ? `<img src="${i.image}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openLightbox('${i.image}')">` : '<div style="width:32px;height:32px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;">無圖</div>';
+            let imgTag = i.image ? `<img src="${i.image}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openLightbox('${i.image}')">` : '';
             itemsHtml += `
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                 ${imgTag}
@@ -718,7 +718,7 @@
         data.forEach(o => {
           let itemsHtml = "";
           o["訂單內容"].forEach(i => { 
-            let imgTag = i.image ? `<img src="${i.image}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openLightbox('${i.image}')">` : '<div style="width:32px;height:32px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;">無圖</div>';
+            let imgTag = i.image ? `<img src="${i.image}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openLightbox('${i.image}')">` : '';
             itemsHtml += `
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                 ${imgTag}
