@@ -329,7 +329,7 @@ async function loadGroupList() {
   container.innerHTML = "載入團務列表中...";
 
   try {
-    // 改用 Supabase 查詢 groups 資料表
+    // 從 Supabase 的 groups 資料表抓取資料
     const { data: groups, error } = await supabase
       .from('groups')
       .select('*');
@@ -340,10 +340,12 @@ async function loadGroupList() {
 
     if (groups && groups.length > 0) {
       var html = "";
+      
+      // 依照你的欄位名稱（團務名稱、圖片等）來組合卡片
       groups.forEach(function(groupObj) {
-        var gName = groupObj.name || "";
-        var gImg = groupObj.imgUrl || "";
-        var gDeadline = groupObj.deadlineStr || "未定";
+        var gName = groupObj.團務名稱 || "未命名團務";
+        var gImg = groupObj.圖片 || "";
+        var gDeadline = groupObj.截單時間 || "未定"; // 如果沒有這個欄位會自動顯示未定
         var isExpired = groupObj.isExpired || false;
 
         var statusBadge = isExpired ? 
