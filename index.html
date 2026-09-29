@@ -235,7 +235,7 @@
     selectedGroupName = groupName;
     document.getElementById('groupListView').style.display = 'none';
     document.getElementById('productOrderView').style.display = 'block';
-    document.getElementById('activeGroupTitle').innerText =groupName;
+    document.getElementById('activeGroupTitle').innerText = "📂 " + groupName;
 
     orderQuantities = {};
     await loadProducts(groupName);
@@ -461,7 +461,7 @@
       if (error) throw error;
       currentSurplusProducts = products || [];
 
-      let html = `<h4 style="color:#fff; margin: 10px 0;"> ${groupName} 現貨餘量</h4>`;
+      let html = `<h4 style="color:#fff; margin: 10px 0;">📂 ${groupName} 現貨餘量</h4>`;
       if (currentSurplusProducts.length > 0) {
         html += `<div style="background:#252525; padding:10px; margin-bottom:10px; border-radius:6px;">
           <input type="text" id="surplus_name" placeholder="Line / FB 暱稱 *" style="margin-bottom:6px;">
