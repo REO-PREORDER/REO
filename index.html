@@ -125,6 +125,20 @@
   <img id="lightbox-img" src="" alt="放大圖片">
 </div>
 
+<!-- JavaScript 邏輯區塊 -->
+<script>
+  // 初始化 Supabase 用戶端
+  const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // 全域變數
+  let orderQuantities = {};
+  let currentProducts = [];
+  let selectedGroupName = "";
+  let activeSurplusGroup = "";
+  let currentSurplusProducts = [];
+
   // 頁面載入時執行
   window.addEventListener('DOMContentLoaded', () => {
     loadGroupList();
