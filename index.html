@@ -113,10 +113,11 @@
       <button onclick="verifyAdmin()" style="padding: 10px 15px; background: #374151; color: white; border: none; border-radius: 6px; cursor: pointer;">登入</button>
     </div>
 
-    <!-- 管理員後台控制面板 -->
+    <!-- 管理員後台控制面板（登入後顯示） -->
     <div id="adminDashboard" style="display: none; margin-top: 15px; text-align: left;">
       <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
-      <h4 style="color: #10b981; margin-bottom: 10px;">📦 批次新增商品工具</h4>
+      
+      <h4 style="color: #10b981; margin-bottom: 10px; text-align: center;">📦 批次新增商品工具</h4>
       <div style="background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
         <label style="font-size: 12px; color: #ccc;">選擇要加入商品的團務：</label>
         <select id="adminTargetGroup" style="margin-top: 4px;"></select>
@@ -131,7 +132,7 @@
         <p id="batchMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
       </div>
 
-      <h4 style="color: #fff; margin-bottom: 8px;">📋 待確認訂單管理</h4>
+      <h4 style="color: #fff; margin-bottom: 8px; text-align: center;">📋 待確認訂單管理</h4>
       <div id="pendingOrdersList">載入中...</div>
     </div>
   </div>
@@ -553,6 +554,7 @@
       document.getElementById('adminLoginForm').style.display = 'none';
       document.getElementById('adminDashboard').style.display = 'block';
       loadPendingOrders();
+      loadGroupList(); // 確保下拉選單能同步載入
     } else { alert("密碼錯誤！"); }
   }
 
@@ -574,7 +576,6 @@
     for (let line of lines) {
       line = line.trim();
       if (!line) continue;
-      // 支援用逗號或全形逗號分隔
       let parts = line.split(/[,，]/);
       if (parts.length >= 2) {
         let pName = parts[0].trim();
