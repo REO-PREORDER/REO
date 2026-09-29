@@ -4,37 +4,63 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>REO代購 預購系統</title>
-  <!-- 引入 Supabase JS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #121212; color: #e0e0e0; padding: 20px; display: flex; justify-content: center; }
-    .container { width: 100%; max-width: 600px; background: #1e1e1e; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    body { background-color: #121212; color: #e0e0e0; padding: 15px; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 650px; background: #1e1e1e; padding: 15px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
     h2, h3, h4 { text-align: center; color: #fff; margin-bottom: 15px; }
     
     /* 頂部切換按鈕列 */
-    .nav-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .nav-tabs { display: flex; gap: 8px; margin-bottom: 15px; }
     .nav-tabs button { flex: 1; padding: 10px; background: #2b2b2b; color: white; border: none; border-radius: 8px; cursor: pointer; opacity: 0.5; font-weight: bold; transition: 0.2s; }
     .nav-tabs button.active { background: #1a73e8; opacity: 1; }
 
-    /* 區塊通用樣式 */
     .section { display: none; }
     .section.active { display: block; }
     
-    /* 卡片與表單欄位 */
-    .card { background: #242424; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333; }
     input, select, textarea { width: 100%; padding: 10px; margin-bottom: 10px; background: #121212; border: 1px solid #444; color: white; border-radius: 6px; font-size: 14px; }
     button.primary-btn { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
     button.primary-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
     
-    /* 購物車與狀態樣式 */
     .cart-box { background: #18181b; border: 1px solid #555; padding: 12px; border-radius: 8px; margin-top: 15px; display: none; }
     .status-pending { color: #f59e0b; font-weight: bold; }
     .status-confirmed { color: #10b981; font-weight: bold; }
     .status-cancelled { color: #ef4444; font-weight: bold; }
 
-    /* 燈箱 Modal */
-    #lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 999; }
+    /* 分類標籤橫向捲動列 */
+    .category-scroll-container { display: flex; align-items: center; gap: 6px; margin-bottom: 15px; position: relative; }
+    .category-chips { display: flex; gap: 8px; overflow-x: auto; scroll-behavior: smooth; padding-bottom: 4px; white-space: nowrap; flex: 1; scrollbar-width: none; }
+    .category-chips::-webkit-scrollbar { display: none; }
+    .chip { padding: 6px 14px; background: #2b2b2b; color: #ccc; border: none; border-radius: 20px; font-size: 13px; cursor: pointer; flex-shrink: 0; font-weight: 500; }
+    .chip.active { background: #fff; color: #000; font-weight: bold; }
+    .scroll-arrow { background: #2b2b2b; color: #fff; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+
+    /* 雙欄商品卡片網格 */
+    .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 480px) { .product-grid { grid-template-columns: 1fr; } }
+
+    .product-card { background: #242424; border: 1px solid #333; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; }
+    .product-img-box { position: relative; width: 100%; height: 160px; background: #121212; border-radius: 6px; overflow: hidden; margin-bottom: 8px; }
+    .product-img-box img { width: 100%; height: 100%; object-fit: cover; }
+    .img-badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.6); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; }
+    .img-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+    .img-prev { left: 6px; }
+    .img-next { right: 6px; }
+    .zoom-btn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: #fff; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+
+    .tag-label { display: inline-block; background: #374151; color: #9ca3af; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; }
+    .product-name { font-weight: bold; font-size: 13px; color: #fff; margin-bottom: 2px; line-height: 1.3; }
+    .product-desc { font-size: 11px; color: #aaa; margin-bottom: 8px; }
+    .product-price { color: #f87171; font-weight: bold; font-size: 14px; margin-bottom: 8px; }
+
+    /* 數量加減列 */
+    .qty-control { display: flex; align-items: center; justify-content: space-between; background: #18181b; border: 1px solid #333; border-radius: 8px; padding: 4px 8px; }
+    .qty-btn { width: 28px; height: 28px; background: #2d2d30; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+    .qty-val { font-weight: bold; font-size: 14px; color: #fff; }
+
+    /* 燈箱 */
+    #lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 999; }
     #lightbox img { max-width: 90%; max-height: 90%; border-radius: 8px; }
   </style>
 </head>
@@ -43,7 +69,6 @@
 <div class="container">
   <h2>REO代購 預購系統</h2>
 
-  <!-- 頂部頁籤按鈕 -->
   <div class="nav-tabs">
     <button id="btnPreorder" class="active" onclick="switchView('preorder')">填單預購</button>
     <button id="btnQuery" onclick="switchView('query')">查詢記錄</button>
@@ -60,8 +85,17 @@
     <!-- 商品與填單子畫面 -->
     <div id="productOrderView" style="display: none;">
       <button onclick="backToGroupList()" style="background: transparent; border: none; color: #1a73e8; cursor: pointer; margin-bottom: 10px;">← 返回選擇其他團務</button>
-      <h3 id="activeGroupTitle" style="color: #10b981; text-align: left;"></h3>
-      <div id="productCardsContainer"></div>
+      <h3 id="activeGroupTitle" style="color: #10b981; text-align: left; margin-bottom: 10px;"></h3>
+
+      <!-- 分類標籤列 -->
+      <div class="category-scroll-container">
+        <button class="scroll-arrow" onclick="scrollCategories(-1)">◀</button>
+        <div id="categoryChipsContainer" class="category-chips"></div>
+        <button class="scroll-arrow" onclick="scrollCategories(1)">▶</button>
+      </div>
+
+      <!-- 雙欄商品網格 -->
+      <div id="productGridContainer" class="product-grid"></div>
 
       <!-- 購物車摘要 -->
       <div id="cartSummaryBox" class="cart-box">
@@ -113,7 +147,7 @@
       <button onclick="verifyAdmin()" style="padding: 10px 15px; background: #374151; color: white; border: none; border-radius: 6px; cursor: pointer;">登入</button>
     </div>
 
-    <!-- 管理員後台控制面板（登入後顯示） -->
+    <!-- 管理員後台控制面板 -->
     <div id="adminDashboard" style="display: none; margin-top: 15px; text-align: left;">
       <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
       
@@ -122,11 +156,10 @@
         <label style="font-size: 12px; color: #ccc;">選擇要加入商品的團務：</label>
         <select id="adminTargetGroup" style="margin-top: 4px;"></select>
         
-        <label style="font-size: 12px; color: #ccc;">貼上商品清單（格式：商品名稱, 價格，一行一個）：</label>
+        <label style="font-size: 12px; color: #ccc;">貼上商品清單（格式：分類, 商品名稱, 價格，一行一個）：</label>
         <textarea id="batchProductsInput" rows="5" placeholder="例如：
-周邊小卡A款, 150
-壓克力立牌, 450
-限定抱枕, 890" style="margin-top: 4px; font-family: monospace;"></textarea>
+茶包, 周邊小卡A款, 150
+抱盒, 壓克力立牌, 450" style="margin-top: 4px; font-family: monospace;"></textarea>
         
         <button class="primary-btn" onclick="submitBatchProducts()" style="background: #10b981;">一鍵批次新增商品</button>
         <p id="batchMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
@@ -138,31 +171,25 @@
   </div>
 </div>
 
-<!-- 燈箱圖片檢視 HTML -->
+<!-- 燈箱圖片檢視 -->
 <div id="lightbox" onclick="closeLightbox()">
   <img id="lightbox-img" src="" alt="放大圖片">
 </div>
 
-<!-- JavaScript 邏輯區塊 -->
 <script>
-  // 初始化 Supabase 用戶端
   const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // 全域變數
   let orderQuantities = {};
   let currentProducts = [];
+  let currentCategory = "全部";
   let selectedGroupName = "";
   let activeSurplusGroup = "";
   let currentSurplusProducts = [];
 
-  // 頁面載入時執行
-  window.addEventListener('DOMContentLoaded', () => {
-    loadGroupList();
-  });
+  window.addEventListener('DOMContentLoaded', () => { loadGroupList(); });
 
-  // 切換上方大頁籤
   function switchView(mode) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
@@ -180,12 +207,9 @@
     }
   }
 
-  // 1. 載入團務列表
   async function loadGroupList() {
     const container = document.getElementById('groupCardsContainer');
     if (!container) return;
-    container.innerHTML = "載入團務列表中...";
-
     try {
       const { data: groups, error } = await db.from('groups').select('*');
       if (error) throw error;
@@ -194,8 +218,7 @@
       if (adminGroupSelect) adminGroupSelect.innerHTML = "";
 
       if (groups && groups.length > 0) {
-        let html = "";
-        let selectHtml = "";
+        let html = "", selectHtml = "";
         groups.forEach(g => {
           let gName = g["團務名稱"];
           let img = g["圖片"] || "";
@@ -205,7 +228,7 @@
           let cardStyle = isExpired ? 'opacity: 0.5; background: #181818;' : 'background: #242424;';
 
           html += `
-            <div onclick="selectGroup('${gName}', ${isExpired})" class="card" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; ${cardStyle}">
+            <div onclick="selectGroup('${gName}', ${isExpired})" class="card" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; ${cardStyle}; padding:12px; border-radius:8px; margin-bottom:10px; border:1px solid #333;">
               <div style="display: flex; align-items: center; gap: 10px;">
                 ${img ? `<img src="${img}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">` : '<div style="width:50px;height:50px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;">🛒</div>'}
                 <div>
@@ -222,67 +245,107 @@
         if (adminGroupSelect) adminGroupSelect.innerHTML = selectHtml;
       } else {
         container.innerHTML = "<p style='text-align:center; color:#aaa;'>目前沒有進行中的團務。</p>";
-        if (adminGroupSelect) adminGroupSelect.innerHTML = "<option value=''>目前無團務可選</option>";
       }
     } catch (err) {
-      console.error(err);
       container.innerHTML = "<p style='color:#f87171; text-align:center;'>載入團務失敗。</p>";
     }
   }
 
   async function selectGroup(groupName, isExpired) {
-    if (isExpired) {
-      alert("此團務已結單，無法再進行預購！");
-      return;
-    }
+    if (isExpired) { alert("此團務已結單，無法再進行預購！"); return; }
     selectedGroupName = groupName;
     document.getElementById('groupListView').style.display = 'none';
     document.getElementById('productOrderView').style.display = 'block';
     document.getElementById('activeGroupTitle').innerText = "📂 " + groupName;
 
-    const container = document.getElementById('productCardsContainer');
-    container.innerHTML = "載入商品中...";
     orderQuantities = {};
+    currentCategory = "全部";
+    await loadProductsAndCategories(groupName);
+  }
+
+  async function loadProductsAndCategories(groupName) {
+    const gridContainer = document.getElementById('productGridContainer');
+    const chipContainer = document.getElementById('categoryChipsContainer');
+    gridContainer.innerHTML = "載入商品中...";
 
     try {
-      const { data: products, error } = await db
-        .from('products')
-        .select('*')
-        .eq('團務名稱', groupName);
-
+      const { data: products, error } = await db.from('products').select('*').eq('團務名稱', groupName);
       if (error) throw error;
       currentProducts = products || [];
 
-      if (currentProducts.length > 0) {
-        let html = "";
-        currentProducts.forEach((p, index) => {
-          let pName = p["商品名稱"];
-          let price = p["價格"];
-          let img = p["圖片"] || "";
-          
-          html += `
-            <div class="card" style="display: flex; gap: 10px; align-items: center;">
-              ${img ? `<img src="${img}" onclick="openLightbox('${img}')" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer;">` : ''}
-              <div style="flex: 1;">
-                <div style="font-weight: bold; font-size: 13px; color: #fff;">${pName}</div>
-                <div style="color: #10b981; font-size: 12px; margin-top: 2px;">$${price}</div>
-              </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <button onclick="changeQty(${index}, -1)" style="width: 28px; height: 28px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer;">-</button>
-                <span id="qty_val_${index}" style="font-weight: bold; font-size: 13px; min-width: 20px; text-align: center;">0</span>
-                <button onclick="changeQty(${index}, 1)" style="width: 28px; height: 28px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer;">+</button>
-              </div>
-            </div>
-          `;
-        });
-        container.innerHTML = html;
-      } else {
-        container.innerHTML = "<p style='color:#aaa; text-align:center;'>此團務目前沒有上架商品。</p>";
+      // 計算各分類數量
+      let catCounts = { "全部": currentProducts.length };
+      currentProducts.forEach(p => {
+        let cat = p["分類"] || "未分類";
+        catCounts[cat] = (catCounts[cat] || 0) + 1;
+      });
+
+      // 渲染分類標籤
+      let chipHtml = `<button class="chip ${currentCategory === '全部' ? 'active' : ''}" onclick="filterCategory('全部')">全部 (${catCounts['全部']})</button>`;
+      for (let cat in catCounts) {
+        if (cat === '全部') continue;
+        chipHtml += `<button class="chip ${currentCategory === cat ? 'active' : ''}" onclick="filterCategory('${cat}')">${cat} (${catCounts[cat]})</button>`;
       }
+      chipContainer.innerHTML = chipHtml;
+
+      renderProductGrid();
     } catch (err) {
-      console.error(err);
-      container.innerHTML = "<p style='color:#f87171; text-align:center;'>載入商品失敗。</p>";
+      gridContainer.innerHTML = "<p style='color:#f87171; text-align:center;'>載入商品失敗。</p>";
     }
+  }
+
+  function filterCategory(cat) {
+    currentCategory = cat;
+    document.querySelectorAll('.chip').forEach(c => {
+      c.classList.toggle('active', c.innerText.startsWith(cat));
+    });
+    renderProductGrid();
+  }
+
+  function scrollCategories(direction) {
+    document.getElementById('categoryChipsContainer').scrollBy({ left: direction * 150, behavior: 'smooth' });
+  }
+
+  function renderProductGrid() {
+    const gridContainer = document.getElementById('productGridContainer');
+    let filtered = currentCategory === "全部" ? currentProducts : currentProducts.filter(p => (p["分類"] || "未分類") === currentCategory);
+
+    if (filtered.length === 0) {
+      gridContainer.innerHTML = "<p style='grid-column: span 2; text-align: center; color: #aaa; padding: 20px;'>此分類目前沒有商品。</p>";
+      return;
+    }
+
+    let html = "";
+    filtered.forEach((p) => {
+      let originalIndex = currentProducts.indexOf(p);
+      let qty = orderQuantities[originalIndex] || 0;
+      let img = p["圖片"] || "";
+      let cat = p["分類"] || "一般";
+
+      html += `
+        <div class="product-card">
+          <div>
+            <div class="product-img-box">
+              ${img ? `<img src="${img}" id="prod_img_${originalIndex}" alt="商品圖片">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#555;">📦 暫無圖片</div>'}
+              ${img ? `<button class="zoom-btn" onclick="openLightbox('${img}')">🔍</button>` : ''}
+              <div class="img-badge">1/1</div>
+            </div>
+            <span class="tag-label">${cat}</span>
+            <div class="product-name">#${originalIndex+1} ${p["商品名稱"]}</div>
+            <div class="product-desc">${p["商品說明"] || ''}</div>
+          </div>
+          <div>
+            <div class="product-price">$${p["價格"]}</div>
+            <div class="qty-control">
+              <button class="qty-btn" onclick="changeQty(${originalIndex}, -1)">-</button>
+              <span id="qty_val_${originalIndex}" class="qty-val">${qty}</span>
+              <button class="qty-btn" onclick="changeQty(${originalIndex}, 1)">+</button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    gridContainer.innerHTML = html;
     updateCartSummary();
     checkCanSubmit();
   }
@@ -297,9 +360,7 @@
     document.getElementById('lightbox-img').src = url;
     document.getElementById('lightbox').style.display = 'flex';
   }
-  function closeLightbox() {
-    document.getElementById('lightbox').style.display = 'none';
-  }
+  function closeLightbox() { document.getElementById('lightbox').style.display = 'none'; }
 
   function changeQty(index, delta) {
     if (!orderQuantities[index]) orderQuantities[index] = 0;
@@ -320,10 +381,7 @@
     let cartTotalPrice = document.getElementById('cartTotalPrice');
     if (!cartBox) return;
 
-    let html = "";
-    let totalCount = 0;
-    let totalPrice = 0;
-
+    let html = "", totalCount = 0, totalPrice = 0;
     currentProducts.forEach((p, index) => {
       let qty = orderQuantities[index] || 0;
       if (qty > 0) {
@@ -351,9 +409,7 @@
     let agree = document.getElementById('agreeTerms').checked;
     let submitBtn = document.getElementById('submitBtn');
     let hasSelected = Object.values(orderQuantities).some(q => q > 0);
-    if (submitBtn) {
-      submitBtn.disabled = !(selectedGroupName && agree && hasSelected);
-    }
+    if (submitBtn) submitBtn.disabled = !(selectedGroupName && agree && hasSelected);
   }
 
   async function submitOrder() {
@@ -362,13 +418,9 @@
     let email = document.getElementById('email').value.trim();
     let statusMsg = document.getElementById('statusMsg');
 
-    if (!lineName || !phone || !email) {
-      alert("請完整填寫暱稱、手機與 Email！");
-      return;
-    }
+    if (!lineName || !phone || !email) { alert("請完整填寫暱稱、手機與 Email！"); return; }
 
-    let selectedItems = [];
-    let totalPrice = 0;
+    let selectedItems = [], totalPrice = 0;
     currentProducts.forEach((p, index) => {
       let qty = orderQuantities[index] || 0;
       if (qty > 0) {
@@ -383,15 +435,9 @@
 
     try {
       const { error } = await db.from('orders').insert([{
-        "團務名稱": selectedGroupName,
-        "買家名稱": lineName,
-        "手機號碼": phone,
-        "Email": email,
-        "訂單內容": selectedItems,
-        "總金額": totalPrice,
-        "處理狀態": "待確認"
+        "團務名稱": selectedGroupName, "買家名稱": lineName, "手機號碼": phone,
+        "Email": email, "訂單內容": selectedItems, "總金額": totalPrice, "處理狀態": "待確認"
       }]);
-
       if (error) throw error;
 
       statusMsg.style.color = "#10b981";
@@ -404,7 +450,6 @@
       updateCartSummary();
       checkCanSubmit();
     } catch (err) {
-      console.error(err);
       statusMsg.style.color = "#f87171";
       statusMsg.innerText = "送出失敗：" + err.message;
       document.getElementById('submitBtn').disabled = false;
@@ -418,11 +463,7 @@
 
     resultDiv.innerHTML = "查詢中...";
     try {
-      const { data: orders, error } = await db
-        .from('orders')
-        .select('*')
-        .or(`手機號碼.eq.${key},Email.eq.${key}`);
-
+      const { data: orders, error } = await db.from('orders').select('*').or(`手機號碼.eq.${key},Email.eq.${key}`);
       if (error) throw error;
 
       if (orders && orders.length > 0) {
@@ -431,9 +472,8 @@
           let statusClass = o["處理狀態"] === "已成立" ? "status-confirmed" : (o["處理狀態"] === "已取消" ? "status-cancelled" : "status-pending");
           let itemsHtml = "";
           o["訂單內容"].forEach(i => { itemsHtml += `<div>• ${i.name} x ${i.qty} ($${i.price * i.qty})</div>`; });
-
           html += `
-            <div class="card" style="font-size: 12px;">
+            <div class="card" style="font-size: 12px; background:#242424; padding:10px; border-radius:8px; margin-bottom:10px;">
               <div><b>團務名稱：</b>${o["團務名稱"]}</div>
               <div style="margin: 6px 0;"><b>預購項目：</b></div>
               <div style="background: #121212; padding: 6px; border-radius: 4px; margin-bottom: 6px;">${itemsHtml}</div>
@@ -457,61 +497,46 @@
     try {
       const { data: groups, error } = await db.from('groups').select('*');
       if (error) throw error;
-
       if (groups && groups.length > 0) {
         let html = "<p style='color:#aaa; font-size:13px; margin-bottom:8px;'>請選擇要查看餘量的團務：</p>";
         groups.forEach(g => {
           html += `<button onclick="loadSurplusProducts('${g["團務名稱"]}')" style="display:block; width:100%; margin-bottom:6px; padding:10px; background:#242424; color:white; border:1px solid #444; border-radius:6px; text-align:left; cursor:pointer;">📦 ${g["團務名稱"]}</button>`;
         });
         container.innerHTML = html;
-      } else {
-        container.innerHTML = "<p style='color:#aaa;'>目前沒有團務。</p>";
-      }
-    } catch (err) {
-      container.innerHTML = "<p style='color:#f87171;'>載入失敗。</p>";
-    }
+      } else { container.innerHTML = "<p style='color:#aaa;'>目前沒有團務。</p>"; }
+    } catch (err) { container.innerHTML = "<p style='color:#f87171;'>載入失敗。</p>"; }
   }
 
   async function loadSurplusProducts(groupName) {
     activeSurplusGroup = groupName;
     let container = document.getElementById('surplusProductList');
     container.innerHTML = "載入餘量商品中...";
-
     try {
-      const { data: products, error } = await db
-        .from('products').select('*').eq('團務名稱', groupName).gt('庫存餘量', 0);
-
+      const { data: products, error } = await db.from('products').select('*').eq('團務名稱', groupName).gt('庫存餘量', 0);
       if (error) throw error;
       currentSurplusProducts = products || [];
 
       let html = `<h4 style="color:#fff; margin: 10px 0;">📂 ${groupName} 現貨餘量</h4>`;
       if (currentSurplusProducts.length > 0) {
-        html += `
-          <div style="background:#252525; padding:10px; margin-bottom:10px; border-radius:6px;">
-            <input type="text" id="surplus_name" placeholder="Line / FB 暱稱 *" style="margin-bottom:6px;">
-            <input type="text" id="surplus_phone" placeholder="手機號碼 *" style="margin-bottom:6px;">
-          </div>
-        `;
+        html += `<div style="background:#252525; padding:10px; margin-bottom:10px; border-radius:6px;">
+          <input type="text" id="surplus_name" placeholder="Line / FB 暱稱 *" style="margin-bottom:6px;">
+          <input type="text" id="surplus_phone" placeholder="手機號碼 *" style="margin-bottom:6px;">
+        </div>`;
         currentSurplusProducts.forEach((p, index) => {
-          html += `
-            <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <div style="font-weight:bold; font-size:13px; color:#fff;">${p["商品名稱"]}</div>
-                <div style="color:#10b981; font-size:12px;">$${p["價格"]} | <span style="color:#f59e0b;">剩餘：${p["庫存餘量"]} 個</span></div>
-              </div>
-              <select id="surplus_qty_${index}" style="width: 80px; padding: 4px;">
-                <option value="0">0 個</option>`;
+          html += `<div style="background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-weight:bold; font-size:13px; color:#fff;">${p["商品名稱"]}</div>
+              <div style="color:#10b981; font-size:12px;">$${p["價格"]} | <span style="color:#f59e0b;">剩餘：${p["庫存餘量"]} 個</span></div>
+            </div>
+            <select id="surplus_qty_${index}" style="width: 80px; padding: 4px;">
+              <option value="0">0 個</option>`;
           for(let i=1; i<=p["庫存餘量"]; i++) { html += `<option value="${i}">${i} 個</option>`; }
           html += `</select></div>`;
         });
         html += `<button class="primary-btn" onclick="submitSurplusClaim()" style="margin-top:10px;">確認送出餘量認領</button>`;
-      } else {
-        html += "<p style='color:#aaa; font-size:12px;'>目前此團務沒有剩餘庫存囉！</p>";
-      }
+      } else { html += "<p style='color:#aaa; font-size:12px;'>目前此團務沒有剩餘庫存囉！</p>"; }
       container.innerHTML = html;
-    } catch (err) {
-      container.innerHTML = "<p style='color:#f87171;'>載入餘量商品失敗。</p>";
-    }
+    } catch (err) { container.innerHTML = "<p style='color:#f87171;'>載入餘量商品失敗。</p>"; }
   }
 
   async function submitSurplusClaim() {
@@ -519,8 +544,7 @@
     let phone = document.getElementById('surplus_phone').value.trim();
     if (!name || !phone) { alert("請填寫暱稱與手機號碼！"); return; }
 
-    let selectedItems = [];
-    let totalPrice = 0;
+    let selectedItems = [], totalPrice = 0;
     currentSurplusProducts.forEach((p, index) => {
       let qty = parseInt(document.getElementById(`surplus_qty_${index}`).value) || 0;
       if (qty > 0) {
@@ -539,9 +563,7 @@
       if (error) throw error;
       alert("✓ 餘量認領登記成功！");
       loadSurplusProducts(activeSurplusGroup);
-    } catch (err) {
-      alert("認領失敗：" + err.message);
-    }
+    } catch (err) { alert("認領失敗：" + err.message); }
   }
 
   function toggleAdminLogin() {
@@ -554,11 +576,10 @@
       document.getElementById('adminLoginForm').style.display = 'none';
       document.getElementById('adminDashboard').style.display = 'block';
       loadPendingOrders();
-      loadGroupList(); // 確保下拉選單能同步載入
+      loadGroupList();
     } else { alert("密碼錯誤！"); }
   }
 
-  // 批次新增商品進 Supabase
   async function submitBatchProducts() {
     let targetGroup = document.getElementById('adminTargetGroup').value;
     let rawText = document.getElementById('batchProductsInput').value.trim();
@@ -570,41 +591,34 @@
     msgElem.style.color = "#aaa";
     msgElem.innerText = "正在批次新增商品...";
 
-    let lines = rawText.split('\n');
-    let newProducts = [];
-
+    let lines = rawText.split('\n'), newProducts = [];
     for (let line of lines) {
       line = line.trim();
       if (!line) continue;
       let parts = line.split(/[,，]/);
-      if (parts.length >= 2) {
-        let pName = parts[0].trim();
-        let pPrice = parseFloat(parts[1].trim());
-        if (pName && !isNaN(pPrice)) {
-          newProducts.push({
-            "團務名稱": targetGroup,
-            "商品名稱": pName,
-            "價格": pPrice
-          });
+      if (parts.length >= 3) {
+        let pCat = parts[0].trim();
+        let pName = parts[1].trim();
+        let pPrice = parseFloat(parts[2].trim());
+        if (pCat && pName && !isNaN(pPrice)) {
+          newProducts.push({ "團務名稱": targetGroup, "分類": pCat, "商品名稱": pName, "價格": pPrice });
         }
       }
     }
 
     if (newProducts.length === 0) {
       msgElem.style.color = "#f87171";
-      msgElem.innerText = "格式錯誤！請確保每行格式為：商品名稱, 價格";
+      msgElem.innerText = "格式錯誤！請確保每行格式為：分類, 商品名稱, 價格";
       return;
     }
 
     try {
       const { error } = await db.from('products').insert(newProducts);
       if (error) throw error;
-
       msgElem.style.color = "#10b981";
       msgElem.innerText = `✓ 成功批次新增 ${newProducts.length} 項商品！`;
       document.getElementById('batchProductsInput').value = "";
     } catch (err) {
-      console.error(err);
       msgElem.style.color = "#f87171";
       msgElem.innerText = "新增失敗：" + err.message;
     }
@@ -623,7 +637,7 @@
           let itemsHtml = "";
           o["訂單內容"].forEach(i => { itemsHtml += `<div>• ${i.name} x ${i.qty} ($${i.price * i.qty})</div>`; });
           html += `
-            <div class="card" style="font-size:12px;">
+            <div style="background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; font-size:12px;">
               <div><b>時間：</b>${new Date(o.created_at).toLocaleString()} | <b>團名：</b>${o["團務名稱"]}</div>
               <div><b>買家：</b>${o["買家名稱"]} (${o["手機號碼"]})</div>
               <div style="margin:4px 0; background:#121212; padding:6px; border-radius:4px;">${itemsHtml}</div>
@@ -636,9 +650,7 @@
           `;
         });
         container.innerHTML = html;
-      } else {
-        container.innerHTML = "<p style='color:#aaa; font-size:12px;'>目前沒有待確認的訂單。</p>";
-      }
+      } else { container.innerHTML = "<p style='color:#aaa; font-size:12px;'>目前沒有待確認的訂單。</p>"; }
     } catch (err) { container.innerHTML = "<p style='color:#f87171;'>載入訂單失敗。</p>"; }
   }
 
