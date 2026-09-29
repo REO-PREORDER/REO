@@ -230,6 +230,23 @@
 
   window.addEventListener('DOMContentLoaded', () => { loadGroupList(); });
 
+  // 轉換 Google 雲端硬碟網址為直接顯示的圖片格式
+  function formatImageUrl(url) {
+    if (!url) return "";
+    url = url.trim();
+    // 支援 drive.google.com/file/d/ID/view 格式
+    let match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return `https://lh3.googleusercontent.com/d/${match[1]}`;
+    }
+    // 支援 drive.google.com/uc?id=ID 格式
+    let matchUc = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (matchUc && matchUc[1]) {
+      return `https://lh3.googleusercontent.com/d/${matchUc[1]}`;
+    }
+    return url;
+  }
+
   function switchView(mode) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
@@ -264,7 +281,7 @@
         let html = "", selectHtml = "", statsHtml = "<option value=''>請選擇團務</option>";
         groupsData.forEach(g => {
           let gName = g["團務名稱"];
-          let img = g["圖片"] || "";
+          let img = formatImageUrl(g["圖片"] || "");
           let deadline = g["截單時間"] || "未定";
           let isExpired = g["isExpired"] || false;
           let statusBadge = isExpired ? '<span style="color:#f87171;">已結單</span>' : '<span style="color:#4ade80;">開團中</span>';
@@ -383,7 +400,7 @@
     filtered.forEach((p) => {
       let originalIndex = currentProducts.indexOf(p);
       let qty = orderQuantities[originalIndex] || 0;
-      let img = p["圖片"] || "";
+      let img = formatImageUrl(p["圖片"] || "");
       let desc = p["商品說明"] || "";
 
       html += `
@@ -419,7 +436,7 @@
   }
 
   function openLightbox(url) {
-    document.getElementById('lightbox-img').src = url;
+    document.getElementById('lightbox-img').src = formatImageUrl(url);
     document.getElementById('lightbox').style.display = 'flex';
   }
   function closeLightbox() { document.getElementById('lightbox').style.display = 'none'; }
@@ -543,7 +560,8 @@
           let statusClass = o["處理狀態"] === "已成立" ? "status-confirmed" : (o["處理狀態"] === "已取消" ? "status-cancelled" : "status-pending");
           let itemsHtml = "";
           o["訂單內容"].forEach(i => { 
-            let imgTag = i.image ? `<img src="${i.image}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openLightbox('${i.image}')">` : '';
+            let imgUrl = formatImageUrl(i.image);
+            let imgTag = imgUrl ? `<img src="${imgUrl}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openLightbox('${imgUrl}')">` : '';
             itemsHtml += `
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                 ${imgTag}
@@ -681,7 +699,6 @@
       line = line.trim();
       if (!line) continue;
 
-      // 自動判斷：如果是從試算表貼上，會使用 Tab (\t) 分隔；如果是手動輸入則支援逗號
       let parts = line.includes('\t') ? line.split('\t') : line.split(/[,，]/);
       
       if (parts.length >= 2) {
@@ -700,7 +717,7 @@
             "圖片": pImg,
             "餘量": 0,
             "商品說明": pDesc,
-            "isExpired": `false`
+            "isExpired": false
           });
         }
       }
@@ -736,7 +753,8 @@
         data.forEach(o => {
           let itemsHtml = "";
           o["訂單內容"].forEach(i => { 
-            let imgTag = i.image ? `<img src="${i.image}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openLightbox('${i.image}')">` : '';
+            let imgUrl = formatImageUrl(i.image);
+            let imgTag = imgUrl ? `<img src="${imgUrl}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openLightbox('${imgUrl}')">` : '';
             itemsHtml += `
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                 ${imgTag}
