@@ -127,10 +127,10 @@
 
 <!-- JavaScript 邏輯區塊 -->
 <script>
-  // 初始化 Supabase 用戶端
+  // 初始化 Supabase 用戶端 (改名為 db 以避免與全域衝突)
   const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // 全域變數
   let orderQuantities = {};
@@ -169,7 +169,7 @@
     container.innerHTML = "載入團務列表中...";
 
     try {
-      const { data: groups, error } = await supabase.from('groups').select('*');
+      const { data: groups, error } = await db.from('groups').select('*');
       if (error) throw error;
 
       if (groups && groups.length > 0) {
@@ -220,7 +220,7 @@
     orderQuantities = {};
 
     try {
-      const { data: products, error } = await supabase
+      const { data: products, error } = await db
         .from('products')
         .select('*')
         .eq('團務名稱', groupName);
@@ -357,7 +357,7 @@
     statusMsg.innerText = "正在送出預購訂單...";
 
     try {
-      const { error } = await supabase.from('orders').insert([{
+      const { error } = await db.from('orders').insert([{
         "團務名稱": selectedGroupName,
         "買家名稱": lineName,
         "手機號碼": phone,
@@ -393,7 +393,7 @@
 
     resultDiv.innerHTML = "查詢中...";
     try {
-      const { data: orders, error } = await supabase
+      const { data: orders, error } = await db
         .from('orders')
         .select('*')
         .or(`手機號碼.eq.${key},Email.eq.${key}`);
@@ -430,7 +430,7 @@
     let container = document.getElementById('surplusGroupList');
     container.innerHTML = "載入中...";
     try {
-      const { data: groups, error } = await supabase.from('groups').select('*');
+      const { data: groups, error } = await db.from('groups').select('*');
       if (error) throw error;
 
       if (groups && groups.length > 0) {
@@ -453,7 +453,7 @@
     container.innerHTML = "載入餘量商品中...";
 
     try {
-      const { data: products, error } = await supabase
+      const { data: products, error } = await db
         .from('products').select('*').eq('團務名稱', groupName).gt('庫存餘量', 0);
 
       if (error) throw error;
@@ -507,7 +507,7 @@
     if (selectedItems.length === 0) { alert("請選擇欲認領的商品數量！"); return; }
 
     try {
-      const { error } = await supabase.from('orders').insert([{
+      const { error } = await db.from('orders').insert([{
         "團務名稱": activeSurplusGroup, "買家名稱": name, "手機號碼": phone,
         "訂單內容": selectedItems, "總金額": totalPrice, "處理狀態": "待確認"
       }]);
@@ -536,7 +536,7 @@
     let container = document.getElementById('pendingOrdersList');
     container.innerHTML = "載入中...";
     try {
-      const { data, err } = await supabase.from('orders').select('*').eq('處理狀態', '待確認');
+      const { data, err } = await db.from('orders').select('*').eq('處理狀態', '待確認');
       if (err) throw err;
 
       if (data && data.length > 0) {
@@ -567,7 +567,7 @@
   async function updateOrderStatus(orderId, newStatus) {
     if (!confirm(`確定要將此訂單改為「${newStatus}」嗎？`)) return;
     try {
-      const { error } = await supabase.from('orders').update({ "處理狀態": newStatus }).eq('id', orderId);
+      const { error } = await db.from('orders').update({ "處理狀態": newStatus }).eq('id', orderId);
       if (error) throw error;
       alert("狀態更新成功！");
       loadPendingOrders();
