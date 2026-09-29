@@ -1,163 +1,305 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>REO代購 預購系統</title>
+<div class="card">
+  <h2>REO代購 預購填單</h2>
+
+  <div class="tab-buttons" style="display: flex; gap: 10px; margin-bottom: 15px;">
+    <!-- 切換分頁按鈕 -->
+    <button id="btnPreorder" class="tab-btn active" onclick="switchView('preorder')">填單預購</button>
+    <button id="btnQuery" class="tab-btn" onclick="switchView('query')">查詢紀錄</button>
+    <button id="btnSurplus" class="tab-btn" onclick="switchView('surplus')">餘量認領</button>
+  </div>
   
-  <!-- 1. 引入 Supabase JS SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; max-width: 650px; margin: auto; background-color: #121212; color: #e0e0e0; }
-    .card { background: #1e1e1e; padding: 16px; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.6); border: 1px solid #2c2c2c; }
-    h2 { text-align: center; color: #ffffff; margin-bottom: 15px; letter-spacing: 0.5px; font-size: 20px; }
-    
-    .tab-buttons { display: flex; gap: 8px; margin-bottom: 20px; }
-    .tab-btn { flex: 1; padding: 10px; border: 1px solid #444; background: #2a2a2a; color: #b0b0b0; border-radius: 8px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
-    .tab-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
-
-    /* ── 第一層：團務卡片清單 ── */
-    .group-card {
-      background: #252525;
-      border: 1px solid #374151;
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-    }
-    .group-card:active { transform: scale(0.98); background: #2d2d2d; }
-    .group-thumb { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; background: #1a1a1a; flex-shrink: 0; border: 1px solid #374151; }
-    .group-info { flex-grow: 1; display: flex; flex-direction: column; gap: 4px; }
-    .group-title { font-weight: bold; font-size: 15px; color: #f3f4f6; }
-    
-    .group-meta-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-    .badge-status { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
-    .badge-deadline { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.4); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
-
-    .form-group { margin-bottom: 16px; }
-    label { font-weight: 600; display: block; margin-bottom: 6px; color: #d1d5db; font-size: 14px; }
-    input[type="text"], input[type="email"], select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #374151; border-radius: 8px; font-size: 15px; background: #2b2b2b; color: #ffffff; }
-    
-    button { width: 100%; background-color: #3b82f6; color: white; padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; }
-  </style>
-</head>
-<body>
-
-  <div class="card">
-    <h2>REO代購 預購填單</h2>
-
-    <div class="tab-buttons" style="display: flex; gap: 10px; margin-bottom: 15px;">
-      <button id="btnPreorder" class="tab-btn active">填單預購</button>
-      <button id="btnQuery" class="tab-btn">查詢紀錄</button>
-      <button id="btnSurplus" class="tab-btn">餘量認領</button>
-    </div>
-    
-    <!-- ════ 頁面一：團務卡片清單 ════ -->
-    <div id="groupListSection">
-      <label style="margin-bottom: 10px;">🔥 請選擇參與的預購團務：</label>
-      <div id="groupCardsContainer">載入團務列表中...</div>
-    </div>
-
-    <!-- ════ 頁面二：商品選購與填單內頁 ════ -->
-    <div id="orderFormSection" style="display: none;">
-      <div class="inner-header">
-        <button onclick="backToGroupList()">❮ 返回團務列表</button>
-        <span class="active-group-title" id="activeGroupTitleText"></span>
-      </div>
-    </div>
-
-    <!-- ════ 頁面三：查詢紀錄區塊 ════ -->
-    <div id="querySection" style="display: none;">
-      <div class="form-group">
-        <label>查詢憑證 (手機號碼 或 Email)</label>
-        <input type="text" id="searchKey" placeholder="輸入當時填寫的手機或信箱">
-      </div>
-      <button onclick="queryOrder()">查詢我的預購狀態</button>
-      <div id="queryResult" style="margin-top: 15px;"></div>
-    </div>
+  <!-- ════ 頁面一：團務卡片清單 ════ -->
+  <div id="groupListSection">
+    <label style="margin-bottom: 10px;">🔥 請選擇參與的預購團務：</label>
+    <div id="groupCardsContainer">載入團務列表中...</div>
   </div>
 
-  <script>
-    // 2. 初始化 Supabase（已修正 URL 格式，移除了多餘的 /rest/v1/）
-    const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <!-- ════ 頁面二：商品選購與填單內頁 ════ -->
+  <div id="orderFormSection" style="display: none;">
+    <div class="inner-header">
+      <div class="back-btn-row">
+        <button class="back-btn-absolute" onclick="backToGroupList()">❮ 返回團務列表</button>
+      </div>
+      <span class="active-group-title" id="activeGroupTitleText"></span>
+    </div>
 
-    // 3. 當網頁載入完成時，開始載入團務列表
-    window.addEventListener('DOMContentLoaded', () => {
-      loadGroupList();
-    });
+    <div class="form-group" style="margin-top: 16px;">
+      <label>買家暱稱 (LINE / FB)</label>
+      <input type="text" id="lineName" placeholder="請輸入您的Line社群/FB暱稱">
+    </div>
+    
+    <div class="form-group">
+      <label>手機號碼</label>
+      <input type="text" id="phone" placeholder="09xxxxxxxx">
+    </div>
 
-    // 4. 抓取團務列表函式（對應 Supabase 的 groups 表格與中文欄位）
-    async function loadGroupList() {
-      var container = document.getElementById('groupCardsContainer');
-      if (!container) {
-        console.error("找不到 ID 為 'groupCardsContainer' 的元素！");
-        return;
-      }
-      
-      container.innerHTML = "載入團務列表中...";
+    <div class="form-group">
+      <label>電子信箱 (將寄送喊單明細)</label>
+      <input type="email" id="email" placeholder="name@example.com">
+    </div>
 
-      try {
-        const { data: groups, error } = await supabase
-          .from('groups')
-          .select('*');
+    <div class="info-box">
+      <div class="info-box-title">📜 代購須知</div>
+      <div class="terms-content">
+        <p><b>【初次交易】</b> 請務必主動私訊填寫實名表單再填單，後台無實名紀錄者即便送出喊單，一律取消喊單。</p>
+        <p><b>【訂單明細寄送】</b> 送出喊單後，我方將於結單前確認是否成立並發送郵件。</p>
+        <p><b>【訂金規範】</b> 如需匯款訂金之團務，將於結單前私訊收取訂金，請於結單時間前完成，逾時未完成則視同放棄並取消喊單。</p>
+        <p><b>【商品狀況】</b> 無收取包材費。默認廠損（溢色、小刮痕等），完美主義者請繞道。</p>
+        <p><b>【商品不確定風險】</b> 成團需求/湊件需求/砍單/官方送錯貨/集運方送錯貨等意外問題將構成訂單成立再取消之因素，恕無法提供任何補償。</p>
+        <p><b>【法規聲明】</b> 我方屬依消費者要求所為之「跨境客製化給付」，不適用七天鑑賞期。</p>
+        <p><b>【物流風險】</b> 賣貨便物流遺失/受損補償皆依平台規定，如需全額保值請事先告知並補足運費差額。</p>
+        <p><b>【未成年條款】</b> 未成年人喊單視同<b>已獲監護人同意</b>。若事後家長以不知情為由要求取消，因涉及虛偽勾選（施用詐術），我方將依法究責並聲請支付命令求償，恕不接受事後協商。</p>
+        <p><b>【發票】</b> 完成取貨付款即開立電子發票。</p>
+        <p><b>【下單規範】</b> 到貨皆個別私訊通知，請於通知當天開始計算7天內完成下單，超過期限則加收$20/天倉儲費。</p>
+      </div>
+    </div>
 
-        if (error) throw error;
+    <div class="info-box">
+      <div class="info-box-title">📌 團務備註</div>
+      <div class="terms-content" id="groupNoteContent">載入中...</div>
+    </div>
 
-        console.log("Supabase 成功回傳資料：", groups);
+    <hr style="border:0; border-top:1px solid #374151; margin:15px 0;">
+    
+    <label style="margin-bottom: 8px;">下單區選購</label>
+    <div class="category-filter" id="categoryFilter"></div>
+    <div class="product-grid" id="productList">正在載入商品清單...</div>
 
-        if (groups && groups.length > 0) {
-          var html = "";
-          groups.forEach(function(groupObj) {
-            // 對應你的 Supabase 欄位名稱
-            var gName = groupObj.團務名稱 || "未命名團務";
-            var gImg = groupObj.圖片 || "";
-            var gDeadline = groupObj.截單時間 || "未定";
-            var isExpired = groupObj.isExpired || false;
+    <!-- 🛒 購物車清單總覽區塊 -->
+    <div class="cart-summary-box" id="cartSummaryBox" style="display: none;">
+      <div class="cart-title">🛒 已選購商品清單 <span id="cartItemCount">(0件)</span></div>
+      <div class="cart-items-list" id="cartItemsList"></div>
+      <div class="cart-total-row">
+        <span>預估總金額：</span>
+        <span id="cartTotalPrice" style="color: #f87171;">$0</span>
+      </div>
+    </div>
 
-            var statusBadge = isExpired ? 
-              `<span class="badge-status" style="background:rgba(107,114,128,0.2); color:#9ca3af; border-color:rgba(107,114,128,0.4);">已結單</span>` : 
-              `<span class="badge-status">開團中</span>`;
-              
-            var cardStyle = isExpired ? `opacity: 0.55; background: #1a1a1a;` : ``;
+    <label class="agree-box">
+      <input type="checkbox" id="agreeTerms" onchange="checkCanSubmit()">
+      我已詳細閱讀並同意上述代購須知所有規範
+    </label>
 
-            html += `<div class="group-card" style="${cardStyle}" onclick="selectGroup('${gName}')">
-                      ${gImg ? `<img src="${gImg}" class="group-thumb">` : `<div class="group-thumb" style="display:flex;align-items:center;justify-content:center;color:#3b82f6;font-size:20px;">🛒</div>`}
-                      <div class="group-info">
-                        <div class="group-title">${gName}</div>
-                        <div class="group-meta-row">
-                          ${statusBadge}
-                          <span class="badge-deadline">截單：${gDeadline}</span>
-                        </div>
-                      </div>
-                      <div style="color: #6b7280; font-weight: bold;">❯</div>
-                    </div>`;
-          });
-          container.innerHTML = html;
-        } else {
-          container.innerHTML = `<p style="text-align:center; color:#9ca3af;">目前沒有進行中的團務。</p>`;
-        }
+    <button id="submitBtn" onclick="submitOrder()" disabled>確認送出預購</button>
+    <div id="statusMsg" class="msg"></div>
+  </div>
 
-      } catch (err) {
-        console.error("Supabase 查詢失敗：", err);
-        container.innerHTML = `<p style="text-align:center; color:#ef4444;">載入失敗: ${err.message}</p>`;
-      }
-    }
+  <!-- ════ 頁面三：查詢紀錄區塊 ════ -->
+  <div id="querySection" style="display: none;">
+    <div class="form-group">
+      <label>查詢憑證 (手機號碼 或 Email)</label>
+      <input type="text" id="searchKey" placeholder="輸入當時填寫的手機或信箱">
+    </div>
+    <button onclick="queryOrder()">查詢我的預購狀態</button>
+    <div id="queryResult" style="margin-top: 15px;"></div>
+  </div>
 
-    function selectGroup(groupName) {
-      console.log("選擇了團務：", groupName);
-    }
+  <!-- === 餘量認領專區 === -->
+  <div id="surplusSection" style="display: none;">
+    <h3 style="color: orange; margin-top: 20px;">餘量認領專區</h3>
+    <div id="surplusGroupList">載入團務中...</div>
+    <div id="surplusProductList"></div>
+  </div>
 
-    function backToGroupList() {
+</div>
+
+<!-- 🖼️ 放大圖片燈箱 -->
+<div id="lightbox" onclick="closeLightbox()">
+  <button id="lightbox-close" onclick="closeLightbox()">×</button>
+  <img id="lightbox-img" src="">
+</div>
+
+<!-- 引入 Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+  // 初始化 Supabase 連線設定（請確認你的 URL 結尾沒有 /rest/v1/）
+  const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  var currentProducts = [];
+  var selectedGroupName = "";
+  var orderQuantities = {}; 
+  var currentCategory = "全部";
+  var currentImageIndexes = {}; 
+
+  window.onload = function() {
+    loadGroupList();
+  };
+
+  // 切換頁面視圖
+  function switchView(viewName) {
+    document.getElementById('groupListSection').style.display = 'none';
+    document.getElementById('orderFormSection').style.display = 'none';
+    document.getElementById('querySection').style.display = 'none';
+    document.getElementById('surplusSection').style.display = 'none';
+
+    document.getElementById('btnPreorder').classList.remove('active');
+    document.getElementById('btnQuery').classList.remove('active');
+    document.getElementById('btnSurplus').classList.remove('active');
+
+    if (viewName === 'preorder') {
       document.getElementById('groupListSection').style.display = 'block';
-      document.getElementById('orderFormSection').style.display = 'none';
+      document.getElementById('btnPreorder').classList.add('active');
+      loadGroupList();
+    } else if (viewName === 'query') {
+      document.getElementById('querySection').style.display = 'block';
+      document.getElementById('btnQuery').classList.add('active');
+    } else if (viewName === 'surplus') {
+      document.getElementById('surplusSection').style.display = 'block';
+      document.getElementById('btnSurplus').classList.add('active');
+      loadSurplusGroups();
     }
-  </script>
-</body>
-</html>
+  }
+
+  // 從 Supabase 載入團務列表
+  async function loadGroupList() {
+    var container = document.getElementById('groupCardsContainer');
+    if (!container) {
+      console.error("找不到 ID 為 'groupCardsContainer' 的元素！");
+      return;
+    }
+    
+    container.innerHTML = "載入團務列表中...";
+
+    try {
+      // 查詢 Supabase 的 groups 表格
+      const { data: groups, error } = await supabase
+        .from('groups')
+        .select('*');
+
+      if (error) throw error;
+
+      console.log("Supabase 成功回傳團務資料：", groups);
+
+      if (groups && groups.length > 0) {
+        var html = "";
+        groups.forEach(function(groupObj) {
+          // 對應你的 Supabase 中文欄位
+          var gName = groupObj.團務名稱 || groupObj.name || "未命名團務";
+          var gImg = groupObj.圖片 || groupObj.imgUrl || "";
+          var gDeadline = groupObj.截單時間 || groupObj.deadlineStr || "未定";
+          var isExpired = groupObj.isExpired || false;
+
+          var statusBadge = isExpired ? 
+            `<span class="badge-status" style="background:rgba(107,114,128,0.2); color:#9ca3af; border-color:rgba(107,114,128,0.4);">已結單</span>` : 
+            `<span class="badge-status">開團中</span>`;
+            
+          var cardStyle = isExpired ? `opacity: 0.55; background: #1a1a1a;` : ``;
+
+          html += `<div class="group-card" style="${cardStyle}" onclick="selectGroup('${gName}')">
+                    ${gImg ? `<img src="${gImg}" class="group-thumb">` : `<div class="group-thumb" style="display:flex;align-items:center;justify-content:center;color:#3b82f6;font-size:20px;">🛒</div>`}
+                    <div class="group-info">
+                      <div class="group-title">${gName}</div>
+                      <div class="group-meta-row">
+                        ${statusBadge}
+                        <span class="badge-deadline">截單：${gDeadline}</span>
+                      </div>
+                    </div>
+                    <div style="color: #6b7280; font-weight: bold;">❯</div>
+                  </div>`;
+        });
+        container.innerHTML = html;
+      } else {
+        container.innerHTML = `<p style="text-align:center; color:#9ca3af;">目前沒有進行中的團務。</p>`;
+      }
+
+    } catch (err) {
+      console.error("Supabase 載入團務失敗：", err);
+      container.innerHTML = `<p style="text-align:center; color:#ef4444;">載入失敗: ${err.message}</p>`;
+    }
+  }
+
+  // 選擇團務後進入填單內頁
+  async function selectGroup(groupName) {
+    selectedGroupName = groupName;
+    document.getElementById('activeGroupTitleText').innerText = "📌 " + groupName;
+    
+    // 切換介面顯示
+    document.getElementById('groupListSection').style.display = 'none';
+    document.getElementById('orderFormSection').style.display = 'block';
+    
+    // 讀取該團務的備註與商品清單
+    await loadGroupDetails(groupName);
+  }
+
+  // 從 Supabase 取得特定團務的備註與商品
+  async function loadGroupDetails(groupName) {
+    document.getElementById('groupNoteContent').innerText = "載入中...";
+    document.getElementById('productList').innerText = "正在載入商品清單...";
+
+    try {
+      // 1. 抓取該團務的備註
+      const { data: groupData, error: groupError } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('團務名稱', groupName)
+        .single();
+
+      if (!groupError && groupData) {
+        document.getElementById('groupNoteContent').innerHTML = groupData.備註 || groupData.note || "無特別備註";
+      } else {
+        document.getElementById('groupNoteContent').innerText = "無特別備註";
+      }
+
+      // 2. 抓取該團務對應的商品（假設你的商品表叫做 products，且有一個欄位對應團務名稱）
+      const { data: productsData, error: prodError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('團務名稱', groupName);
+
+      if (prodError) throw prodError;
+
+      currentProducts = productsData || [];
+      renderProducts(); // 渲染商品畫面函式
+
+    } catch (err) {
+      console.error("載入團務詳細資料失敗：", err);
+      document.getElementById('groupNoteContent').innerText = "載入備註失敗";
+      document.getElementById('productList').innerHTML = `<p style="color:red;">商品載入失敗: ${err.message}</p>`;
+    }
+  }
+
+  function backToGroupList() {
+    document.getElementById('orderFormSection').style.display = 'none';
+    document.getElementById('groupListSection').style.display = 'block';
+  }
+
+  // 預留其他互動函式（可依需求繼續擴充）
+  function renderProducts() {
+    // 渲染商品的邏輯
+    var prodContainer = document.getElementById('productList');
+    if (currentProducts.length === 0) {
+      prodContainer.innerHTML = `<p style="color:#9ca3af;">此團務目前尚無上架商品。</p>`;
+      return;
+    }
+    // 這裡可以根據你的欄位結構把商品印出到 prodContainer
+  }
+
+  function checkCanSubmit() {
+    var agree = document.getElementById('agreeTerms').checked;
+    document.getElementById('submitBtn').disabled = !agree;
+  }
+
+  function submitOrder() {
+    alert("準備送出訂單到 Supabase...");
+  }
+
+  function queryOrder() {
+    var key = document.getElementById('searchKey').value;
+    if(!key) {
+      alert("請輸入查詢憑證！");
+      return;
+    }
+    // 這裡後續可以改寫為向 Supabase 查詢訂單記錄
+  }
+
+  function loadSurplusGroups() {
+    document.getElementById('surplusGroupList').innerText = "目前沒有餘量團務。";
+  }
+
+  function closeLightbox() {
+    document.getElementById('lightbox').style.display = 'none';
+  }
+</script>
