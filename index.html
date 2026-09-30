@@ -159,8 +159,8 @@
   <div id="querySection" class="section">
     <p style="color: #aaa; font-size: 13px; margin-bottom: 8px;">輸入手機號碼或 Email 查詢您的歷史預購：</p>
     <input type="text" id="searchKey" placeholder="請輸入手機或 Email">
-   <button onclick="queryOrder()" style="width: 100%; padding: 12px; background: #2563eb; color: #ffffff; border: none; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; margin-top: 10px;">開始查詢</button>
-   <div id="searchResult"></div>
+    <button onclick="queryOrder()" style="width: 100%; padding: 12px; background: #2563eb; color: #ffffff; border: none; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; margin-top: 10px;">開始查詢</button>
+    <div id="searchResult" style="margin-top: 15px;"></div>
   </div>
 
   <!-- 3. 餘量認領區塊 -->
@@ -169,7 +169,7 @@
     <div id="surplusProductList" style="margin-top: 15px;"></div>
   </div>
 
-<!-- 管理員後台登入入口 -->
+  <!-- 管理員後台登入入口 -->
   <div style="margin-top: 30px; border-top: 1px solid #333; padding-top: 15px; text-align: center;">
     <button onclick="toggleAdminLogin()" style="background: transparent; border: none; color: #777; font-size: 11px; cursor: pointer;">管理員後台登入</button>
     
@@ -199,15 +199,14 @@
       <h4 style="color: #f59e0b; margin-bottom: 8px; text-align: center;">📊 已成立訂單商品總數量統計</h4>
       <div style="background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
         <label style="font-size: 12px; color: #ccc;">選擇要統計的團務：</label>
-        <!-- 找到這行並加上 onchange -->
-<select id="adminStatsGroup" style="margin-top: 4px;" onchange="loadOrderStats()"></select>
+        <select id="adminStatsGroup" style="margin-top: 4px;" onchange="loadOrderStats()"></select>
         <div id="orderStatsResult" style="margin-top: 10px; font-size: 12px;">請選擇團務以查看統計</div>
       </div>
 
       <h4 style="color: #fff; margin-bottom: 8px; text-align: center;">待確認訂單管理</h4>
       <div id="pendingOrdersList">載入中...</div>
 
-      <!-- 📋 所有訂單紀錄區塊移至這裡，受 adminDashboard 保護與控制 -->
+      <!-- 📋 所有訂單紀錄區塊 -->
       <div style="margin-top: 30px; border-top: 1px solid #444; padding-top: 15px;">
         <h3 style="color: #fff; margin-bottom: 10px; text-align: center;">📋 所有訂單紀錄</h3>
         <div id="allOrdersList">載入中...</div>
@@ -215,13 +214,30 @@
     </div>
   </div>
 
+</div>
+
 <!-- 燈箱圖片檢視 -->
 <div id="lightbox" onclick="closeLightbox()">
   <img id="lightbox-img" src="" alt="放大圖片">
 </div>
 
 <script>
-  // 👉 把這段放進 <script> 裡面的最上方：
+  const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let orderQuantities = {};
+  let currentProducts = [];
+  let currentCategories = [];
+  let activeCategory = "全部";
+  let selectedGroupName = "";
+  let activeSurplusGroup = "";
+  let currentSurplusProducts = [];
+  let groupsData = [];
+
+  window.addEventListener('DOMContentLoaded', () => { loadGroupList(); });
+
+  // 發送 Email 通知 Worker
   async function sendPreOrderEmail(emailData) {
       try {
           const response = await fetch('https://rapid-tree-ad77.you751019.workers.dev/', {
@@ -238,102 +254,15 @@
       }
   }
   window.sendPreOrderEmail = sendPreOrderEmail;
-  async function loadOrderStats() {
-  let selectElem = document.getElementById('adminStatsGroup');
-  let groupName = selectElem ? selectElem.value : '';
-  let resultDiv = document.getElementById('orderStatsResult');
-  if (!resultDiv) return;
 
-  if (!groupName) {
-    resultDiv.innerHTML = "請選擇團務以查看統計";
-    return;
-  }
-
-  resultDiv.innerHTML = "正在計算統計資料...";
-
-  try {
-    // 撈取該團務且處理狀態為「已成立」或「已變更」的訂單
-    const { data: orders, error } = await db
-      .from('orders')
-      .select('訂單內容')
-      .eq('團務名稱', groupName)
-      .in('處理狀態', ['已成立', '已變更']);
-
-    if (error) throw error;
-
-    if (!orders || orders.length === 0) {
-      resultDiv.innerHTML = "<p style='color:#aaa;'>該團務目前沒有已成立或已變更的訂單。</p>";
-      return;
-    }
-
-    // 統計各商品的總數量
-    let itemCounts = {};
-    orders.forEach(order => {
-      let items = order["訂單內容"] || [];
-      items.forEach(item => {
-        let name = item.name;
-        let qty = parseInt(item.qty) || 0;
-        itemCounts[name] = (itemCounts[name] || 0) + qty;
-      });
-    });
-
-    // 繪製統計表格
-    let html = `<table style="width:100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; color: #fff;">
-      <thead>
-        <tr style="background: #18181b; text-align: left; border-bottom: 1px solid #444;">
-          <th style="padding: 6px 8px;">商品名稱</th>
-          <th style="padding: 6px 8px; text-align: right; width: 100px;">已喊總數</th>
-        </tr>
-      </thead>
-      <tbody>`;
-
-    let entries = Object.entries(itemCounts);
-    if (entries.length === 0) {
-      resultDiv.innerHTML = "<p style='color:#aaa;'>無下單商品統計。</p>";
-      return;
-    }
-
-    entries.forEach(([name, count]) => {
-      html += `<tr style="border-bottom: 1px solid #333;">
-        <td style="padding: 6px 8px;">${name}</td>
-        <td style="padding: 6px 8px; text-align: right; font-weight: bold; color: #f59e0b;">${count} 個</td>
-      </tr>`;
-    });
-
-    html += `</tbody></table>`;
-    resultDiv.innerHTML = html;
-
-  } catch (err) {
-    resultDiv.innerHTML = `<p style="color:#f87171;">統計載入失敗：${err.message}</p>`;
-  }
-}
-window.loadOrderStats = loadOrderStats;
-
-  const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
-  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  let orderQuantities = {};
-  let currentProducts = [];
-  let currentCategories = [];
-  let activeCategory = "全部";
-  let selectedGroupName = "";
-  let activeSurplusGroup = "";
-  let currentSurplusProducts = [];
-  let groupsData = [];
-
-  window.addEventListener('DOMContentLoaded', () => { loadGroupList(); });
-
-  // 轉換 Google 雲端硬碟網址為直接顯示的圖片格式
+  // 轉換 Google 雲端硬碟網址為直接顯示圖片格式
   function formatImageUrl(url) {
     if (!url) return "";
     url = url.trim();
-    // 支援 drive.google.com/file/d/ID/view 格式
     let match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
     if (match && match[1]) {
       return `https://lh3.googleusercontent.com/d/${match[1]}`;
     }
-    // 支援 drive.google.com/uc?id=ID 格式
     let matchUc = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
     if (matchUc && matchUc[1]) {
       return `https://lh3.googleusercontent.com/d/${matchUc[1]}`;
@@ -358,6 +287,7 @@ window.loadOrderStats = loadOrderStats;
     }
   }
 
+  // 載入團務列表
   async function loadGroupList() {
     const container = document.getElementById('groupCardsContainer');
     if (!container) return;
@@ -640,298 +570,378 @@ window.loadOrderStats = loadOrderStats;
     }
   }
 
- // 請更新 queryOrder 函式中 orders.forEach 內的渲染邏輯：
-orders.forEach(order => {
-  let groupName = order["團務名稱"] || "";
-  let remark = order["備註"] || "";
-  
-  // 1. 處理下單時間格式化 (支援 created_at 或 填單時間)
-  let rawDate = order["created_at"] || order["填單時間"] || order["下單時間"] || "";
-  let formattedDate = rawDate ? new Date(rawDate).toLocaleString('zh-TW', { hour12: false }) : "無紀錄";
+  // 查詢個人訂單記錄
+  async function queryOrder() {
+    let searchKey = document.getElementById('searchKey').value.trim();
+    let searchResult = document.getElementById('searchResult');
+    if (!searchKey) { alert("請輸入手機號碼或 Email！"); return; }
 
-  let isSurplus = groupName.includes("餘量認領") || remark.includes("餘量認領");
+    searchResult.innerHTML = "查詢中...";
 
-  let typeBadge = isSurplus 
-    ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">餘量登記</span>`
-    : `<span style="background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">預購填單</span>`;
+    try {
+      const { data: orders, error } = await db
+        .from('orders')
+        .select('*')
+        .or(`手機號碼.eq.${searchKey},Email.eq.${searchKey}`)
+        .order('created_at', { ascending: false });
 
-  let cleanTitle = groupName.replace(" (現貨餘量認領)", "").replace(" (餘量認領)", "");
+      if (error) throw error;
 
-  // 處理狀態顏色
-  let statusColor = "#3b82f6";
-  let statusText = order["處理狀態"] || "待處理";
+      if (!orders || orders.length === 0) {
+        searchResult.innerHTML = "<p style='color:#aaa; text-align:center;'>查無相關預購紀錄。</p>";
+        return;
+      }
 
-  if (statusText === "已成立") statusColor = "#10b981";
-  if (statusText === "已變更") statusColor = "#f59e0b";
-  if (statusText === "已取消") statusColor = "#ef4444";
+      let html = "";
+      orders.forEach(order => {
+        let groupName = order["團務名稱"] || "";
+        let remark = order["備註"] || "";
+        let rawDate = order["created_at"] || order["填單時間"] || order["下單時間"] || "";
+        let formattedDate = rawDate ? new Date(rawDate).toLocaleString('zh-TW', { hour12: false }) : "無紀錄";
 
-  // 2. 渲染商品項目（含圖片與分類標籤）
-  let itemsHtml = "";
-  let items = order["訂單內容"] || [];
-  items.forEach(item => {
-    let imgUrl = item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "";
-    let category = item.category || item["分類"] || item["商品分類"] || "";
-    
-    let imgTag = imgUrl 
-      ? `<img src="${imgUrl}" style="width:45px; height:45px; object-fit:cover; border-radius:6px; margin-right:10px;">`
-      : `<div style="width:45px; height:45px; background:#27272a; border-radius:6px; margin-right:10px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#a1a1aa;">無圖</div>`;
+        let isSurplus = groupName.includes("餘量認領") || remark.includes("餘量認領");
 
-    let categoryBadge = category 
-      ? `<span style="background:#3f3f46; color:#e4e4e7; font-size:10px; padding:1px 5px; border-radius:3px; margin-right:6px;">${category}</span>`
-      : "";
+        let typeBadge = isSurplus 
+          ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">餘量登記</span>`
+          : `<span style="background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">預購填單</span>`;
 
-    itemsHtml += `
-      <div style="margin-bottom: 8px; font-size: 13px; color: #e4e4e7; display: flex; align-items: center;">
-        ${imgTag}
-        <div>
-          <div>${categoryBadge}<strong style="color:#fff;">${item.name || item["商品名稱"]}</strong></div>
-          <div style="font-size:12px; color:#a1a1aa; margin-top:2px;">數量: ${item.qty || item["數量"]} | 單價: $${item.price || item["單價"] || 0}</div>
-        </div>
-      </div>`;
-  });
+        let cleanTitle = groupName.replace(" (現貨餘量認領)", "").replace(" (餘量認領)", "");
 
-  // 備註說明
-  let remarkHtml = remark 
-    ? `<div style="margin-top: 8px; font-size: 12px; color: #a1a1aa; border-top: 1px dashed #3f3f46; padding-top: 6px;">
-        <strong style="color: #cbd5e1;">備註說明：</strong>${remark}
-       </div>`
-    : "";
+        let statusColor = "#3b82f6";
+        let statusText = order["處理狀態"] || "待處理";
 
-  // 3. 組合卡片 HTML (加上下單時間)
-  html += `
-    <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff; text-align: left;">
-      <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px;">
-        團務名稱：${cleanTitle} ${typeBadge}
-      </div>
-      <div style="font-size: 12px; color: #a1a1aa; margin-bottom: 8px;">
-        下單時間：${formattedDate}
-      </div>
-      <div style="font-size: 13px; color: #aaa; margin-bottom: 6px;">預購/認領項目：</div>
-      <div style="background: #09090b; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
-        ${itemsHtml}
-      </div>
-      <div style="font-size: 13px; font-weight: bold; margin-bottom: 4px;">
-        金額總計：<span style="color: #60a5fa;">$${order["總金額"]}</span>
-      </div>
-      <div style="font-size: 13px; font-weight: bold;">
-        處理狀態：<span style="color: ${statusColor};">${statusText}</span>
-      </div>
-      ${remarkHtml}
-    </div>
-  `;
-});
+        if (statusText === "已成立") statusColor = "#10b981";
+        if (statusText === "已變更") statusColor = "#f59e0b";
+        if (statusText === "已取消") statusColor = "#ef4444";
 
+        let itemsHtml = "";
+        let items = order["訂單內容"] || [];
+        items.forEach(item => {
+          let imgUrl = item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "";
+          let category = item.category || item["分類"] || item["商品分類"] || "";
+          
+          let imgTag = imgUrl 
+            ? `<img src="${formatImageUrl(imgUrl)}" style="width:45px; height:45px; object-fit:cover; border-radius:6px; margin-right:10px;">`
+            : `<div style="width:45px; height:45px; background:#27272a; border-radius:6px; margin-right:10px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#a1a1aa;">無圖</div>`;
+
+          let categoryBadge = category 
+            ? `<span style="background:#3f3f46; color:#e4e4e7; font-size:10px; padding:1px 5px; border-radius:3px; margin-right:6px;">${category}</span>`
+            : "";
+
+          itemsHtml += `
+            <div style="margin-bottom: 8px; font-size: 13px; color: #e4e4e7; display: flex; align-items: center;">
+              ${imgTag}
+              <div>
+                <div>${categoryBadge}<strong style="color:#fff;">${item.name || item["商品名稱"]}</strong></div>
+                <div style="font-size:12px; color:#a1a1aa; margin-top:2px;">數量: ${item.qty || item["數量"]} | 單價: $${item.price || item["單價"] || 0}</div>
+              </div>
+            </div>`;
+        });
+
+        let remarkHtml = remark 
+          ? `<div style="margin-top: 8px; font-size: 12px; color: #a1a1aa; border-top: 1px dashed #3f3f46; padding-top: 6px;">
+              <strong style="color: #cbd5e1;">備註說明：</strong>${remark}
+             </div>`
+          : "";
+
+        html += `
+          <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff; text-align: left;">
+            <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px;">
+              團務名稱：${cleanTitle} ${typeBadge}
+            </div>
+            <div style="font-size: 12px; color: #a1a1aa; margin-bottom: 8px;">
+              下單時間：${formattedDate}
+            </div>
+            <div style="font-size: 13px; color: #aaa; margin-bottom: 6px;">預購/認領項目：</div>
+            <div style="background: #09090b; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
+              ${itemsHtml}
+            </div>
+            <div style="font-size: 13px; font-weight: bold; margin-bottom: 4px;">
+              金額總計：<span style="color: #60a5fa;">$${order["總金額"]}</span>
+            </div>
+            <div style="font-size: 13px; font-weight: bold;">
+              處理狀態：<span style="color: ${statusColor};">${statusText}</span>
+            </div>
+            ${remarkHtml}
+          </div>
+        `;
+      });
+      searchResult.innerHTML = html;
+    } catch (err) {
+      searchResult.innerHTML = `<p style="color:#f87171;">查詢失敗：${err.message}</p>`;
+    }
+  }
+
+  // 載入餘量團務
   async function loadSurplusGroups() {
-  let container = document.getElementById('surplusGroupList');
-  container.innerHTML = "載入餘量團務中...";
+    let container = document.getElementById('surplusGroupList');
+    container.innerHTML = "載入餘量團務中...";
 
-  try {
-    // 1. 先從 products 撈出所有「餘量 > 0」的商品，取得它們對應的團務名稱
-    const { data: surplusProducts, error: prodErr } = await db
-      .from('products')
-      .select('團務名稱')
-      .gt('餘量', 0);
+    try {
+      const { data: surplusProducts, error: prodErr } = await db
+        .from('products')
+        .select('團務名稱')
+        .gt('餘量', 0);
 
-    if (prodErr) throw prodErr;
+      if (prodErr) throw prodErr;
 
-    // 若沒有任何商品有餘量
-    if (!surplusProducts || surplusProducts.length === 0) {
-      container.innerHTML = "<p style='color:#aaa; font-size:13px;'>目前沒有任何有餘量的團務囉！</p>";
-      document.getElementById('surplusProductList').innerHTML = "";
+      if (!surplusProducts || surplusProducts.length === 0) {
+        container.innerHTML = "<p style='color:#aaa; font-size:13px;'>目前沒有任何有餘量的團務囉！</p>";
+        document.getElementById('surplusProductList').innerHTML = "";
+        return;
+      }
+
+      const validGroupNames = [...new Set(surplusProducts.map(p => p["團務名稱"]))];
+
+      const { data: groups, error: groupErr } = await db
+        .from('groups')
+        .select('*')
+        .in('團務名稱', validGroupNames);
+
+      if (groupErr) throw groupErr;
+
+      if (groups && groups.length > 0) {
+        let html = "<p style='color:#aaa; font-size:13px; margin-bottom:8px;'>請選擇要查看餘量的團務：</p>";
+        groups.forEach(g => {
+          html += `<button onclick="loadSurplusProducts('${g["團務名稱"]}')" style="display:block; width:100%; margin-bottom:6px; padding:10px; background:#242424; color:white; border:1px solid #444; border-radius:6px; text-align:left; cursor:pointer;">${g["團務名稱"]}</button>`;
+        });
+        container.innerHTML = html;
+        document.getElementById('surplusProductList').innerHTML = "";
+      } else {
+        container.innerHTML = "<p style='color:#aaa; font-size:13px;'>目前沒有任何有餘量的團務囉！</p>";
+      }
+    } catch (err) {
+      container.innerHTML = "<p style='color:#f87171;'>載入失敗：" + err.message + "</p>";
+    }
+  }
+
+  // 載入餘量商品
+  async function loadSurplusProducts(groupName) {
+    activeSurplusGroup = groupName;
+    let container = document.getElementById('surplusProductList');
+    container.innerHTML = "載入餘量商品中...";
+    try {
+      const { data: products, error } = await db.from('products').select('*').eq('團務名稱', groupName).gt('餘量', 0);
+      if (error) throw error;
+      currentSurplusProducts = products || [];
+
+      let html = `<h4 style="color:#fff; margin: 10px 0;">${groupName} 餘量</h4>`;
+      if (currentSurplusProducts.length > 0) {
+        html += `<div style="background:#252525; padding:10px; margin-bottom:10px; border-radius:6px;">
+          <input type="text" id="surplus_name" placeholder="Line / FB 暱稱 *" style="margin-bottom:6px; width:100%; padding:8px; background:#18181b; border:1px solid #444; color:#fff; border-radius:4px;">
+          <input type="text" id="surplus_phone" placeholder="手機號碼 *" style="margin-bottom:6px; width:100%; padding:8px; background:#18181b; border:1px solid #444; color:#fff; border-radius:4px;">
+          <input type="email" id="surplus_email" placeholder="Email 電子信箱 *" style="width:100%; padding:8px; background:#18181b; border:1px solid #444; color:#fff; border-radius:4px;">
+        </div>`;
+
+        currentSurplusProducts.forEach((p, index) => {
+          let imgUrl = p["圖片"] || p["圖片網址"] || p["image"] || p["image_url"] || "";
+
+          let imgHtml = imgUrl 
+            ? `<img src="${formatImageUrl(imgUrl)}" alt="${p["商品名稱"]}" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\'width:50px;height:50px;background:#333;border-radius:6px;margin-right:10px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa;flex-shrink:0;\'>圖無效</div>';" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin-right: 10px; flex-shrink: 0;">`
+            : `<div style="width: 50px; height: 50px; background: #333; border-radius: 6px; margin-right: 10px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #aaa; flex-shrink: 0;">無圖片</div>`;
+
+          html += `<div style="background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display: flex; align-items: center;">
+              ${imgHtml}
+              <div>
+                <div style="font-weight:bold; font-size:13px; color:#fff;">${p["商品名稱"]}</div>
+                <div style="color:#10b981; font-size:12px;">$${p["單價"]} | <span style="color:#f59e0b;">餘量：${p["餘量"]} 個</span></div>
+              </div>
+            </div>
+            <select id="surplus_qty_${index}" style="width: 80px; padding: 4px; background:#18181b; color:#fff; border:1px solid #444; border-radius:4px;">
+              <option value="0">0 個</option>`;
+          for(let i = 1; i <= p["餘量"]; i++) { 
+            html += `<option value="${i}">${i} 個</option>`; 
+          }
+          html += `</select></div>`;
+        });
+
+        html += `<button class="primary-btn" onclick="submitSurplusClaim()" style="margin-top:10px; width:100%; padding:10px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">確認送出餘量認領</button>`;
+      } else { 
+        html += "<p style='color:#aaa; font-size:12px;'>目前此團務沒有餘量囉！</p>"; 
+      }
+      container.innerHTML = html;
+    } catch (err) { 
+      container.innerHTML = "<p style='color:#f87171;'>載入餘量商品失敗。</p>"; 
+    }
+  }
+
+  // 提交餘量認領
+  async function submitSurplusClaim() {
+    let name = document.getElementById('surplus_name')?.value.trim();
+    let phone = document.getElementById('surplus_phone')?.value.trim();
+    let email = document.getElementById('surplus_email')?.value.trim();
+
+    if (!name || !phone || !email) {
+      alert("請填寫 暱稱、手機號碼 與 Email！");
       return;
     }
 
-    // 2. 收集有餘量的團務名稱（不重複）
-    const validGroupNames = [...new Set(surplusProducts.map(p => p["團務名稱"]))];
+    let selectedItems = [];
+    let totalPrice = 0;
 
-    // 3. 只撈取這些有餘量的團務資料
-    const { data: groups, error: groupErr } = await db
-      .from('groups')
-      .select('*')
-      .in('團務名稱', validGroupNames);
-
-    if (groupErr) throw groupErr;
-
-    if (groups && groups.length > 0) {
-      let html = "<p style='color:#aaa; font-size:13px; margin-bottom:8px;'>請選擇要查看餘量的團務：</p>";
-      groups.forEach(g => {
-        html += `<button onclick="loadSurplusProducts('${g["團務名稱"]}')" style="display:block; width:100%; margin-bottom:6px; padding:10px; background:#242424; color:white; border:1px solid #444; border-radius:6px; text-align:left; cursor:pointer;">${g["團務名稱"]}</button>`;
-      });
-      container.innerHTML = html;
-      document.getElementById('surplusProductList').innerHTML = "";
-    } else {
-      container.innerHTML = "<p style='color:#aaa; font-size:13px;'>目前沒有任何有餘量的團務囉！</p>";
-    }
-  } catch (err) {
-    container.innerHTML = "<p style='color:#f87171;'>載入失敗：" + err.message + "</p>";
-  }
-}
-window.loadSurplusGroups = loadSurplusGroups;
-
-  async function loadSurplusProducts(groupName) {
-  activeSurplusGroup = groupName;
-  let container = document.getElementById('surplusProductList');
-  container.innerHTML = "載入餘量商品中...";
-  try {
-    const { data: products, error } = await db.from('products').select('*').eq('團務名稱', groupName).gt('餘量', 0);
-    if (error) throw error;
-    currentSurplusProducts = products || [];
-
-    let html = `<h4 style="color:#fff; margin: 10px 0;">${groupName} 餘量</h4>`;
-    if (currentSurplusProducts.length > 0) {
-      html += `<div style="background:#252525; padding:10px; margin-bottom:10px; border-radius:6px;">
-        <input type="text" id="surplus_name" placeholder="Line / FB 暱稱 *" style="margin-bottom:6px; width:100%; padding:8px; background:#18181b; border:1px solid #444; color:#fff; border-radius:4px;">
-        <input type="text" id="surplus_phone" placeholder="手機號碼 *" style="margin-bottom:6px; width:100%; padding:8px; background:#18181b; border:1px solid #444; color:#fff; border-radius:4px;">
-        <input type="email" id="surplus_email" placeholder="Email 電子信箱 *" style="width:100%; padding:8px; background:#18181b; border:1px solid #444; color:#fff; border-radius:4px;">
-      </div>`;
-
-      // 請替換 loadSurplusProducts 中的 currentSurplusProducts.forEach 區塊：
-
-currentSurplusProducts.forEach((p, index) => {
-  // 直接讀取後台的「圖片」欄位
-  let imgUrl = p["圖片"] || p["圖片網址"] || p["image"] || p["image_url"] || "";
-
-  let imgHtml = imgUrl 
-    ? `<img src="${imgUrl}" alt="${p["商品名稱"]}" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\'width:50px;height:50px;background:#333;border-radius:6px;margin-right:10px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa;flex-shrink:0;\'>圖無效</div>';" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin-right: 10px; flex-shrink: 0;">`
-    : `<div style="width: 50px; height: 50px; background: #333; border-radius: 6px; margin-right: 10px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #aaa; flex-shrink: 0;">無圖片</div>`;
-
-  html += `<div style="background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-    <div style="display: flex; align-items: center;">
-      ${imgHtml}
-      <div>
-        <div style="font-weight:bold; font-size:13px; color:#fff;">${p["商品名稱"]}</div>
-        <div style="color:#10b981; font-size:12px;">$${p["單價"]} | <span style="color:#f59e0b;">餘量：${p["餘量"]} 個</span></div>
-      </div>
-    </div>
-    <select id="surplus_qty_${index}" style="width: 80px; padding: 4px; background:#18181b; color:#fff; border:1px solid #444; border-radius:4px;">
-      <option value="0">0 個</option>`;
-  for(let i = 1; i <= p["餘量"]; i++) { 
-    html += `<option value="${i}">${i} 個</option>`; 
-  }
-  html += `</select></div>`;
-});
-
-      html += `<button class="primary-btn" onclick="submitSurplusClaim()" style="margin-top:10px; width:100%; padding:10px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">確認送出餘量認領</button>`;
-    } else { 
-      html += "<p style='color:#aaa; font-size:12px;'>目前此團務沒有餘量囉！</p>"; 
-    }
-    container.innerHTML = html;
-  } catch (err) { 
-    container.innerHTML = "<p style='color:#f87171;'>載入餘量商品失敗。</p>"; 
-  }
-}
-window.loadSurplusProducts = loadSurplusProducts;
-
-  async function submitSurplusClaim() {
-  let name = document.getElementById('surplus_name')?.value.trim();
-  let phone = document.getElementById('surplus_phone')?.value.trim();
-  let email = document.getElementById('surplus_email')?.value.trim();
-
-  if (!name || !phone || !email) {
-    alert("請填寫 暱稱、手機號碼 與 Email！");
-    return;
-  }
-
-  let selectedItems = [];
-  let totalPrice = 0;
-
-  currentSurplusProducts.forEach((p, index) => {
-    let qtySelect = document.getElementById(`surplus_qty_${index}`);
-    let qty = qtySelect ? parseInt(qtySelect.value) : 0;
-    if (qty > 0) {
-      let price = parseFloat(p["單價"]) || 0;
-      selectedItems.push({
-        id: p.id,
-        name: p["商品名稱"],
-        price: price,
-        qty: qty
-      });
-      totalPrice += price * qty;
-    }
-  });
-
-  if (selectedItems.length === 0) {
-    alert("請至少選擇一樣商品的認領數量！");
-    return;
-  }
-
-  try {
-    // 1. 新增認領訂單至 orders（狀態為待處理）
-    const { data: orderData, error: orderErr } = await db.from('orders').insert([{
-      "團務名稱": activeSurplusGroup,
-      "買家名稱": name,
-      "手機號碼": phone,
-      "Email": email,
-      "訂單內容": selectedItems,
-      "總金額": totalPrice,
-      "處理狀態": "待處理"
-    }]).select();
-
-    if (orderErr) throw orderErr;
-
-    // 2.【關鍵變更】買家一送出，立即扣減庫存！
-    for (let item of selectedItems) {
-      let targetProd = currentSurplusProducts.find(p => p.id === item.id);
-      if (targetProd) {
-        let currentSurplus = parseInt(targetProd["餘量"]) || 0;
-        let newSurplus = Math.max(0, currentSurplus - item.qty);
-        await db.from('products').update({ "餘量": newSurplus }).eq('id', item.id);
-      }
-    }
-
-    // 3. 發送認領寄信通知
-    if (typeof sendPreOrderEmail === 'function') {
-      try {
-        let paymentMethod = "現貨餘量認領";
-        const { data: groupData } = await db.from('groups').select('付款方式').eq('團務名稱', activeSurplusGroup).single();
-        if (groupData && groupData["付款方式"]) paymentMethod = groupData["付款方式"];
-
-        let productDetailsText = selectedItems.map(i => `${i.name} x ${i.qty} ($${i.price} / 小計: $${i.price * i.qty})`).join("\n");
-
-        await sendPreOrderEmail({
-          customerEmail: email,
-          lineName: name,
-          groupName: activeSurplusGroup + " (現貨餘量認領)",
-          productDetails: productDetailsText,
-          totalPrice: totalPrice,
-          paymentMethod: paymentMethod,
-          status: "待處理",
-          changeReason: "無"
+    currentSurplusProducts.forEach((p, index) => {
+      let qtySelect = document.getElementById(`surplus_qty_${index}`);
+      let qty = qtySelect ? parseInt(qtySelect.value) : 0;
+      if (qty > 0) {
+        let price = parseFloat(p["單價"]) || 0;
+        selectedItems.push({
+          id: p.id,
+          name: p["商品名稱"],
+          price: price,
+          qty: qty
         });
-      } catch (emailErr) {
-        console.error("餘量認領寄信失敗：", emailErr);
+        totalPrice += price * qty;
       }
+    });
+
+    if (selectedItems.length === 0) {
+      alert("請至少選擇一樣商品的認領數量！");
+      return;
     }
 
-    alert("餘量認領已送出！庫存已先為您保留，請等待管理員審核確認。");
-    loadSurplusProducts(activeSurplusGroup); // 重新讀取剩餘數量
-  } catch (err) {
-    alert("認領失敗：" + err.message);
+    try {
+      const { data: orderData, error: orderErr } = await db.from('orders').insert([{
+        "團務名稱": activeSurplusGroup + " (現貨餘量認領)",
+        "買家名稱": name,
+        "手機號碼": phone,
+        "Email": email,
+        "訂單內容": selectedItems,
+        "總金額": totalPrice,
+        "處理狀態": "待處理",
+        "備註": "餘量認領"
+      }]).select();
+
+      if (orderErr) throw orderErr;
+
+      // 即時扣減庫存
+      for (let item of selectedItems) {
+        let targetProd = currentSurplusProducts.find(p => p.id === item.id);
+        if (targetProd) {
+          let currentSurplus = parseInt(targetProd["餘量"]) || 0;
+          let newSurplus = Math.max(0, currentSurplus - item.qty);
+          await db.from('products').update({ "餘量": newSurplus }).eq('id', item.id);
+        }
+      }
+
+      if (typeof sendPreOrderEmail === 'function') {
+        try {
+          let paymentMethod = "現貨餘量認領";
+          const { data: groupData } = await db.from('groups').select('付款方式').eq('團務名稱', activeSurplusGroup).single();
+          if (groupData && groupData["付款方式"]) paymentMethod = groupData["付款方式"];
+
+          let productDetailsText = selectedItems.map(i => `${i.name} x ${i.qty} ($${i.price} / 小計: $${i.price * i.qty})`).join("\n");
+
+          await sendPreOrderEmail({
+            customerEmail: email,
+            lineName: name,
+            groupName: activeSurplusGroup + " (現貨餘量認領)",
+            productDetails: productDetailsText,
+            totalPrice: totalPrice,
+            paymentMethod: paymentMethod,
+            status: "待處理",
+            changeReason: "無"
+          });
+        } catch (emailErr) {
+          console.error("餘量認領寄信失敗：", emailErr);
+        }
+      }
+
+      alert("餘量認領已送出！庫存已先為您保留，請等待管理員審核確認。");
+      loadSurplusProducts(activeSurplusGroup);
+    } catch (err) {
+      alert("認領失敗：" + err.message);
+    }
   }
-}
-window.submitSurplusClaim = submitSurplusClaim;
+
+  // 管理員後台控制
   function toggleAdminLogin() {
     let form = document.getElementById('adminLoginForm');
     form.style.display = form.style.display === 'none' ? 'block' : 'none';
   }
 
   function verifyAdmin() {
-  let pwd = document.getElementById('adminPassword').value;
-  if (pwd === "841250") {
-      document.getElementById('adminLoginForm').style.display = 'none';
-      document.getElementById('adminDashboard').style.display = 'block';
-      
-      if (typeof loadPendingOrders === 'function') loadPendingOrders();
-      if (typeof loadAllOrders === 'function') loadAllOrders(); 
-      if (typeof loadAdminGroups === 'function') loadAdminGroups();
-      
-      // 補上這行：切換下拉選單時自動觸發統計
-      let statsSelect = document.getElementById('adminStatsGroup');
-      if (statsSelect) statsSelect.onchange = loadOrderStats;
-  } else {
-      alert("密碼錯誤！");
+    let pwd = document.getElementById('adminPassword').value;
+    if (pwd === "841250") {
+        document.getElementById('adminLoginForm').style.display = 'none';
+        document.getElementById('adminDashboard').style.display = 'block';
+        
+        loadPendingOrders();
+        loadAllOrders(); 
+        loadOrderStats();
+    } else {
+        alert("密碼錯誤！");
+    }
   }
-}
+
+  // 統計數據
+  async function loadOrderStats() {
+    let selectElem = document.getElementById('adminStatsGroup');
+    let groupName = selectElem ? selectElem.value : '';
+    let resultDiv = document.getElementById('orderStatsResult');
+    if (!resultDiv) return;
+
+    if (!groupName) {
+      resultDiv.innerHTML = "請選擇團務以查看統計";
+      return;
+    }
+
+    resultDiv.innerHTML = "正在計算統計資料...";
+
+    try {
+      const { data: orders, error } = await db
+        .from('orders')
+        .select('訂單內容')
+        .eq('團務名稱', groupName)
+        .in('處理狀態', ['已成立', '已變更']);
+
+      if (error) throw error;
+
+      if (!orders || orders.length === 0) {
+        resultDiv.innerHTML = "<p style='color:#aaa;'>該團務目前沒有已成立或已變更的訂單。</p>";
+        return;
+      }
+
+      let itemCounts = {};
+      orders.forEach(order => {
+        let items = order["訂單內容"] || [];
+        items.forEach(item => {
+          let name = item.name;
+          let qty = parseInt(item.qty) || 0;
+          itemCounts[name] = (itemCounts[name] || 0) + qty;
+        });
+      });
+
+      let html = `<table style="width:100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; color: #fff;">
+        <thead>
+          <tr style="background: #18181b; text-align: left; border-bottom: 1px solid #444;">
+            <th style="padding: 6px 8px;">商品名稱</th>
+            <th style="padding: 6px 8px; text-align: right; width: 100px;">已喊總數</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+      let entries = Object.entries(itemCounts);
+      if (entries.length === 0) {
+        resultDiv.innerHTML = "<p style='color:#aaa;'>無下單商品統計。</p>";
+        return;
+      }
+
+      entries.forEach(([name, count]) => {
+        html += `<tr style="border-bottom: 1px solid #333;">
+          <td style="padding: 6px 8px;">${name}</td>
+          <td style="padding: 6px 8px; text-align: right; font-weight: bold; color: #f59e0b;">${count} 個</td>
+        </tr>`;
+      });
+
+      html += `</tbody></table>`;
+      resultDiv.innerHTML = html;
+
+    } catch (err) {
+      resultDiv.innerHTML = `<p style="color:#f87171;">統計載入失敗：${err.message}</p>`;
+    }
+  }
+
   async function submitBatchProducts() {
     let targetGroup = document.getElementById('adminTargetGroup').value;
     let rawText = document.getElementById('batchProductsInput').value.trim();
@@ -989,160 +999,151 @@ window.submitSurplusClaim = submitSurplusClaim;
       msgElem.innerText = "新增失敗：" + err.message;
     }
   }
-async function updateOrderStatus(orderId, newStatus, changeReason = "無") {
-  try {
-    // 撈取原訂單內容
-    const { data: order, error: fetchErr } = await db
-      .from('orders')
-      .select('*')
-      .eq('id', orderId)
-      .single();
 
-    if (fetchErr) throw fetchErr;
+  async function updateOrderStatus(orderId, newStatus, changeReason = "無") {
+    try {
+      const { data: order, error: fetchErr } = await db
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single();
 
-    let oldStatus = order["處理狀態"];
-    if (oldStatus === newStatus) return;
+      if (fetchErr) throw fetchErr;
 
-    let groupName = order["團務名稱"] || "";
-    let remark = order["備註"] || "";
-    let isSurplusOrder = groupName.includes("餘量認領") || remark.includes("餘量認領");
+      let oldStatus = order["處理狀態"];
+      if (oldStatus === newStatus) return;
 
-    // 1. 若改為已取消且為餘量訂單，自動退還庫存
-    if (isSurplusOrder && newStatus === "已取消" && oldStatus !== "已取消") {
-      let items = order["訂單內容"] || [];
-      let cleanGroupName = groupName.replace(" (現貨餘量認領)", "").replace(" (餘量認領)", "").trim();
-
-      for (let item of items) {
-        const { data: prodData } = await db
-          .from('products')
-          .select('*')
-          .eq('團務名稱', cleanGroupName)
-          .eq('商品名稱', item.name)
-          .single();
-
-        if (prodData) {
-          let currentSurplus = parseInt(prodData["餘量"]) || 0;
-          let restoreQty = parseInt(item.qty) || 0;
-          await db.from('products').update({ "餘量": currentSurplus + restoreQty }).eq('id', prodData.id);
-        }
-      }
-    }
-
-    // 2. 更新資料庫中的處理狀態
-    const { error: updateErr } = await db
-      .from('orders')
-      .update({ "處理狀態": newStatus })
-      .eq('id', orderId);
-
-    if (updateErr) throw updateErr;
-
-    // 3. 狀態變更時發送通知信（特別是已取消）
-    if (typeof sendPreOrderEmail === 'function' && order["Email"]) {
-      try {
-        let items = order["訂單內容"] || [];
-        let productDetailsText = items.map(i => `${i.name} x ${i.qty || 1} ($${i.price || 0})`).join("\n");
-
-        await sendPreOrderEmail({
-          customerEmail: order["Email"],
-          lineName: order["買家名稱"] || "貴賓",
-          groupName: groupName,
-          productDetails: productDetailsText,
-          totalPrice: order["總金額"],
-          paymentMethod: "通知",
-          status: newStatus, // 傳遞「已取消」狀態
-          changeReason: changeReason || "訂單狀態異動通知"
-        });
-      } catch (mailErr) {
-        console.error("狀態變更寄信失敗：", mailErr);
-      }
-    }
-
-    alert(`訂單狀態已更新為：${newStatus}`);
-
-    if (typeof loadAllOrders === 'function') loadAllOrders();
-    if (typeof loadPendingOrders === 'function') loadPendingOrders();
-
-  } catch (err) {
-    alert("狀態更新失敗：" + err.message);
-  }
-}
-window.updateOrderStatus = updateOrderStatus;
-  
-async function loadPendingOrders() {
-  let container = document.getElementById('pendingOrdersList') || document.getElementById('pendingList');
-  if (!container) return;
-
-  container.innerHTML = "載入待審核訂單中...";
-
-  try {
-    // 撈取狀態為「待處理」或「待確認」的所有訂單（包含一般預購與餘量認領）
-    const { data: orders, error } = await db
-      .from('orders')
-      .select('*')
-      .or('處理狀態.eq.待處理,處理狀態.eq.待確認')
-      .order('id', { ascending: false });
-
-    if (error) throw error;
-
-    if (!orders || orders.length === 0) {
-      container.innerHTML = "<p style='color:#aaa; font-size:13px; text-align:center; padding:20px;'>目前沒有待審核的訂單！</p>";
-      return;
-    }
-
-    let html = "";
-    orders.forEach(order => {
       let groupName = order["團務名稱"] || "";
       let remark = order["備註"] || "";
-      let isSurplus = groupName.includes("餘量認領") || remark.includes("餘量認領");
+      let isSurplusOrder = groupName.includes("餘量認領") || remark.includes("餘量認領");
 
-      // 類型標籤
-      let typeBadge = isSurplus 
-        ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">現貨餘量登記</span>`
-        : `<span style="background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">預購填單</span>`;
+      if (isSurplusOrder && newStatus === "已取消" && oldStatus !== "已取消") {
+        let items = order["訂單內容"] || [];
+        let cleanGroupName = groupName.replace(" (現貨餘量認領)", "").replace(" (餘量認領)", "").trim();
 
-      // 商品列表 HTML
-      let itemsHtml = "";
-      let items = order["訂單內容"] || [];
-      items.forEach(item => {
-        itemsHtml += `<div style="font-size: 13px; color: #e4e4e7; margin-bottom: 4px;">
-          • ${item.name || item["商品名稱"]} x ${item.qty || item["數量"]} ($${item.price || item["單價"] || 0})
-        </div>`;
+        for (let item of items) {
+          const { data: prodData } = await db
+            .from('products')
+            .select('*')
+            .eq('團務名稱', cleanGroupName)
+            .eq('商品名稱', item.name)
+            .single();
+
+          if (prodData) {
+            let currentSurplus = parseInt(prodData["餘量"]) || 0;
+            let restoreQty = parseInt(item.qty) || 0;
+            await db.from('products').update({ "餘量": currentSurplus + restoreQty }).eq('id', prodData.id);
+          }
+        }
+      }
+
+      const { error: updateErr } = await db
+        .from('orders')
+        .update({ "處理狀態": newStatus })
+        .eq('id', orderId);
+
+      if (updateErr) throw updateErr;
+
+      if (typeof sendPreOrderEmail === 'function' && order["Email"]) {
+        try {
+          let items = order["訂單內容"] || [];
+          let productDetailsText = items.map(i => `${i.name} x ${i.qty || 1} ($${i.price || 0})`).join("\n");
+
+          await sendPreOrderEmail({
+            customerEmail: order["Email"],
+            lineName: order["買家名稱"] || "貴賓",
+            groupName: groupName,
+            productDetails: productDetailsText,
+            totalPrice: order["總金額"],
+            paymentMethod: "通知",
+            status: newStatus,
+            changeReason: changeReason || "訂單狀態異動通知"
+          });
+        } catch (mailErr) {
+          console.error("狀態變更寄信失敗：", mailErr);
+        }
+      }
+
+      alert(`訂單狀態已更新為：${newStatus}`);
+      loadAllOrders();
+      loadPendingOrders();
+
+    } catch (err) {
+      alert("狀態更新失敗：" + err.message);
+    }
+  }
+
+  async function loadPendingOrders() {
+    let container = document.getElementById('pendingOrdersList');
+    if (!container) return;
+
+    container.innerHTML = "載入待審核訂單中...";
+
+    try {
+      const { data: orders, error } = await db
+        .from('orders')
+        .select('*')
+        .or('處理狀態.eq.待處理,處理狀態.eq.待確認')
+        .order('id', { ascending: false });
+
+      if (error) throw error;
+
+      if (!orders || orders.length === 0) {
+        container.innerHTML = "<p style='color:#aaa; font-size:13px; text-align:center; padding:20px;'>目前沒有待審核的訂單！</p>";
+        return;
+      }
+
+      let html = "";
+      orders.forEach(order => {
+        let groupName = order["團務名稱"] || "";
+        let remark = order["備註"] || "";
+        let isSurplus = groupName.includes("餘量認領") || remark.includes("餘量認領");
+
+        let typeBadge = isSurplus 
+          ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">現貨餘量登記</span>`
+          : `<span style="background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">預購填單</span>`;
+
+        let itemsHtml = "";
+        let items = order["訂單內容"] || [];
+        items.forEach(item => {
+          itemsHtml += `<div style="font-size: 13px; color: #e4e4e7; margin-bottom: 4px;">
+            • ${item.name || item["商品名稱"]} x ${item.qty || item["數量"]} ($${item.price || item["單價"] || 0})
+          </div>`;
+        });
+
+        html += `
+          <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff; text-align: left;">
+            <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <div>團務：${groupName} ${typeBadge}</div>
+              <div style="font-size: 12px; color: #f59e0b;">狀態：${order["處理狀態"]}</div>
+            </div>
+            <div style="font-size: 13px; color: #aaa; margin-bottom: 6px;">
+              買家：${order["買家名稱"]} | 手機：${order["手機號碼"]} | Email：${order["Email"] || "無"}
+            </div>
+            <div style="background: #09090b; padding: 8px; border-radius: 6px; margin-bottom: 8px;">
+              ${itemsHtml}
+            </div>
+            <div style="font-size: 13px; font-weight: bold; margin-bottom: 10px;">
+              總金額：<span style="color: #60a5fa;">$${order["總金額"]}</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button onclick="updateOrderStatus(${order.id}, '已成立')" style="flex: 1; padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">審核通過 (成立)</button>
+              <button onclick="updateOrderStatus(${order.id}, '已取消')" style="flex: 1; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">拒絕申請 (取消)</button>
+            </div>
+          </div>
+        `;
       });
 
-      html += `
-        <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff; text-align: left;">
-          <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-            <div>團務：${groupName} ${typeBadge}</div>
-            <div style="font-size: 12px; color: #f59e0b;">狀態：${order["處理狀態"]}</div>
-          </div>
-          <div style="font-size: 13px; color: #aaa; margin-bottom: 6px;">
-            買家：${order["買家名稱"]} | 手機：${order["手機號碼"]} | Email：${order["Email"] || "無"}
-          </div>
-          <div style="background: #09090b; padding: 8px; border-radius: 6px; margin-bottom: 8px;">
-            ${itemsHtml}
-          </div>
-          <div style="font-size: 13px; font-weight: bold; margin-bottom: 10px;">
-            總金額：<span style="color: #60a5fa;">$${order["總金額"]}</span>
-          </div>
-          <!-- 管理員審核按鈕 -->
-          <div style="display: flex; gap: 8px;">
-            <button onclick="updateOrderStatus(${order.id}, '已成立')" style="flex: 1; padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">審核通過 (成立)</button>
-            <button onclick="updateOrderStatus(${order.id}, '已取消')" style="flex: 1; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">拒絕申請 (取消)</button>
-          </div>
-        </div>
-      `;
-    });
+      container.innerHTML = html;
 
-    container.innerHTML = html;
-
-  } catch (err) {
-    console.error("載入待處理訂單失敗：", err);
-    container.innerHTML = `<p style="color:#ef4444; font-size:13px; text-align:center;">載入失敗：${err.message}</p>`;
+    } catch (err) {
+      console.error("載入待處理訂單失敗：", err);
+      container.innerHTML = `<p style="color:#ef4444; font-size:13px; text-align:center;">載入失敗：${err.message}</p>`;
+    }
   }
-}
-window.loadPendingOrders = loadPendingOrders;
+
   async function loadAllOrders() {
-    let container = document.getElementById('allOrdersList'); // 假設您的 HTML 中有這個容器
+    let container = document.getElementById('allOrdersList');
     if (!container) return;
     container.innerHTML = "載入中...";
     
@@ -1155,8 +1156,8 @@ window.loadPendingOrders = loadPendingOrders;
         
         for (let o of data) {
           let itemsHtml = "";
-          o["訂單內容"].forEach((i, index) => { 
-            let subtotal = i.price * i.qty;
+          (o["訂單內容"] || []).forEach((i) => { 
+            let subtotal = (i.price || 0) * (i.qty || 1);
             itemsHtml += `
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-size: 11px; background:#181818; padding:4px 6px; border-radius:4px;">
                 <span>${i.name}</span>
@@ -1177,13 +1178,11 @@ window.loadPendingOrders = loadPendingOrders;
 
           let actionDiv = card.querySelector(`#all-actions-${o.id}`);
           
-          // 變更按鈕
           let btnModify = document.createElement('button');
           btnModify.innerText = "✏️ 變更訂單";
           btnModify.style.cssText = "background-color: #3b82f6; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;";
           btnModify.onclick = () => openModifyModal(o);
 
-          // 取消按鈕
           let btnCancel = document.createElement('button');
           btnCancel.innerText = "✕ 取消訂單";
           btnCancel.style.cssText = "background-color: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;";
@@ -1198,9 +1197,9 @@ window.loadPendingOrders = loadPendingOrders;
     } catch (err) { 
       container.innerHTML = "<p style='color:#f87171;'>載入訂單紀錄失敗。</p>"; 
     }
-}
- // 開啟變更訂單的介面
-function openModifyModal(order) {
+  }
+
+  function openModifyModal(order) {
     let modalBg = document.createElement('div');
     modalBg.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;";
     
@@ -1208,7 +1207,7 @@ function openModifyModal(order) {
     modalBox.style.cssText = "background: #1e1e1e; padding: 20px; border-radius: 10px; width: 95%; max-width: 500px; color: #fff; font-size: 13px; max-height: 90vh; overflow-y: auto;";
     
     let itemsHtml = "";
-    order["訂單內容"].forEach((item, idx) => {
+    (order["訂單內容"] || []).forEach((item, idx) => {
         itemsHtml += `
             <div style="background: #2a2a2a; padding: 10px; border-radius: 6px; margin-bottom: 8px;" class="modify-item-row" data-index="${idx}">
                 <div style="font-weight: bold; margin-bottom: 4px;">${item.name}</div>
@@ -1327,12 +1326,12 @@ function openModifyModal(order) {
             alert("訂單已成功修改、更新並已發送通知信！");
             document.body.removeChild(modalBg);
             loadAllOrders();
-            if (typeof loadPendingOrders === 'function') loadPendingOrders();
+            loadPendingOrders();
         } catch (err) {
             alert("更新失敗：" + err.message);
         }
     };
-}
+  }
 </script>
 </body>
 </html>
