@@ -489,7 +489,7 @@ async function loadProductsForEdit(groupId) {
   <!-- 💡 新增：批次貼上新增商品區塊 -->
   <div style="background: #1e1e1e; border: 1px dashed #10b981; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
     <div style="color: #10b981; font-weight: bold; font-size: 12px; margin-bottom: 4px;">📦 批次貼上新增商品（每行一個）</div>
-    <div style="color: #aaa; font-size: 11px; margin-bottom: 8px;">支援格式：名稱, 單價, 圖片, 說明 (可用 Tab、逗號或空格分隔)</div>
+    <div style="color: #aaa; font-size: 11px; margin-bottom: 8px;">依序填寫：商品分類, 商品名稱, 單價, 圖片, 商品說明 (可用 Tab、逗號或空格分隔)</div>
     <textarea id="batchProductsInput" placeholder="請在此貼上多行商品資料..." style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 70px; width: 100%; box-sizing: border-box;"></textarea>
     <div id="batchMsg" style="font-size: 11px; margin: 4px 0;"></div>
     <button type="button" onclick="submitBatchProducts()" style="background: #059669; color: white; border: none; padding: 8px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 4px;">確認批次新增</button>
