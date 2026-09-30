@@ -199,7 +199,8 @@
       <h4 style="color: #f59e0b; margin-bottom: 8px; text-align: center;">📊 已成立訂單商品總數量統計</h4>
       <div style="background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
         <label style="font-size: 12px; color: #ccc;">選擇要統計的團務：</label>
-        <select id="adminStatsGroup" style="margin-top: 4px;"></select>
+        <!-- 找到這行並加上 onchange -->
+<select id="adminStatsGroup" style="margin-top: 4px;" onchange="loadOrderStats()"></select>
         <div id="orderStatsResult" style="margin-top: 10px; font-size: 12px;">請選擇團務以查看統計</div>
       </div>
 
@@ -237,6 +238,76 @@
       }
   }
   window.sendPreOrderEmail = sendPreOrderEmail;
+  async function loadOrderStats() {
+  let selectElem = document.getElementById('adminStatsGroup');
+  let groupName = selectElem ? selectElem.value : '';
+  let resultDiv = document.getElementById('orderStatsResult');
+  if (!resultDiv) return;
+
+  if (!groupName) {
+    resultDiv.innerHTML = "請選擇團務以查看統計";
+    return;
+  }
+
+  resultDiv.innerHTML = "正在計算統計資料...";
+
+  try {
+    // 撈取該團務且處理狀態為「已成立」或「已變更」的訂單
+    const { data: orders, error } = await db
+      .from('orders')
+      .select('訂單內容')
+      .eq('團務名稱', groupName)
+      .in('處理狀態', ['已成立', '已變更']);
+
+    if (error) throw error;
+
+    if (!orders || orders.length === 0) {
+      resultDiv.innerHTML = "<p style='color:#aaa;'>該團務目前沒有已成立或已變更的訂單。</p>";
+      return;
+    }
+
+    // 統計各商品的總數量
+    let itemCounts = {};
+    orders.forEach(order => {
+      let items = order["訂單內容"] || [];
+      items.forEach(item => {
+        let name = item.name;
+        let qty = parseInt(item.qty) || 0;
+        itemCounts[name] = (itemCounts[name] || 0) + qty;
+      });
+    });
+
+    // 繪製統計表格
+    let html = `<table style="width:100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; color: #fff;">
+      <thead>
+        <tr style="background: #18181b; text-align: left; border-bottom: 1px solid #444;">
+          <th style="padding: 6px 8px;">商品名稱</th>
+          <th style="padding: 6px 8px; text-align: right; width: 100px;">已喊總數</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    let entries = Object.entries(itemCounts);
+    if (entries.length === 0) {
+      resultDiv.innerHTML = "<p style='color:#aaa;'>無下單商品統計。</p>";
+      return;
+    }
+
+    entries.forEach(([name, count]) => {
+      html += `<tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 6px 8px;">${name}</td>
+        <td style="padding: 6px 8px; text-align: right; font-weight: bold; color: #f59e0b;">${count} 個</td>
+      </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    resultDiv.innerHTML = html;
+
+  } catch (err) {
+    resultDiv.innerHTML = `<p style="color:#f87171;">統計載入失敗：${err.message}</p>`;
+  }
+}
+window.loadOrderStats = loadOrderStats;
 
   const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
@@ -700,18 +771,21 @@
   }
 
   function verifyAdmin() {
-    let pwd = document.getElementById('adminPassword').value;
-    if (pwd === "841250") { // 換成您原本的密碼判斷
-        document.getElementById('adminLoginForm').style.display = 'none';
-        document.getElementById('adminDashboard').style.display = 'block';
-        
-        // 🚀 在這裡加入這幾行，登入後自動載入資料
-        if (typeof loadPendingOrders === 'function') loadPendingOrders();
-        if (typeof loadAllOrders === 'function') loadAllOrders(); 
-        if (typeof loadAdminGroups === 'function') loadAdminGroups();
-    } else {
-        alert("密碼錯誤！");
-    }
+  let pwd = document.getElementById('adminPassword').value;
+  if (pwd === "841250") {
+      document.getElementById('adminLoginForm').style.display = 'none';
+      document.getElementById('adminDashboard').style.display = 'block';
+      
+      if (typeof loadPendingOrders === 'function') loadPendingOrders();
+      if (typeof loadAllOrders === 'function') loadAllOrders(); 
+      if (typeof loadAdminGroups === 'function') loadAdminGroups();
+      
+      // 補上這行：切換下拉選單時自動觸發統計
+      let statsSelect = document.getElementById('adminStatsGroup');
+      if (statsSelect) statsSelect.onchange = loadOrderStats;
+  } else {
+      alert("密碼錯誤！");
+  }
 }
   async function submitBatchProducts() {
     let targetGroup = document.getElementById('adminTargetGroup').value;
