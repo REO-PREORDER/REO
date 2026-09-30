@@ -773,16 +773,28 @@ window.updateOrderStatus = async function(orderId, newStatus) {
       const { error } = await db.from('orders').update(updateData).eq('id', orderId);
       if (error) throw error;
 
+      // 1. 取得該筆訂單詳細資料
       const { data: orderData, error: fetchError } = await db.from('orders').select('*').eq('id', orderId).single();
       
       if (!fetchError && orderData) {
+          // 2. 從後台 groups 資料表抓取該團務的付款方式（若找不到則預設為 "事先匯款"）
+          let paymentMethod = "事先匯款";
+          const { data: groupData, error: groupError } = await db.from('groups').select('*').eq('團務名稱', orderData["團務名稱"]).single();
+          if (!groupError && groupData && groupData["付款方式"]) {
+              paymentMethod = groupData["付款方式"];
+          }
+
+          // 3. 將商品陣列轉為整齊的文字清單
+          let productText = orderData["訂單內容"].map(i => `${i.name} x ${i.qty} ($${i.price} / 小計: $${i.price * i.qty})`).join("\n");
+
+          // 4. 傳送正確的資料給 Cloudflare Worker 寄信
           await sendPreOrderEmail({
               customerEmail: orderData["Email"],          
               lineName: orderData["買家名稱"],              
               groupName: orderData["團務名稱"],             
-              productDetails: orderData["訂單內容"],        
+              productDetails: productText,        
               totalPrice: orderData["總金額"],              
-              paymentMethod: "事先匯款",                     
+              paymentMethod: paymentMethod, // 這裡會動態帶入從 groups 抓到的付款方式
               status: newStatus,                            
               changeReason: changeReason                    
           });
