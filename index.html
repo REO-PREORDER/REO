@@ -1080,10 +1080,9 @@ function openModifyModal(order) {
         if (typeof loadPendingOrders === 'function') loadPendingOrders(); // 同步重新整理待確認
     } catch (err) {
         alert("更新失敗：" + err.message);
-    }
+   }
 };
-<script>
-// 獨立的統計功能區塊，完全不受前方語法影響
+
 async function loadOrderStats() {
     let groupSelect = document.getElementById('adminStatsGroup');
     let resultContainer = document.getElementById('orderStatsResult');
