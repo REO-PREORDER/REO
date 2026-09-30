@@ -186,7 +186,7 @@
     <!-- 編輯模式專用：選擇團務下拉選單 -->
     <div id="editGroupSelectBox" style="display: none; margin-bottom: 12px; background: #1a1a1a; padding: 10px; border-radius: 6px; border: 1px solid #3b82f6;">
       <label style="font-size: 12px; color: #60a5fa; font-weight: bold;">請選擇要編輯的團務：</label>
-      <select id="editGroupSelect" onchange="onSelectGroupToEdit()" style="width: 100%; padding: 6px; margin-top: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;"></select>
+      <select id="editGroupSelect" onchange="onSelectGroupToEdit(); loadProductsForEdit(this.value);" style="width: 100%; padding: 6px; margin-top: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;"></select>
     </div>
 
     <!-- 表單區域 -->
