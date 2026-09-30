@@ -245,16 +245,27 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(emailData)
           });
+
           const result = await response.json();
-          if (!response.ok) throw new Error(result.error || '寄信失敗');
+
+          if (!response.ok) {
+              // 解析 Worker 回傳的詳細錯誤物件，避免跳出 [object Object]
+              let errMsg = typeof result.error === 'object' ? JSON.stringify(result.error) : (result.error || result.message || '寄信服務回應異常');
+              throw new Error(errMsg);
+          }
+
           console.log('通知信已成功發送：', result);
+          return result;
+
       } catch (err) {
           console.error('寄信過程發生錯誤：', err);
-          alert("訂單狀態已更新，但通知信發送失敗：" + err.message);
+          // 確保錯誤訊息轉為純文字，精準顯示報錯原因
+          let showMsg = err.message || JSON.stringify(err);
+          alert("訂單狀態已更新，但通知信發送失敗：" + showMsg);
       }
   }
   window.sendPreOrderEmail = sendPreOrderEmail;
-
+  
   // 轉換 Google 雲端硬碟網址為直接顯示圖片格式
   function formatImageUrl(url) {
     if (!url) return "";
