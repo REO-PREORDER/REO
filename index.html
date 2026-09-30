@@ -937,9 +937,8 @@ async function loadPendingOrders() {
       container.innerHTML = "<p style='color:#f87171;'>載入訂單紀錄失敗。</p>"; 
     }
 }
-  // 開啟變更訂單的介面
+ // 開啟變更訂單的介面
 function openModifyModal(order) {
-    // 建立一個簡單的互動視窗 (Modal)
     let modalBg = document.createElement('div');
     modalBg.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;";
     
@@ -978,7 +977,6 @@ function openModifyModal(order) {
     modalBg.appendChild(modalBox);
     document.body.appendChild(modalBg);
 
-    // 即時計算總金額的監聽函式
     const calculateTotal = () => {
         let total = 0;
         let rows = modalBox.querySelectorAll('.modify-item-row');
@@ -991,17 +989,14 @@ function openModifyModal(order) {
         return total;
     };
 
-    // 當輸入框數值改變時，自動重新計算總金額
     modalBox.querySelectorAll('.item-price, .item-qty').forEach(input => {
         input.addEventListener('input', calculateTotal);
     });
 
-    // 關閉按鈕
     modalBox.querySelector('#closeModifyBtn').onclick = () => {
         document.body.removeChild(modalBg);
     };
 
-    // 儲存變更按鈕
     modalBox.querySelector('#saveModifyBtn').onclick = async () => {
         let newItems = [];
         let rows = modalBox.querySelectorAll('.modify-item-row');
@@ -1027,14 +1022,11 @@ function openModifyModal(order) {
         }
 
         let newTotal = calculateTotal();
-
-        // 詢問變更原因與備註
         let changeReason = prompt("請輸入變更訂單的原因或備註說明（選填）：", "商品數量/價格調整") || "無";
 
         if (!confirm(`確定要儲存變更嗎？\n新總金額將改為：$${newTotal}`)) return;
 
         try {
-            // 1. 更新 Supabase 內的訂單內容、總金額，並將狀態改為「已變更」
             const { error } = await db.from('orders').update({
                 "訂單內容": newItems,
                 "總金額": newTotal,
@@ -1043,45 +1035,42 @@ function openModifyModal(order) {
 
             if (error) throw error;
 
-            // 2. 從 groups 表抓取該團的付款方式
             let paymentMethod = "事先匯款";
             const { data: groupData, error: groupError } = await db.from('groups').select('*').eq('團務名稱', order["團務名稱"]).single();
             if (!groupError && groupData && groupData["付款方式"]) {
                 paymentMethod = groupData["付款方式"];
             }
 
-            // 3. 將新的商品清單轉為好讀的文字字串
             let productText = newItems.map(i => `${i.name} x ${i.qty} ($${i.price} / 小計: $${i.price * i.qty})`).join("\n");
 
-            // 4. 呼叫全域寄信函式發送通知信
-        if (typeof sendPreOrderEmail === 'function') {
-            try {
-                await sendPreOrderEmail({
-                    customerEmail: order["Email"],          
-                    lineName: order["買家名稱"],              
-                    groupName: order["團務名稱"],             
-                    productDetails: productText,        
-                    totalPrice: newTotal,              
-                    paymentMethod: paymentMethod, 
-                    status: "已變更",                            
-                    changeReason: changeReason                    
-                });
-           } catch (emailErr) {
-                console.error("【寄信失敗完整物件】", emailErr);
-                // 嘗試抓取可能藏在裡面的錯誤文字
-                let errMsg = emailErr.message || emailErr.error || emailErr.msg || JSON.stringify(emailErr, null, 2);
-                alert("訂單已更新，但通知信發送失敗：" + errMsg);
+            if (typeof sendPreOrderEmail === 'function') {
+                try {
+                    await sendPreOrderEmail({
+                        customerEmail: order["Email"],          
+                        lineName: order["買家名稱"],              
+                        groupName: order["團務名稱"],             
+                        productDetails: productText,        
+                        totalPrice: newTotal,              
+                        paymentMethod: paymentMethod, 
+                        status: "已變更",                            
+                        changeReason: changeReason                    
+                    });
+                } catch (emailErr) {
+                    console.error("【寄信失敗完整物件】", emailErr);
+                    let errMsg = emailErr.message || emailErr.error || JSON.stringify(emailErr, null, 2);
+                    alert("訂單已更新，但通知信發送失敗：" + errMsg);
+                }
             }
+
+            alert("訂單已成功修改、更新並已發送通知信！");
+            document.body.removeChild(modalBg);
+            loadAllOrders();
+            if (typeof loadPendingOrders === 'function') loadPendingOrders();
+        } catch (err) {
+            alert("更新失敗：" + err.message);
         }
-
-        alert("訂單已成功修改、更新並已發送通知信！");
-        document.body.removeChild(modalBg);
-        loadAllOrders(); // 重新整理所有訂單列表
-        if (typeof loadPendingOrders === 'function') loadPendingOrders(); // 同步重新整理待確認
-    } catch (err) {
-        alert("更新失敗：" + err.message);
-   }
-};
-
+    };
+}
+</script>
 </body>
 </html>
