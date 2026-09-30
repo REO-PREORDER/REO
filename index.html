@@ -518,7 +518,7 @@ async function loadExportGroupOptions() {
   }
 }
 
-// 1. 📦 匯出買家訂單與出貨明細表 (支援指定團務)
+// 1. 📦 匯出買家訂單與出貨明細表 (修正：包含已變更、已成立等所有未取消訂單)
 async function exportBuyerOrdersCSV() {
   const selectedGroup = document.getElementById('exportGroupSelect')?.value || "ALL";
 
@@ -529,14 +529,18 @@ async function exportBuyerOrdersCSV() {
     }
 
     const { data: orders, error } = await query;
-    if (error || !orders || orders.length === 0) {
-      alert("該團務目前沒有任何訂單紀錄可供匯出！");
+    
+    // 過濾掉已取消的訂單
+    const validOrders = (orders || []).filter(ord => ord.status !== '已取消');
+
+    if (error || validOrders.length === 0) {
+      alert("該團務目前沒有可匯出的有效訂單（可能為空或皆已取消）！");
       return;
     }
 
     let csv = "訂單時間,團務名稱,買家姓名,聯絡電話,付款方式,配送方式,商品明細,總金額,訂單狀態\n";
 
-    orders.forEach(ord => {
+    validOrders.forEach(ord => {
       const time = `"${ord.created_at || ''}"`;
       const group = `"${(ord.group_name || ord['團名'] || '').replace(/"/g, '""')}"`;
       const name = `"${(ord.buyer_name || ord['買家姓名'] || ord['姓名'] || '').replace(/"/g, '""')}"`;
@@ -566,7 +570,7 @@ async function exportBuyerOrdersCSV() {
   }
 }
 
-// 2. 📊 匯出團務商品採購總數表 (支援指定團務與分類)
+// 2. 📊 匯出團務商品採購總數表 (修正：精準包含已變更狀態的訂單)
 async function exportProductSummaryCSV() {
   const selectedGroup = document.getElementById('exportGroupSelect')?.value || "ALL";
 
@@ -578,15 +582,18 @@ async function exportProductSummaryCSV() {
 
     const { data: orders, error } = await query;
     if (error || !orders || orders.length === 0) {
-      alert("該團務目前沒有任何訂單可計算採購總數！");
+      alert("該團務目前沒有任何訂單紀錄！");
       return;
     }
 
     const summaryMap = {};
+    let validCount = 0;
 
     orders.forEach(ord => {
-      if (ord.status === '已取消') return; // 過濾取消訂單
+      // 只要狀態不是「已取消」，一律納入採購數量統計（包含 已成立、已變更、已付款等）
+      if (ord.status === '已取消') return;
 
+      validCount++;
       const groupName = ord.group_name || ord['團名'] || '未分類團務';
       const itemsList = ord.items || ord['商品列表'] || [];
 
@@ -610,6 +617,11 @@ async function exportProductSummaryCSV() {
         summaryMap[key].totalQty += pQty;
       });
     });
+
+    if (validCount === 0) {
+      alert("該團務下的訂單皆為「已取消」，無有效商品可供採購統計！");
+      return;
+    }
 
     const sortedSummary = Object.values(summaryMap).sort((a, b) => {
       if (a.group !== b.group) return a.group.localeCompare(b.group);
