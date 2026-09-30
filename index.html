@@ -768,9 +768,9 @@
               <div style="margin:4px 0; background:#121212; padding:6px; border-radius:4px;">${itemsHtml}</div>
               <div><b>總金額：</b>$${o["總金額"]}</div>
               <div style="display:flex; gap:6px; margin-top:8px;">
-<button onclick="updateOrderStatus('訂單ID', '已成立')">設為已成立</button>
-<button onclick="updateOrderStatus('訂單ID', '已取消')">設為已取消</button>
-<button onclick="updateOrderStatus('訂單ID', '已出貨')">設為已出貨</button>
+<button onclick="updateOrderStatus('item.id', '已成立')">設為已成立</button>
+<button onclick="updateOrderStatus('item.id', '已取消')">設為已取消</button>
+<button onclick="updateOrderStatus('item.id', '已出貨')">設為已出貨</button>
               </div>
             </div>
           `;
