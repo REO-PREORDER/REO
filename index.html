@@ -740,11 +740,42 @@
       msgElem.innerText = "新增失敗：" + err.message;
     }
   }
-// 務必確認是寫 window.updateOrderStatus
 window.updateOrderStatus = async function(orderId, newStatus) {
-    // 裡面的程式碼保持不動...
+    let changeReason = "";
+    if (newStatus === '已取消') {
+        changeReason = prompt("請輸入取消訂單的原因或備註（選填）：", "商品缺貨 / 買家主動取消") || "無";
+    } else {
+        changeReason = prompt("請輸入該狀態的備註說明（選填）：", "無") || "無";
+    }
+
+    if (!confirm(`確定要將此訂單改為「${newStatus}」嗎？`)) return;
+
+    try {
+      const updateData = { "處理狀態": newStatus };
+      const { error } = await db.from('orders').update(updateData).eq('id', orderId);
+      if (error) throw error;
+
+      const { data: orderData, error: fetchError } = await db.from('orders').select('*').eq('id', orderId).single();
+      
+      if (!fetchError && orderData) {
+          await sendPreOrderEmail({
+              customerEmail: orderData["Email"],          
+              lineName: orderData["買家名稱"],              
+              groupName: orderData["團務名稱"],             
+              productDetails: orderData["訂單內容"],        
+              totalPrice: orderData["總金額"],              
+              paymentMethod: "事先匯款",                     
+              status: newStatus,                            
+              changeReason: changeReason                    
+          });
+      }
+
+      alert(`狀態已成功更新為「${newStatus}」並已發送通知信！`);
+      loadPendingOrders();
+    } catch (err) { alert("更新失敗：" + err.message); }
 }
-  async function loadPendingOrders() {
+
+async function loadPendingOrders() {
     let container = document.getElementById('pendingOrdersList');
     container.innerHTML = "載入中...";
     try {
@@ -787,7 +818,7 @@ window.updateOrderStatus = async function(orderId, newStatus) {
         container.innerHTML = html;
       } else { container.innerHTML = "<p style='color:#aaa; font-size:12px;'>目前沒有待確認的訂單。</p>"; }
     } catch (err) { container.innerHTML = "<p style='color:#f87171;'>載入訂單失敗。</p>"; }
-  }
+}
 </script>
 
 </body>
