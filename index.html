@@ -1492,10 +1492,15 @@ function closeLightbox() {
 
       let html = `<h4 style="color:#fff; margin: 10px 0;">${groupName} 餘量</h4>`;
       if (currentSurplusProducts.length > 0) {
+        // 💡 讀取瀏覽器中記住的買家資料
+        let savedName = localStorage.getItem('reo_buyer_lineName') || '';
+        let savedPhone = localStorage.getItem('reo_buyer_phone') || '';
+        let savedEmail = localStorage.getItem('reo_buyer_email') || '';
+
         html += `<div style="background:#252525; padding:10px; margin-bottom:10px; border-radius:6px;">
-          <input type="text" id="surplus_name" placeholder="Line / FB 暱稱 *" style="margin-bottom:6px; width:100%; padding:8px; background:#18181b; border:1px solid #444; color:#fff; border-radius:4px;">
-          <input type="text" id="surplus_phone" placeholder="手機號碼 *" style="margin-bottom:6px; width:100%; padding:8px; background:#18181b; border:1px solid #444; color:#fff; border-radius:4px;">
-          <input type="email" id="surplus_email" placeholder="Email 電子信箱 *" style="width:100%; padding:8px; background:#18181b; border:1px solid #444; color:#fff; border-radius:4px;">
+          <input type="text" id="surplus_name" value="${savedName}" placeholder="Line / FB 暱稱 *" style="margin-bottom:6px; width:100%; padding:8px; background:#18181b; border:1px solid #444; color:#fff; border-radius:4px;">
+          <input type="text" id="surplus_phone" value="${savedPhone}" placeholder="手機號碼 *" style="margin-bottom:6px; width:100%; padding:8px; background:#18181b; border:1px solid #444; color:#fff; border-radius:4px;">
+          <input type="email" id="surplus_email" value="${savedEmail}" placeholder="Email 電子信箱 *" style="width:100%; padding:8px; background:#18181b; border:1px solid #444; color:#fff; border-radius:4px;">
         </div>`;
 
         currentSurplusProducts.forEach((p, index) => {
@@ -1545,9 +1550,7 @@ function closeLightbox() {
     if (name) localStorage.setItem('reo_buyer_lineName', name);
     if (phone) localStorage.setItem('reo_buyer_phone', phone);
     if (email) localStorage.setItem('reo_buyer_email', email);
-    let selectedItems = [];
-    let totalPrice = 0;
-
+    
     currentSurplusProducts.forEach((p, index) => {
       let qtySelect = document.getElementById(`surplus_qty_${index}`);
       let qty = qtySelect ? parseInt(qtySelect.value) : 0;
