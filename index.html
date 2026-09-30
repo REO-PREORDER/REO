@@ -1862,81 +1862,107 @@ function switchOrderRecordTab(status) {
 }
 window.switchOrderRecordTab = switchOrderRecordTab;
 
-// 根據傳入的狀態 (已成立 / 已取消) 載入訂單紀錄
-async function loadAllOrders(targetStatus) {
-  let statusToLoad = targetStatus || currentRecordStatus || "已成立";
-  let container = document.getElementById('allOrdersList');
-  if (!container) return;
+// 📦 載入所有訂單紀錄（對應表格結構 #allOrdersTbody）
+async function loadAllOrders() {
+  const tbody = document.getElementById('allOrdersTbody');
+  if (!tbody) return;
   
-  container.innerHTML = `<div style="text-align:center; color:#aaa; font-size:12px; padding:15px;">載入 [${statusToLoad}] 訂單中...</div>`;
-  
-  try {
-    // 依據目標狀態撈取資料（如果選已成立，包含「已成立」與「已變更」）
-    let query = db.from('orders').select('*');
-    
-    if (statusToLoad === "已成立") {
-      query = query.in('處理狀態', ['已成立', '已變更']);
-    } else {
-      query = query.eq('處理狀態', '已取消');
-    }
+  tbody.innerHTML = "<tr><td colspan='6' style='text-align:center; padding:15px; color:#888;'>載入訂單中...</td></tr>";
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+  try {
+    const { data, error } = await db
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    if (data && data.length > 0) {
-      container.innerHTML = ""; 
-      
-      for (let o of data) {
-        let itemsHtml = "";
-        (o["訂單內容"] || []).forEach((i) => { 
-          let subtotal = (i.price || 0) * (i.qty || 1);
-          itemsHtml += `
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-size: 11px; background:#181818; padding:4px 6px; border-radius:4px;">
-              <span>${i.name}</span>
-              <span>$${i.price} x ${i.qty} = $${subtotal}</span>
-            </div>`; 
-        });
+    window.allOrdersData = data || [];
+    renderOrdersTable(window.allOrdersData);
+    
+    // 更新篩選下拉選單
+    updateFilterGroupOptions(window.allOrdersData);
 
-        // 動態狀態顏色
-        let statusColor = "#10b981"; // 已成立 (綠色)
-        if (o["處理狀態"] === "已變更") statusColor = "#f59e0b"; // 已變更 (橘黃色)
-        if (o["處理狀態"] === "已取消") statusColor = "#ef4444"; // 已取消 (紅色)
-
-        let card = document.createElement('div');
-        card.style.cssText = "background:#242424; padding:12px; border-radius:8px; margin-bottom:10px; font-size:12px; text-align:left;";
-        card.innerHTML = `
-          <div><b>時間：</b>${new Date(o.created_at).toLocaleString()} | <b>團名：</b>${o["團務名稱"]}</div>
-          <div><b>買家：</b>${o["買家名稱"]} (${o["手機號碼"]}) | <b>狀態：</b><span style="color:${statusColor}; font-weight:bold;">${o["處理狀態"]}</span></div>
-          <div style="margin:6px 0; background:#121212; padding:6px; border-radius:4px;">${itemsHtml}</div>
-          <div style="font-weight:bold; margin-bottom:8px;">總金額：$${o["總金額"]}</div>
-          <div style="display: flex; gap: 8px;" id="all-actions-${o.id}"></div>
-        `;
-        container.appendChild(card);
-
-        let actionDiv = card.querySelector(`#all-actions-${o.id}`);
-        
-        let btnModify = document.createElement('button');
-        btnModify.innerText = "✏️ 變更訂單";
-        btnModify.style.cssText = "background-color: #3b82f6; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;";
-        btnModify.onclick = () => openModifyModal(o);
-
-        let btnCancel = document.createElement('button');
-        btnCancel.innerText = "✕ 取消訂單";
-        btnCancel.style.cssText = "background-color: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;";
-        btnCancel.onclick = () => updateOrderStatus(o.id, '已取消');
-
-        actionDiv.appendChild(btnModify);
-        actionDiv.appendChild(btnCancel);
-      }
-    } else { 
-      container.innerHTML = `<p style='color:#aaa; font-size:12px; text-align:center; padding:15px;'>目前沒有 [${statusToLoad}] 的訂單紀錄。</p>`; 
-    }
-  } catch (err) { 
-    container.innerHTML = "<p style='color:#f87171;'>載入訂單紀錄失敗：" + err.message + "</p>"; 
+  } catch (err) {
+    console.error("載入訂單失敗：", err);
+    tbody.innerHTML = `<tr><td colspan='6' style='text-align:center; padding:15px; color:#f87171;'>載入失敗：${err.message}</td></tr>`;
   }
 }
 window.loadAllOrders = loadAllOrders;
+
+// 🎨 渲染訂單表格
+function renderOrdersTable(orders) {
+  const tbody = document.getElementById('allOrdersTbody');
+  if (!tbody) return;
+
+  if (!orders || orders.length === 0) {
+    tbody.innerHTML = "<tr><td colspan='6' style='text-align:center; padding:15px; color:#888;'>目前沒有任何訂單紀錄</td></tr>";
+    return;
+  }
+
+  let html = "";
+  orders.forEach(o => {
+    let timeStr = o.created_at ? new Date(o.created_at).toLocaleString() : "未知時間";
+    
+    // 狀態顏色
+    let statusColor = "#10b981"; // 預設綠色
+    if (o["處理狀態"] === "已變更") statusColor = "#f59e0b";
+    if (o["處理狀態"] === "已取消") statusColor = "#ef4444";
+
+    html += `
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #aaa;">${timeStr}</td>
+        <td style="padding: 8px; color: #fff; font-weight: bold;">${o["買家名稱"] || '未填寫'}</td>
+        <td style="padding: 8px; color: #60a5fa;">${o["團務名稱"] || '-'}</td>
+        <td style="padding: 8px; color: #f87171; font-weight: bold;">$${o["總金額"] || 0}</td>
+        <td style="padding: 8px; font-weight: bold; color: ${statusColor};">${o["處理狀態"] || '待確認'}</td>
+        <td style="padding: 8px; display: flex; gap: 4px;">
+          <button onclick='openModifyModal(${JSON.stringify(o)})' style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏️ 變更</button>
+          <button onclick="updateOrderStatus('${o.id}', '已取消')" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✕ 取消</button>
+        </td>
+      </tr>
+    `;
+  });
+  tbody.innerHTML = html;
+}
+
+// 🔍 搜尋與篩選訂單
+function filterOrders() {
+  const keyword = document.getElementById('searchOrderInput').value.toLowerCase();
+  const selectedGroup = document.getElementById('filterGroupSelect').value;
+
+  if (!window.allOrdersData) return;
+
+  let filtered = window.allOrdersData.filter(o => {
+    let matchKeyword = !keyword || 
+      (o["買家名稱"] && o["買家名稱"].toLowerCase().includes(keyword)) ||
+      (o["手機號碼"] && o["手機號碼"].toLowerCase().includes(keyword)) ||
+      (o["Email"] && o["Email"].toLowerCase().includes(keyword));
+
+    let matchGroup = !selectedGroup || o["團務名稱"] === selectedGroup;
+
+    return matchKeyword && matchGroup;
+  });
+
+  renderOrdersTable(filtered);
+}
+window.filterOrders = filterOrders;
+
+// 📋 更新篩選團務的下拉選單
+function updateFilterGroupOptions(orders) {
+  const select = document.getElementById('filterGroupSelect');
+  if (!select) return;
+
+  let groups = [...new Set(orders.map(o => o["團務名稱"]).filter(Boolean))];
+  let currentVal = select.value;
+
+  let html = '<option value="">所有團務</option>';
+  groups.forEach(g => {
+    html += `<option value="${g}">${g}</option>`;
+  });
+  select.innerHTML = html;
+  select.value = currentVal;
+}
   function openModifyModal(order) {
     let modalBg = document.createElement('div');
     modalBg.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;";
