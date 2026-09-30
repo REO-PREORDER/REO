@@ -423,7 +423,11 @@ function onSelectGroupToEdit() {
     document.getElementById('newGroupRemark').value = group["團務備註"] || "";
   }
 
-  // 🎯 關鍵：加上這行，才會去讀取並顯示該團務底下的商品！
+ // 🎯 1. 讓商品編輯區塊顯示出來
+  const editBox = document.getElementById('groupProductEditBox');
+  if (editBox) editBox.style.display = 'block';
+
+  // 🎯 2. 讀取並顯示該團務底下的商品
   if (typeof loadProductsForEdit === 'function') {
     loadProductsForEdit(selectedId);
   }
