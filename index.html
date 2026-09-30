@@ -1759,42 +1759,46 @@ window.addEventListener('hashchange', checkAdminHash);
   msgElem.style.color = "#aaa";
   msgElem.innerText = "正在解析並新增商品...";
 
+  // 1. 直接以「行」為單位來切分每一個商品
   let lines = rawText.split('\n');
   let newProducts = [];
-  
-  // 用來暫存每一列的欄位資料
-  let currentParts = [];
 
   for (let line of lines) {
     line = line.trim();
     if (!line) continue;
 
-    // 如果這一行包含了 Tab（代表是試算表複製過來的一整列）
-    if (line.includes('\t')) {
-      // 如果之前已經累積了一筆資料，先把它結算送出
-      if (currentParts.length >= 3) {
-        parseAndPushProduct(currentParts, targetGroup, newProducts);
-      }
-      // 開始新的一列
-      currentParts = line.split('\t').map(p => p.trim());
-    } else {
-      // 如果沒有 Tab，代表這是上一欄（例如很長的網址或說明）被強制換行斷開的部分，把它接在上一欄後面
-      if (currentParts.length > 0) {
-        currentParts[currentParts.length - 1] += " " + line;
-      } else {
-        currentParts = [line];
+    // 2. 每一行裡面，用 Tab (\t) 或多個空格把欄位拆開
+    let parts = line.includes('\t') ? line.split('\t') : line.split(/\s+/);
+    parts = parts.map(p => p.trim()).filter(p => p !== "");
+
+    // 確保至少有 分類、名稱、單價 (3個欄位以上)
+    if (parts.length >= 3) {
+      let pCat = parts[0] || "一般";
+      let pName = parts[1] || "";
+      let pPrice = parseFloat(parts[2]) || 0;
+      let pImg = parts[3] || "";
+      let pDesc = parts.slice(4).join(" "); // 後面剩下的全部當作商品說明
+
+      // 修正網址內的空格問題
+      pImg = pImg.replace(/(\?|\&)\s+/g, '$1');
+
+      if (pName && !isNaN(pPrice)) {
+        newProducts.push({
+          "團務名稱": targetGroup,
+          "商品分類": pCat,
+          "商品名稱": pName,
+          "單價": pPrice,
+          "圖片": formatImageUrl(pImg),
+          "商品說明": pDesc,
+          "isExpired": false
+        });
       }
     }
   }
 
-  // 結算最後一筆
-  if (currentParts.length >= 3) {
-    parseAndPushProduct(currentParts, targetGroup, newProducts);
-  }
-
   if (newProducts.length === 0) {
     msgElem.style.color = "#f87171";
-    msgElem.innerText = "解析失敗！請確認是否有正確從試算表複製範圍。";
+    msgElem.innerText = "解析失敗！請確認貼上的格式是否正確（分類、名稱、單價）。";
     return;
   }
 
@@ -1806,37 +1810,12 @@ window.addEventListener('hashchange', checkAdminHash);
     msgElem.innerText = `✓ 成功批次新增 ${newProducts.length} 項商品！`;
     document.getElementById('batchProductsInput').value = "";
     
-    // 如果有重新載入列表的函式，可在這裡呼叫
     if (typeof loadGroupProducts === 'function') {
       loadGroupProducts(targetGroup);
     }
   } catch (err) {
     msgElem.style.color = "#f87171";
     msgElem.innerText = "新增失敗：" + err.message;
-  }
-}
-
-// 輔助解析函式：對應順序 [分類, 名稱, 單價, 圖片, 說明]
-function parseAndPushProduct(parts, targetGroup, newProducts) {
-  let pCat = parts[0] || "一般";
-  let pName = parts[1] || "";
-  let pPrice = parseFloat(parts[2]) || 0;
-  let pImg = parts[3] || "";
-  let pDesc = parts.slice(4).join(" ");
-
-  // 修正網址空格問題
-  pImg = pImg.replace(/(\?|\&)\s+/g, '$1');
-
-  if (pName && !isNaN(pPrice)) {
-    newProducts.push({
-      "團務名稱": targetGroup,
-      "商品分類": pCat,
-      "商品名稱": pName,
-      "單價": pPrice,
-      "圖片": formatImageUrl(pImg),
-      "商品說明": pDesc,
-      "isExpired": false
-    });
   }
 }
 
