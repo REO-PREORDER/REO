@@ -1067,9 +1067,9 @@ function openModifyModal(order) {
                     changeReason: changeReason                    
                 });
            } catch (emailErr) {
-                console.error("寄信失敗詳情：", emailErr);
-                // 👉 確保能正確印出錯誤文字
-                let errMsg = emailErr.message || (typeof emailErr === 'string' ? emailErr : JSON.stringify(emailErr));
+                console.error("【寄信失敗完整物件】", emailErr);
+                // 嘗試抓取可能藏在裡面的錯誤文字
+                let errMsg = emailErr.message || emailErr.error || emailErr.msg || JSON.stringify(emailErr, null, 2);
                 alert("訂單已更新，但通知信發送失敗：" + errMsg);
             }
         }
