@@ -518,47 +518,66 @@ async function loadExportGroupOptions() {
   }
 }
 
-// 1. 📦 匯出買家訂單與出貨明細表 (修正：包含已變更、已成立等所有未取消訂單)
+// 1. 📦 匯出買家訂單與出貨明細表 (修正欄位與選單換行符號)
 async function exportBuyerOrdersCSV() {
-  const selectedGroup = document.getElementById('exportGroupSelect')?.value || "ALL";
+  const selectEl = document.getElementById('exportGroupSelect');
+  // 取得選單的值，並去除所有換行與前後空白
+  const selectedGroup = selectEl ? selectEl.value.replace(/\r?\n|\r/g, '').trim() : "ALL";
 
   try {
-    let query = db.from('orders').select('*').order('created_at', { ascending: false });
-    if (selectedGroup !== "ALL") {
-      query = query.eq('group_name', selectedGroup);
-    }
-
-    const { data: orders, error } = await query;
+    const { data: allOrders, error } = await db.from('orders').select('*').order('created_at', { ascending: false });
     
-    // 過濾掉已取消的訂單
-    const validOrders = (orders || []).filter(ord => ord.status !== '已取消');
-
-    if (error || validOrders.length === 0) {
-      alert("該團務目前沒有可匯出的有效訂單（可能為空或皆已取消）！");
+    if (error || !allOrders || allOrders.length === 0) {
+      alert("目前 orders 資料表中沒有任何訂單！");
       return;
     }
 
-    let csv = "訂單時間,團務名稱,買家姓名,聯絡電話,付款方式,配送方式,商品明細,總金額,訂單狀態\n";
+    // 比對訂單 (排除已取消，並進行團名乾淨比對)
+    const validOrders = allOrders.filter(ord => {
+      if (ord.status === '已取消') return false;
+      if (selectedGroup === "ALL") return true;
+
+      // 取得資料庫中的團名 (優先讀取「團務名稱」)
+      const gName = String(ord['團務名稱'] || ord.group_name || ord['團名'] || '').replace(/\r?\n|\r/g, '').trim();
+      return gName === selectedGroup;
+    });
+
+    if (validOrders.length === 0) {
+      alert(`在「${selectedGroup}」團務下找不到有效的訂單紀錄！`);
+      return;
+    }
+
+    let csv = "訂單時間,團務名稱,買家姓名,聯絡電話,Email,商品明細,總金額,訂單狀態\n";
 
     validOrders.forEach(ord => {
       const time = `"${ord.created_at || ''}"`;
-      const group = `"${(ord.group_name || ord['團名'] || '').replace(/"/g, '""')}"`;
-      const name = `"${(ord.buyer_name || ord['買家姓名'] || ord['姓名'] || '').replace(/"/g, '""')}"`;
-      const phone = `"${ord.phone || ord['電話'] || ord['手機'] || ''}"`;
-      const payment = `"${ord.payment || ord['付款方式'] || ''}"`;
-      const shipping = `"${ord.shipping || ord['配送方式'] || ''}"`;
-      const total = ord.total_price || ord['總金額'] || 0;
+      const group = `"${(ord['團務名稱'] || ord.group_name || ord['團名'] || '').replace(/"/g, '""')}"`;
+      const name = `"${(ord['買家名稱'] || ord.buyer_name || ord['姓名'] || '').replace(/"/g, '""')}"`;
+      const phone = `"${ord['手機號碼'] || ord.phone || ord['電話'] || ''}"`;
+      const email = `"${ord['Email'] || ord.email || ''}"`;
+      const total = ord['總金額'] || ord.total_price || 0;
       const status = `"${ord.status || '已成立'}"`;
 
-      const itemsList = ord.items || ord['商品列表'] || [];
-      const itemsStr = itemsList.map(item => {
-        const iName = item.name || item['商品名稱'] || '';
-        const iQty = item.qty || item['數量'] || 1;
-        return `${iName} x${iQty}`;
-      }).join(' ; ');
+      // 商品內容解析
+      let itemsList = ord['訂單內容'] || ord.items || ord['商品列表'] || [];
+      if (typeof itemsList === 'string') {
+        try { itemsList = JSON.parse(itemsList); } catch(e) {}
+      }
+
+      let itemsStr = "";
+      if (Array.isArray(itemsList)) {
+        itemsStr = itemsList.map(item => {
+          const iName = item.name || item['商品名稱'] || '';
+          const iQty = item.qty || item['數量'] || 1;
+          return `${iName} x${iQty}`;
+        }).join(' ; ');
+      } else {
+        itemsStr = String(itemsList);
+      }
+
       const itemsEscaped = `"${itemsStr.replace(/"/g, '""')}"`;
 
-      csv += `${time},${group},${name},${phone},${payment},${shipping},${itemsEscaped},${total},${status}\n`;
+      csv += `${time},${group},${name},${phone},${email},${itemsEscaped},${total},${status}\n`;
     });
 
     const today = new Date().toISOString().split('T')[0];
@@ -570,56 +589,54 @@ async function exportBuyerOrdersCSV() {
   }
 }
 
-// 2. 📊 匯出團務商品採購總數表 (修正：精準包含已變更狀態的訂單)
+// 2. 📊 匯出團務商品採購總數表 (修正欄位與選單換行符號)
 async function exportProductSummaryCSV() {
-  const selectedGroup = document.getElementById('exportGroupSelect')?.value || "ALL";
+  const selectEl = document.getElementById('exportGroupSelect');
+  const selectedGroup = selectEl ? selectEl.value.replace(/\r?\n|\r/g, '').trim() : "ALL";
 
   try {
-    let query = db.from('orders').select('*');
-    if (selectedGroup !== "ALL") {
-      query = query.eq('group_name', selectedGroup);
-    }
-
-    const { data: orders, error } = await query;
-    if (error || !orders || orders.length === 0) {
-      alert("該團務目前沒有任何訂單紀錄！");
+    const { data: allOrders, error } = await db.from('orders').select('*');
+    if (error || !allOrders || allOrders.length === 0) {
+      alert("目前 orders 資料表中沒有任何訂單！");
       return;
     }
 
     const summaryMap = {};
     let validCount = 0;
 
-    orders.forEach(ord => {
-      // 只要狀態不是「已取消」，一律納入採購數量統計（包含 已成立、已變更、已付款等）
+    allOrders.forEach(ord => {
       if (ord.status === '已取消') return;
 
+      const groupName = String(ord['團務名稱'] || ord.group_name || ord['團名'] || '未分類團務').replace(/\r?\n|\r/g, '').trim();
+      
+      if (selectedGroup !== "ALL" && groupName !== selectedGroup) return;
+
       validCount++;
-      const groupName = ord.group_name || ord['團名'] || '未分類團務';
-      const itemsList = ord.items || ord['商品列表'] || [];
 
-      itemsList.forEach(item => {
-        const pName = item.name || item['商品名稱'] || '未知商品';
-        const pCategory = item.category || item['商品分類'] || item['分類'] || '未分類';
-        const pPrice = Number(item.price || item['單價'] || 0);
-        const pQty = Number(item.qty || item['數量'] || 1);
+      let itemsList = ord['訂單內容'] || ord.items || ord['商品列表'] || [];
+      if (typeof itemsList === 'string') {
+        try { itemsList = JSON.parse(itemsList); } catch(e) { itemsList = []; }
+      }
 
-        const key = `${groupName}__${pCategory}__${pName}`;
+      if (Array.isArray(itemsList)) {
+        itemsList.forEach(item => {
+          const pName = item.name || item['商品名稱'] || '未知商品';
+          const pCategory = item.category || item['商品分類'] || item['分類'] || '未分類';
+          const pPrice = Number(item.price || item['單價'] || 0);
+          const pQty = Number(item.qty || item['數量'] || 1);
 
-        if (!summaryMap[key]) {
-          summaryMap[key] = {
-            group: groupName,
-            category: pCategory,
-            name: pName,
-            price: pPrice,
-            totalQty: 0
-          };
-        }
-        summaryMap[key].totalQty += pQty;
-      });
+          const key = `${groupName}__${pCategory}__${pName}`;
+
+          if (!summaryMap[key]) {
+            summaryMap[key] = { group: groupName, category: pCategory, name: pName, price: pPrice, totalQty: 0 };
+          }
+          summaryMap[key].totalQty += pQty;
+        });
+      }
     });
 
     if (validCount === 0) {
-      alert("該團務下的訂單皆為「已取消」，無有效商品可供採購統計！");
+      alert(`找不到「${selectedGroup}」的有效訂單！`);
       return;
     }
 
