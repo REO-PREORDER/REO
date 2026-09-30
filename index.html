@@ -1065,7 +1065,7 @@ function renderProductGrid() {
       <div class="product-card">
         <div>
           <div class="product-img-box">
-            ${mainImg ? `<img src="${mainImg}" alt="商品圖片">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#555;">暫無圖片</div>'}
+            ${mainImg ? `<img src="${formatImageUrl(mainImg)}" alt="商品圖片">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#555;">暫無圖片</div>'}
             ${imgList.length > 0 ? `<button class="zoom-btn" onclick="openLightbox('${rawImg.replace(/'/g, "\\'")}')">🔍</button>` : ''}
             ${multiBadge}
           </div>
