@@ -1083,10 +1083,10 @@ function openModifyModal(order) {
     }
 };
 window.loadOrderStats = async function() {
-  let groupSelect = document.getElementById('adminStatsGroup');
+    let groupSelect = document.getElementById('adminStatsGroup');
     let resultContainer = document.getElementById('orderStatsResult');
     if (!groupSelect || !resultContainer) return;
-
+    
     let selectedGroup = groupSelect.value;
     if (!selectedGroup) {
         resultContainer.innerHTML = "請選擇團務以查看統計";
@@ -1094,9 +1094,8 @@ window.loadOrderStats = async function() {
     }
 
     resultContainer.innerHTML = "統計計算中...";
-
+    
     try {
-        // 同時抓取「已成立」與「已變更」的訂單
         const { data: orders, error } = await db
             .from('orders')
             .select('*')
@@ -1110,7 +1109,6 @@ window.loadOrderStats = async function() {
             return;
         }
 
-        // 統計每個商品的總數量與總金額
         let statsMap = {};
         let totalOrdersCount = orders.length;
         let totalRevenue = 0;
@@ -1131,7 +1129,6 @@ window.loadOrderStats = async function() {
             }
         });
 
-        // 組合顯示的 HTML 列表
         let html = `
             <div style="background: #181818; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
                 <b>有效訂單總數：</b> ${totalOrdersCount} 筆 | <b>總營業額：</b> $${totalRevenue}
@@ -1151,8 +1148,14 @@ window.loadOrderStats = async function() {
     } catch (err) {
         resultContainer.innerHTML = "<p style='color:#f87171;'>載入統計失敗：" + err.message + "</p>";
     }
-}
-   }
+};
+
+// 👉 確保團務選單載入後，如果已經有選項，就自動跑一次統計
+setTimeout(() => {
+    if (typeof window.loadOrderStats === 'function') {
+        window.loadOrderStats();
+    }
+}, 1000);
 </script>
 
 </body>
