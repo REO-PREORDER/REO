@@ -1082,6 +1082,76 @@ function openModifyModal(order) {
         alert("更新失敗：" + err.message);
     }
 };
+  async function loadOrderStats() {
+    let groupSelect = document.getElementById('adminStatsGroup');
+    let resultContainer = document.getElementById('orderStatsResult');
+    if (!groupSelect || !resultContainer) return;
+
+    let selectedGroup = groupSelect.value;
+    if (!selectedGroup) {
+        resultContainer.innerHTML = "請選擇團務以查看統計";
+        return;
+    }
+
+    resultContainer.innerHTML = "統計計算中...";
+
+    try {
+        // 同時抓取「已成立」與「已變更」的訂單
+        const { data: orders, error } = await db
+            .from('orders')
+            .select('*')
+            .eq('團務名稱', selectedGroup)
+            .in('處理狀態', ['已成立', '已變更']);
+
+        if (error) throw error;
+
+        if (!orders || orders.length === 0) {
+            resultContainer.innerHTML = "<p style='color:#aaa;'>目前該團沒有已成立或已變更的訂單紀錄。</p>";
+            return;
+        }
+
+        // 統計每個商品的總數量與總金額
+        let statsMap = {};
+        let totalOrdersCount = orders.length;
+        let totalRevenue = 0;
+
+        orders.forEach(order => {
+            totalRevenue += order["總金額"] || 0;
+            if (Array.isArray(order["訂單內容"])) {
+                order["訂單內容"].forEach(item => {
+                    let name = item.name;
+                    let qty = parseInt(item.qty) || 0;
+                    let price = parseFloat(item.price) || 0;
+
+                    if (!statsMap[name]) {
+                        statsMap[name] = { qty: 0, price: price };
+                    }
+                    statsMap[name].qty += qty;
+                });
+            }
+        });
+
+        // 組合顯示的 HTML 列表
+        let html = `
+            <div style="background: #181818; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                <b>有效訂單總數：</b> ${totalOrdersCount} 筆 | <b>總營業額：</b> $${totalRevenue}
+            </div>
+            <div style="background: #1e1e1e; padding: 8px; border-radius: 6px;">
+                <b>商品總數量明細：</b>
+                <ul style="margin: 5px 0 0 20px; padding: 0;">
+        `;
+
+        for (let [name, info] of Object.entries(statsMap)) {
+            html += `<li style="margin-bottom: 4px;">${name}：<span style="color: #60a5fa; font-weight: bold;">${info.qty} 份</span></li>`;
+        }
+
+        html += `</ul></div>`;
+        resultContainer.innerHTML = html;
+
+    } catch (err) {
+        resultContainer.innerHTML = "<p style='color:#f87171;'>載入統計失敗：" + err.message + "</p>";
+    }
+}
    }
 </script>
 
