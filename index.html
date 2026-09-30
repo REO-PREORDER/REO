@@ -490,24 +490,24 @@ async function submitGroupForm() {
 
     clearGroupForm();
     
-    // 📦 讀取並顯示指定團務底下的商品清單供編輯
-async function loadProductsForEdit(groupId) {
+  // 📦 讀取並顯示指定團務底下的商品清單供編輯
+async function loadProductsForEdit(groupIdOrName) {
   const container = document.getElementById('productListContainer');
   if (!container) return;
   
-  container.innerHTML = "<div style='color: #aaa; font-size: 12px; text-align: center;'>載入商品中...</div>";
+  container.innerHTML = "<div style='color: #aaa; font-size: 12px; text-align: center; padding: 10px;'>載入商品中...</div>";
 
   try {
-    // 取得目前下拉選單選中的「團務名稱」
+    // 取得目前下拉選單選中的團務名稱
     const selectEl = document.getElementById('editGroupSelect');
     const groupName = selectEl ? selectEl.value : "";
 
-    if (!groupName) {
-      container.innerHTML = "<p style='font-size: 12px; color: #888; text-align: center;'>請先選擇團務</p>";
+    if (!groupName || groupName.includes("-- 請選擇")) {
+      container.innerHTML = "<p style='font-size: 12px; color: #888; text-align: center; padding: 10px;'>請先選擇團務</p>";
       return;
     }
 
-    // 🎯 直接用您資料表中的「團務名稱」來查詢商品
+    // 直接用您的 products 資料表中的「團務名稱」來查詢商品
     const { data: products, error } = await db
       .from('products')
       .select('*')
@@ -539,6 +539,18 @@ async function loadProductsForEdit(groupId) {
   }
 }
 window.loadProductsForEdit = loadProductsForEdit;
+
+// 確保選擇團務時一定會連動載入商品
+const originalOnSelect = window.onSelectGroupToEdit;
+window.onSelectGroupToEdit = function() {
+  if (typeof originalOnSelect === 'function') {
+    originalOnSelect();
+  }
+  const selectEl = document.getElementById('editGroupSelect');
+  if (selectEl) {
+    loadProductsForEdit(selectEl.value);
+  }
+};
 // 儲存單一商品修改
 async function saveProduct(prodId) {
   const name = document.getElementById(`prodName_${prodId}`).value;
