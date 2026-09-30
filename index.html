@@ -1358,7 +1358,7 @@ function closeLightbox() {
           ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">餘量登記</span>`
           : `<span style="background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">預購填單</span>`;
 
-        let cleanTitle = groupName.replace(" (現貨餘量認領)", "").replace(" (餘量認領)", "");
+        let cleanTitle = groupName.replace(" (餘量認領)", "").replace(" (餘量認領)", "");
 
         let statusColor = "#3b82f6";
         let statusText = order["處理狀態"] || "待處理";
@@ -1555,7 +1555,7 @@ function closeLightbox() {
 
     try {
       const { data: orderData, error: orderErr } = await db.from('orders').insert([{
-        "團務名稱": activeSurplusGroup + " (現貨餘量認領)",
+        "團務名稱": activeSurplusGroup + " (餘量認領)",
         "買家名稱": name,
         "手機號碼": phone,
         "Email": email,
@@ -1579,7 +1579,7 @@ function closeLightbox() {
 
       if (typeof sendPreOrderEmail === 'function') {
         try {
-          let paymentMethod = "現貨餘量認領";
+          let paymentMethod = "餘量認領";
           const { data: groupData } = await db.from('groups').select('付款方式').eq('團務名稱', activeSurplusGroup).single();
           if (groupData && groupData["付款方式"]) paymentMethod = groupData["付款方式"];
 
@@ -1588,7 +1588,7 @@ function closeLightbox() {
           await sendPreOrderEmail({
             customerEmail: email,
             lineName: name,
-            groupName: activeSurplusGroup + " (現貨餘量認領)",
+            groupName: activeSurplusGroup + " (餘量認領)",
             productDetails: productDetailsText,
             totalPrice: totalPrice,
             paymentMethod: paymentMethod,
@@ -1847,7 +1847,7 @@ window.submitBatchProducts = submitBatchProducts;
     // 3. 若改為已取消且為餘量訂單，自動退還庫存
     if (isSurplusOrder && newStatus === "已取消" && oldStatus !== "已取消") {
       let items = order["訂單內容"] || [];
-      let cleanGroupName = groupName.replace(" (現貨餘量認領)", "").replace(" (餘量認領)", "").trim();
+      let cleanGroupName = groupName.replace(" (餘量認領)", "").replace(" (餘量認領)", "").trim();
 
       for (let item of items) {
         const { data: prodData } = await db
