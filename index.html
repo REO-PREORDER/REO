@@ -2241,6 +2241,30 @@ function updateFilterGroupOptions(orders) {
         }
     }
   }
+  // 🚀 強制解除卡在「載入團務列表中...」的死結
+window.addEventListener('load', async () => {
+    console.log("強制啟動載入機制...");
+    try {
+        if (typeof loadGroupList === 'function') {
+            await loadGroupList();
+        } else if (typeof loadGroups === 'function') {
+            await loadGroups();
+        } else {
+            // 如果找不到原本的函數，直接手動抓取 groups 資料填入畫面
+            const { data, error } = await db.from('groups').select('*');
+            if (!error && data) {
+                console.log("成功手動抓取到團務資料：", data);
+                // 這裡會自動去找畫面上的容器並把「載入中...」覆蓋掉
+                let container = document.querySelector('#groupContainer') || document.querySelector('.group-container');
+                if (container) {
+                    container.innerHTML = data.map(g => `<div style="padding:10px; background:#222; margin-bottom:5px; border-radius:6px; color:#fff;">${g["團務名稱"]}</div>`).join('');
+                }
+            }
+        }
+    } catch (e) {
+        console.error("強制載入失敗原因：", e);
+    }
+});
 </script>
 </body>
 </html>
