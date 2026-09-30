@@ -1892,19 +1892,37 @@ window.submitBatchProducts = submitBatchProducts;
 
     if (updateErr) throw updateErr;
 
-    // 5. 發送 Email 通知信（帶入取消原因）
+   // 5. 發送 Email 通知信（帶入取消原因與正確的付款方式）
     if (typeof sendPreOrderEmail === 'function' && order["Email"]) {
       try {
         let items = order["訂單內容"] || [];
         let productDetailsText = items.map(i => `${i.name} x ${i.qty || 1} ($${i.price || 0})`).join("\n");
 
+        // 修正：從資料庫的 order 物件中抓取付款方式，若無則預設為一般匯款
+       // 修正：從資料庫的 groups 表格查詢該團的付款方式
+        let currentPaymentMethod = "一般匯款";
+        if (groupName) {
+          // 清理團務名稱（如果包含「 (餘量認領)」先移除以對應 groups 表格）
+          let cleanGroupName = groupName.replace(" (餘量認領)", "").trim();
+          
+          const { data: groupData, error: groupErr } = await db
+            .from('groups')
+            .select('付款方式')
+            .eq('團務名稱', cleanGroupName)
+            .single();
+          
+          if (!groupErr && groupData && groupData["付款方式"]) {
+            currentPaymentMethod = groupData["付款方式"];
+          }
+        }
+
         await sendPreOrderEmail({
           customerEmail: order["Email"],
-          lineName: order["買家名稱"] || "貴賓",
+          lineName: order["買家名稱"],
           groupName: groupName,
           productDetails: productDetailsText,
           totalPrice: order["總金額"],
-          paymentMethod: paymentMethod,
+          paymentMethod: currentPaymentMethod, // 帶入正確從 groups 查到的付款方式
           status: newStatus,
           changeReason: changeReason
         });
