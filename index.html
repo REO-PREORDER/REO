@@ -1275,7 +1275,17 @@ function closeLightbox() {
     statusMsg.style.color = "#aaa";
     statusMsg.innerText = "正在送出預購訂單...";
 
+    // 💡 記憶買家的個人聯絡資訊到瀏覽器中
+    const savedLineName = document.getElementById('lineName').value.trim();
+    const savedPhone = document.getElementById('phone').value.trim();
+    const savedEmail = document.getElementById('email').value.trim();
+    
+    if (savedLineName) localStorage.setItem('reo_buyer_lineName', savedLineName);
+    if (savedPhone) localStorage.setItem('reo_buyer_phone', savedPhone);
+    if (savedEmail) localStorage.setItem('reo_buyer_email', savedEmail);
+
     try {
+      
       // 1. 寫入 Supabase orders 表格
       const { error } = await db.from('orders').insert([{
         "團務名稱": selectedGroupName, "買家名稱": lineName, "手機號碼": phone,
@@ -2310,6 +2320,24 @@ window.addEventListener('load', async () => {
         console.error("強制載入失敗原因：", e);
     }
 });
-</script>
+  // ==========================================
+// 當網頁載入完成時，自動填入上次記住的聯絡資訊
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+  const lineNameInput = document.getElementById('lineName');
+  const phoneInput = document.getElementById('phone');
+  const emailInput = document.getElementById('email');
+
+  if (lineNameInput && localStorage.getItem('reo_buyer_lineName')) {
+    lineNameInput.value = localStorage.getItem('reo_buyer_lineName');
+  }
+  if (phoneInput && localStorage.getItem('reo_buyer_phone')) {
+    phoneInput.value = localStorage.getItem('reo_buyer_phone');
+  }
+  if (emailInput && localStorage.getItem('reo_buyer_email')) {
+    emailInput.value = localStorage.getItem('reo_buyer_email');
+  }
+});
+</script> <!-- 👈 把它放在 </script> 的正上方就對囉！ -->
 </body>
 </html>
