@@ -514,7 +514,7 @@ async function submitGroupForm() {
   });
   container.innerHTML = html;
 }
-
+window.loadProductsForEdit = loadProductsForEdit;
 // 儲存單一商品修改
 async function saveProduct(prodId) {
   const name = document.getElementById(`prodName_${prodId}`).value;
