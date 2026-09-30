@@ -472,21 +472,31 @@ async function loadProductsForEdit(groupId) {
     if (error) throw error;
 
     let html = `
-      <div style="background: #1e1e1e; border: 1px dashed #3b82f6; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-        <div style="color: #60a5fa; font-weight: bold; font-size: 12px; margin-bottom: 8px;">➕ 新增商品到此團務</div>
-        <div style="display: flex; gap: 6px; flex-direction: column;">
-          <input type="text" id="newProdName" placeholder="商品名稱" style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-          <div style="display: flex; gap: 6px;">
-            <input type="number" id="newProdPrice" placeholder="單價 ($)" style="flex: 1; padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-            <input type="text" id="newProdCategory" placeholder="商品分類 (預設: 一般)" value="一般" style="flex: 1; padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-          </div>
-          <input type="text" id="newProdImg" placeholder="商品圖片網址 (URL)" style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-          <textarea id="newProdDesc" placeholder="商品說明..." style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 50px;"></textarea>
-          <button type="button" onclick="addProductToCurrentGroup()" style="background: #2563eb; color: white; border: none; padding: 8px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; margin-top: 4px;">確認新增商品</button>
-        </div>
+  <div style="background: #1e1e1e; border: 1px dashed #3b82f6; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+    <div style="color: #60a5fa; font-weight: bold; font-size: 12px; margin-bottom: 8px;">➕ 新增商品到此團務</div>
+    <div style="display: flex; gap: 6px; flex-direction: column;">
+      <input type="text" id="newProdName" placeholder="商品名稱" style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+      <div style="display: flex; gap: 6px;">
+        <input type="number" id="newProdPrice" placeholder="單價 ($)" style="flex: 1; padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+        <input type="text" id="newProdCategory" placeholder="商品分類 (預設: 一般)" value="一般" style="flex: 1; padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
       </div>
-      <div style="font-size: 12px; color: #aaa; margin-bottom: 6px; font-weight: bold;">現有商品列表：</div>
-    `;
+      <input type="text" id="newProdImg" placeholder="商品圖片網址 (URL)" style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+      <textarea id="newProdDesc" placeholder="商品說明..." style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 50px;"></textarea>
+      <button type="button" onclick="addProductToCurrentGroup()" style="background: #2563eb; color: white; border: none; padding: 8px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; margin-top: 4px;">確認新增商品</button>
+    </div>
+  </div>
+
+  <!-- 💡 新增：批次貼上新增商品區塊 -->
+  <div style="background: #1e1e1e; border: 1px dashed #10b981; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+    <div style="color: #10b981; font-weight: bold; font-size: 12px; margin-bottom: 4px;">📦 批次貼上新增商品（每行一個）</div>
+    <div style="color: #aaa; font-size: 11px; margin-bottom: 8px;">支援格式：名稱, 單價, 圖片, 說明 (可用 Tab、逗號或空格分隔)</div>
+    <textarea id="batchProductsInput" placeholder="請在此貼上多行商品資料..." style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 70px; width: 100%; box-sizing: border-box;"></textarea>
+    <div id="batchMsg" style="font-size: 11px; margin: 4px 0;"></div>
+    <button type="button" onclick="submitBatchProducts()" style="background: #059669; color: white; border: none; padding: 8px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 4px;">確認批次新增</button>
+  </div>
+
+  <div style="font-size: 12px; color: #aaa; margin-bottom: 6px; font-weight: bold;">現有商品列表：</div>
+`;
 
     if (!products || products.length === 0) {
       html += "<p style='font-size: 12px; color: #888; text-align: center; padding: 6px;'>此團務目前沒有任何商品。</p>";
@@ -1751,54 +1761,35 @@ window.addEventListener('hashchange', checkAdminHash);
 
   let lines = rawText.split('\n'), newProducts = [];
   
+  // ==========================================
+  // 👇 把這段貼在這邊（直接取代原本舊的解析迴圈） 👇
+  // ==========================================
   for (let line of lines) {
     line = line.trim();
     if (!line) continue;
 
-    // 1. 先處理網址內誤加入空格的問題 (例如 ? format=jpg)
+    // 1. 處理網址內誤加入空格的問題
     line = line.replace(/(\?|\&)\s+/g, '$1');
 
-    // 2. 切分欄位：優先用 Tab (\t) 或逗號切分；若沒有則用多個空格切分
+    // 2. 切分欄位：支援 Tab (\t) 或逗號
     let parts = [];
     if (line.includes('\t')) {
       parts = line.split('\t');
     } else if (line.includes(',')) {
       parts = line.split(',');
     } else {
-      parts = line.split(/\s+/); // 相容用空格分開欄位的情況
+      parts = line.split(/\s+/);
     }
     
     parts = parts.map(p => p.trim()).filter(p => p !== "");
 
-    if (parts.length >= 2) {
-      let pCat = "一般";
-      let pName = "";
-      let pPrice = 0;
-      let pImg = "";
-      let pDesc = "";
-
-      // 判斷第1欄是不是單價數字
-      if (!isNaN(parseFloat(parts[1]))) {
-        // 格式 A：分類  名稱  單價  圖片  說明 (長度 >= 3)
-        pCat = parts[0];
-        pName = parts[1];
-        pPrice = parseFloat(parts[2]);
-        pImg = parts[3] || "";
-        pDesc = parts.slice(4).join(" ");
-      } else if (!isNaN(parseFloat(parts[2]))) {
-        // 格式 B：分類  名稱  單價  圖片  說明
-        pCat = parts[0];
-        pName = parts[1];
-        pPrice = parseFloat(parts[2]);
-        pImg = parts[3] || "";
-        pDesc = parts.slice(4).join(" ");
-      } else {
-        // 格式 C：名稱  單價  圖片  說明
-        pName = parts[0];
-        pPrice = parseFloat(parts[1]);
-        pImg = parts[2] || "";
-        pDesc = parts.slice(3).join(" ");
-      }
+    if (parts.length >= 3) { // 至少要有 分類、名稱、單價
+      let pCat = parts[0];
+      let pName = parts[1];
+      let pPrice = parseFloat(parts[2]) || 0;
+      let pImg = parts[3] || "";
+      // 說明可能包含空格，把後面剩下的全部組合起來
+      let pDesc = parts.slice(4).join(" ");
 
       if (pName && !isNaN(pPrice)) {
         newProducts.push({
@@ -1806,17 +1797,19 @@ window.addEventListener('hashchange', checkAdminHash);
           "商品分類": pCat,
           "商品名稱": pName,
           "單價": pPrice,
-          "圖片": formatImageUrl(pImg),
+          "圖片": formatImageUrl(pImg), // 支援 Google Drive 圖片連結轉換
           "商品說明": pDesc,
           "isExpired": false
         });
       }
     }
   }
+  // ==========================================
+  // 👆 -------------------------------------- 👆
 
   if (newProducts.length === 0) {
     msgElem.style.color = "#f87171";
-    msgElem.innerText = "解析失敗！請確認格式（至少要有：商品名稱 單價）。";
+    msgElem.innerText = "解析失敗！請確認格式（至少要有：商品分類 商品名稱 單價）。";
     return;
   }
 
@@ -1833,7 +1826,6 @@ window.addEventListener('hashchange', checkAdminHash);
   }
 }
 window.submitBatchProducts = submitBatchProducts;
-
  async function updateOrderStatus(orderId, newStatus) {
   try {
     // 1. 如果是改為「已取消」，先跳出輸入框讓管理員填寫原因
