@@ -827,7 +827,7 @@ window.loadSurplusProducts = loadSurplusProducts;
       "訂單內容": selectedItems,
       "總金額": totalPrice,
       "處理狀態": "已成立",
-      "備註": "現貨餘量認領"
+      "備註": "餘量認領"
     }]).select();
 
     if (orderErr) throw orderErr;
@@ -844,7 +844,7 @@ window.loadSurplusProducts = loadSurplusProducts;
     // 3. 發送寄信通知
     if (typeof sendPreOrderEmail === 'function') {
       try {
-        let paymentMethod = "現貨餘量認領";
+        let paymentMethod = "餘量認領";
         const { data: groupData } = await db.from('groups').select('付款方式').eq('團務名稱', activeSurplusGroup).single();
         if (groupData && groupData["付款方式"]) paymentMethod = groupData["付款方式"];
 
@@ -853,7 +853,7 @@ window.loadSurplusProducts = loadSurplusProducts;
         await sendPreOrderEmail({
           customerEmail: email,
           lineName: name,
-          groupName: activeSurplusGroup + " (現貨餘量認領)",
+          groupName: activeSurplusGroup + " (餘量認領)",
           productDetails: productDetailsText,
           totalPrice: totalPrice,
           paymentMethod: paymentMethod,
