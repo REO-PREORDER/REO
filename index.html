@@ -1081,7 +1081,9 @@ function openModifyModal(order) {
     } catch (err) {
         alert("更新失敗：" + err.message);
     }
-});
+};
+<script>
+// 獨立的統計功能區塊，完全不受前方語法影響
 async function loadOrderStats() {
     let groupSelect = document.getElementById('adminStatsGroup');
     let resultContainer = document.getElementById('orderStatsResult');
@@ -1096,7 +1098,6 @@ async function loadOrderStats() {
     resultContainer.innerHTML = "統計計算中...";
     
     try {
-        // 同時抓取「已成立」與「已變更」的訂單
         const { data: orders, error } = await db
             .from('orders')
             .select('*')
