@@ -243,14 +243,17 @@
     </div>
     <!-- 訂單列表表格容器 -->
     <div id="allOrdersTableContainer" style="overflow-x: auto; max-height: 400px;">
-      <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #ccc;">
+     <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #ccc;">
         <thead>
           <tr style="background: #333; text-align: left;">
             <th style="padding: 8px;">時間</th>
             <th style="padding: 8px;">買家姓名</th>
             <th style="padding: 8px;">團務名稱</th>
+            <!-- 💡 在這裡插入商品明細表頭 -->
+            <th style="padding: 8px;">商品明細</th> 
             <th style="padding: 8px;">總金額</th>
-            <th style="padding: 8px;">付款狀態</th>
+            <th style="padding: 8px;">商品明細</th>
+            <th style="padding: 8px;">訂單狀態</th>
             <th style="padding: 8px;">操作</th>
           </tr>
         </thead>
@@ -1902,7 +1905,7 @@ window.submitBatchProducts = submitBatchProducts;
           groupName: groupName,
           productDetails: productDetailsText,
           totalPrice: order["總金額"],
-          paymentMethod: "付款方式",
+          paymentMethod: paymentMethod,
           status: newStatus,
           changeReason: changeReason
         });
@@ -2050,7 +2053,7 @@ function renderOrdersTable(orders) {
   if (!tbody) return;
 
   if (!orders || orders.length === 0) {
-    tbody.innerHTML = "<tr><td colspan='6' style='text-align:center; padding:15px; color:#888;'>目前沒有任何訂單紀錄</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; padding:15px; color:#888;'>目前沒有任何訂單紀錄</td></tr>";
     return;
   }
 
@@ -2063,16 +2066,30 @@ function renderOrdersTable(orders) {
     if (o["處理狀態"] === "已變更") statusColor = "#f59e0b";
     if (o["處理狀態"] === "已取消") statusColor = "#ef4444";
 
+    // 處理商品明細的顯示格式
+    let detailsText = "";
+    let items = o["訂單內容"];
+    if (typeof items === "string") {
+      try { items = JSON.parse(items); } catch (e) {}
+    }
+    
+    if (Array.isArray(items)) {
+      detailsText = items.map(i => `${i.name || i["商品名稱"]} x ${i.qty || i["數量"]} ($${i.price || 0})`).join("<br>");
+    } else {
+      detailsText = items || "無明細";
+    }
+
     html += `
       <tr style="border-bottom: 1px solid #333;">
         <td style="padding: 8px; color: #aaa;">${timeStr}</td>
         <td style="padding: 8px; color: #fff; font-weight: bold;">${o["買家名稱"] || '未填寫'}</td>
         <td style="padding: 8px; color: #60a5fa;">${o["團務名稱"] || '-'}</td>
+        <td style="padding: 8px; color: #ddd; line-height: 1.4; font-size: 11px;">${detailsText}</td>
         <td style="padding: 8px; color: #f87171; font-weight: bold;">$${o["總金額"] || 0}</td>
         <td style="padding: 8px; font-weight: bold; color: ${statusColor};">${o["處理狀態"] || '待確認'}</td>
-       <td style="padding: 8px; display: flex; gap: 4px; flex-wrap: wrap;">
+        <td style="padding: 8px; display: flex; gap: 4px; flex-wrap: wrap;">
           <button onclick="updateOrderStatus('${o.id}', '已成立')" style="background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✓ 成立</button>
-          <button onclick='openModifyModal(${JSON.stringify(o)})' style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏️ 變更</button>
+          <button onclick='openModifyModal(${JSON.stringify(o)})' style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏️️ 變更</button>
           <button onclick="updateOrderStatus('${o.id}', '已取消')" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✕ 取消</button>
         </td>
       </tr>
