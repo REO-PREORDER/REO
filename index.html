@@ -1082,7 +1082,6 @@ function openModifyModal(order) {
         alert("更新失敗：" + err.message);
    }
 };
-
 async function loadOrderStats() {
     let groupSelect = document.getElementById('adminStatsGroup');
     let resultContainer = document.getElementById('orderStatsResult');
@@ -1130,20 +1129,18 @@ async function loadOrderStats() {
             }
         });
 
-        let html = `
-            <div style="background: #181818; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
-                <b>有效訂單總數：</b> ${totalOrdersCount} 筆 | <b>總營業額：</b> $${totalRevenue}
-            </div>
-            <div style="background: #1e1e1e; padding: 8px; border-radius: 6px;">
-                <b>商品總數量明細：</b>
-                <ul style="margin: 5px 0 0 20px; padding: 0;">
-        `;
+        let html = '<div style="background: #181818; padding: 10px; border-radius: 6px; margin-bottom: 10px;">';
+        html += '<b>有效訂單總數：</b> ' + totalOrdersCount + ' 筆 | <b>總營業額：</b> $' + totalRevenue;
+        html += '</div>';
+        html += '<div style="background: #1e1e1e; padding: 8px; border-radius: 6px;">';
+        html += '<b>商品總數量明細：</b>';
+        html += '<ul style="margin: 5px 0 0 20px; padding: 0;">';
 
         for (let [name, info] of Object.entries(statsMap)) {
-            html += `<li style="margin-bottom: 4px;">${name}：<span style="color: #60a5fa; font-weight: bold;">${info.qty} 份</span></li>`;
+            html += '<li style="margin-bottom: 4px;">' + name + '：<span style="color: #60a5fa; font-weight: bold;">' + info.qty + ' 份</span></li>';
         }
 
-        html += `</ul></div>`;
+        html += '</ul></div>';
         resultContainer.innerHTML = html;
 
     } catch (err) {
