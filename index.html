@@ -447,7 +447,7 @@ async function submitGroupForm() {
 window.submitGroupForm = submitGroupForm;
 window.submitCreateGroup = submitGroupForm;
 
-// 📦 讀取並顯示指定團務底下的商品清單供編輯（含新增與分類修改）
+// 📦 讀取並顯示指定團務底下的商品清單供編輯（含圖片網址與商品說明）
 async function loadProductsForEdit(groupId) {
   const container = document.getElementById('productListContainer');
   if (!container) return;
@@ -471,15 +471,17 @@ async function loadProductsForEdit(groupId) {
     if (error) throw error;
 
     let html = `
-      <div style="background: #1e1e1e; border: 1px dashed #3b82f6; padding: 10px; border-radius: 6px; margin-bottom: 12px;">
-        <div style="color: #60a5fa; font-weight: bold; font-size: 12px; margin-bottom: 6px;">➕ 新增商品到此團務</div>
+      <div style="background: #1e1e1e; border: 1px dashed #3b82f6; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+        <div style="color: #60a5fa; font-weight: bold; font-size: 12px; margin-bottom: 8px;">➕ 新增商品到此團務</div>
         <div style="display: flex; gap: 6px; flex-direction: column;">
-          <input type="text" id="newProdName" placeholder="商品名稱" style="padding: 4px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+          <input type="text" id="newProdName" placeholder="商品名稱" style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
           <div style="display: flex; gap: 6px;">
-            <input type="number" id="newProdPrice" placeholder="單價 ($)" style="flex: 1; padding: 4px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-            <input type="text" id="newProdCategory" placeholder="商品分類 (預設: 一般)" value="一般" style="flex: 1; padding: 4px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+            <input type="number" id="newProdPrice" placeholder="單價 ($)" style="flex: 1; padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+            <input type="text" id="newProdCategory" placeholder="商品分類 (預設: 一般)" value="一般" style="flex: 1; padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
           </div>
-          <button type="button" onclick="addProductToCurrentGroup()" style="background: #2563eb; color: white; border: none; padding: 6px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; margin-top: 4px;">確認新增商品</button>
+          <input type="text" id="newProdImg" placeholder="商品圖片網址 (URL)" style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+          <textarea id="newProdDesc" placeholder="商品說明..." style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 50px;"></textarea>
+          <button type="button" onclick="addProductToCurrentGroup()" style="background: #2563eb; color: white; border: none; padding: 8px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; margin-top: 4px;">確認新增商品</button>
         </div>
       </div>
       <div style="font-size: 12px; color: #aaa; margin-bottom: 6px; font-weight: bold;">現有商品列表：</div>
@@ -490,12 +492,18 @@ async function loadProductsForEdit(groupId) {
     } else {
       products.forEach(p => {
         html += `
-          <div style="display: flex; gap: 6px; align-items: center; background: #1a1a1a; padding: 8px; border-radius: 4px; margin-bottom: 6px;">
-            <input type="text" id="prodName_${p.id}" value="${p.商品名稱 || ''}" placeholder="商品名稱" style="flex: 2; padding: 4px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-            <input type="number" id="prodPrice_${p.id}" value="${p.單價 || 0}" placeholder="單價" style="flex: 1; padding: 4px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-            <input type="text" id="prodCat_${p.id}" value="${p.商品分類 || '一般'}" placeholder="分類" style="flex: 1; padding: 4px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-            <button type="button" onclick="saveProduct('${p.id}')" style="background: #059669; color: white; border: none; padding: 6px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;" title="儲存修改">💾</button>
-            <button type="button" onclick="deleteProduct('${p.id}')" style="background: #dc2626; color: white; border: none; padding: 6px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;" title="刪除商品">🗑</button>
+          <div style="background: #1a1a1a; padding: 10px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #333;">
+            <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
+              <input type="text" id="prodName_${p.id}" value="${p.商品名稱 || ''}" placeholder="商品名稱" style="flex: 2; padding: 5px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+              <input type="number" id="prodPrice_${p.id}" value="${p.單價 || 0}" placeholder="單價" style="flex: 1; padding: 5px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+              <input type="text" id="prodCat_${p.id}" value="${p.商品分類 || '一般'}" placeholder="分類" style="flex: 1; padding: 5px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+              <button type="button" onclick="saveProduct('${p.id}')" style="background: #059669; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;" title="儲存修改">💾</button>
+              <button type="button" onclick="deleteProduct('${p.id}')" style="background: #dc2626; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;" title="刪除商品">🗑</button>
+            </div>
+            <div style="display: flex; gap: 6px; flex-direction: column;">
+              <input type="text" id="prodImg_${p.id}" value="${p.圖片網址 || ''}" placeholder="圖片網址 (URL)" style="padding: 5px; font-size: 11px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px;">
+              <textarea id="prodDesc_${p.id}" placeholder="商品說明..." style="padding: 5px; font-size: 11px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; resize: vertical; height: 40px;">${p.商品說明 || ''}</textarea>
+            </div>
           </div>
         `;
       });
@@ -513,43 +521,37 @@ window.loadProductsForEdit = loadProductsForEdit;
 async function addProductToCurrentGroup() {
   const selectEl = document.getElementById('editGroupSelect');
   const groupName = selectEl ? selectEl.options[selectEl.selectedIndex].text : "";
-  const groupId = selectEl ? selectEl.value : "";
-
+  
   if (!groupName || groupName.includes("-- 請選擇")) {
     alert("請先選擇要新增商品的團務！");
     return;
   }
 
-  const nameInput = document.getElementById('newProdName');
-  const priceInput = document.getElementById('newProdPrice');
-  const catInput = document.getElementById('newProdCategory');
+  const name = document.getElementById('newProdName').value.trim();
+  const price = Number(document.getElementById('newProdPrice').value);
+  const category = document.getElementById('newProdCategory').value.trim() || "一般";
+  const image = document.getElementById('newProdImg').value.trim();
+  const description = document.getElementById('newProdDesc').value.trim();
 
-  const productName = nameInput ? nameInput.value.trim() : "";
-  const price = priceInput ? Number(priceInput.value) : 0;
-  const category = catInput ? catInput.value.trim() || "一般" : "一般";
-
-  if (!productName) {
+  if (!name) {
     alert("請輸入商品名稱！");
     return;
   }
 
-  try {
-    const { error } = await db.from('products').insert([
-      {
-        商品名稱: productName,
-        單價: price,
-        團務名稱: groupName,
-        商品分類: category,
-        group_id: groupId
-      }
-    ]);
+  const { error } = await db.from('products').insert([{
+    團務名稱: groupName,
+    商品名稱: name,
+    單價: price,
+    商品分類: category,
+    圖片網址: image,
+    商品說明: description
+  }]);
 
-    if (error) throw error;
-
-    alert("🎉 商品新增成功！");
-    loadProductsForEdit(groupId);
-  } catch (err) {
-    alert("新增商品失敗：" + err.message);
+  if (error) {
+    alert("新增商品失敗：" + error.message);
+  } else {
+    alert("商品新增成功！");
+    loadProductsForEdit();
   }
 }
 window.addProductToCurrentGroup = addProductToCurrentGroup;
@@ -559,12 +561,16 @@ async function saveProduct(prodId) {
   const nameInput = document.getElementById(`prodName_${prodId}`);
   const priceInput = document.getElementById(`prodPrice_${prodId}`);
   const catInput = document.getElementById(`prodCat_${prodId}`);
+  const imgInput = document.getElementById(`prodImg_${prodId}`);
+  const descInput = document.getElementById(`prodDesc_${prodId}`);
   
   if (!nameInput || !priceInput || !catInput) return;
   
   const newName = nameInput.value.trim();
   const newPrice = Number(priceInput.value);
   const newCategory = catInput.value.trim() || "一般";
+  const newImg = imgInput ? imgInput.value.trim() : "";
+  const newDesc = descInput ? descInput.value.trim() : "";
 
   if (!newName) {
     alert("商品名稱不可為空白！");
@@ -576,7 +582,9 @@ async function saveProduct(prodId) {
     .update({ 
       商品名稱: newName, 
       單價: newPrice, 
-      商品分類: newCategory 
+      商品分類: newCategory,
+      圖片網址: newImg,
+      商品說明: newDesc
     })
     .eq('id', prodId);
 
