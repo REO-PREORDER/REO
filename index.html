@@ -159,7 +159,7 @@
   <div id="querySection" class="section">
     <p style="color: #aaa; font-size: 13px; margin-bottom: 8px;">輸入手機號碼或 Email 查詢您的歷史預購：</p>
     <input type="text" id="searchKey" placeholder="請輸入手機或 Email">
-   <button onclick="queryOrder()">開始查詢</button>
+   <button onclick="queryOrder()" style="width: 100%; padding: 12px; background: #2563eb; color: #ffffff; border: none; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; margin-top: 10px;">開始查詢</button>
    <div id="searchResult"></div>
   </div>
 
@@ -677,11 +677,11 @@ window.loadOrderStats = loadOrderStats;
       let remark = order["備註"] || "";
       
       // 判斷是否為餘量認領訂單
-      let isSurplus = groupName.includes("現貨餘量認領") || remark.includes("現貨餘量認領");
+      let isSurplus = groupName.includes("餘量認領") || remark.includes("餘量認領");
 
       // 訂單類型標籤
       let typeBadge = isSurplus 
-        ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">現貨餘量登記</span>`
+        ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">餘量登記</span>`
         : `<span style="background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">預購填單</span>`;
 
       // 處理狀態顏色
