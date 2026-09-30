@@ -1916,7 +1916,8 @@ function renderOrdersTable(orders) {
         <td style="padding: 8px; color: #60a5fa;">${o["團務名稱"] || '-'}</td>
         <td style="padding: 8px; color: #f87171; font-weight: bold;">$${o["總金額"] || 0}</td>
         <td style="padding: 8px; font-weight: bold; color: ${statusColor};">${o["處理狀態"] || '待確認'}</td>
-        <td style="padding: 8px; display: flex; gap: 4px;">
+       <td style="padding: 8px; display: flex; gap: 4px; flex-wrap: wrap;">
+          <button onclick="updateOrderStatus('${o.id}', '已成立')" style="background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✓ 成立</button>
           <button onclick='openModifyModal(${JSON.stringify(o)})' style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏️ 變更</button>
           <button onclick="updateOrderStatus('${o.id}', '已取消')" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✕ 取消</button>
         </td>
@@ -2071,7 +2072,8 @@ function updateFilterGroupOptions(orders) {
             if (typeof sendPreOrderEmail === 'function') {
                 try {
                     await sendPreOrderEmail({
-                        customerEmail: order["Email"],          
+                        customerEmail: order["Email"], 
+                        subject: `【REO代購】${order["團務名稱"]} 訂單修改通知`, // 👈 加上這行主旨
                         lineName: order["買家名稱"],              
                         groupName: order["團務名稱"],             
                         productDetails: productText,        
