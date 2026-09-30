@@ -989,9 +989,9 @@ window.submitSurplusClaim = submitSurplusClaim;
       msgElem.innerText = "新增失敗：" + err.message;
     }
   }
-async function updateOrderStatus(orderId, newStatus) {
+async function updateOrderStatus(orderId, newStatus, changeReason = "無") {
   try {
-    // 1. 抓取訂單原本的詳細資料
+    // 撈取原訂單內容
     const { data: order, error: fetchErr } = await db
       .from('orders')
       .select('*')
@@ -1007,10 +1007,10 @@ async function updateOrderStatus(orderId, newStatus) {
     let remark = order["備註"] || "";
     let isSurplusOrder = groupName.includes("餘量認領") || remark.includes("餘量認領");
 
-    // 2. 只有「現貨餘量認領」訂單被取消時，才將庫存加回
+    // 1. 若改為已取消且為餘量訂單，自動退還庫存
     if (isSurplusOrder && newStatus === "已取消" && oldStatus !== "已取消") {
       let items = order["訂單內容"] || [];
-      let cleanGroupName = groupName.replace(" (餘量認領)", "").trim();
+      let cleanGroupName = groupName.replace(" (現貨餘量認領)", "").replace(" (餘量認領)", "").trim();
 
       for (let item of items) {
         const { data: prodData } = await db
@@ -1023,14 +1023,12 @@ async function updateOrderStatus(orderId, newStatus) {
         if (prodData) {
           let currentSurplus = parseInt(prodData["餘量"]) || 0;
           let restoreQty = parseInt(item.qty) || 0;
-
-          // 退回庫存
           await db.from('products').update({ "餘量": currentSurplus + restoreQty }).eq('id', prodData.id);
         }
       }
     }
 
-    // 3. 更新 Supabase 訂單狀態
+    // 2. 更新資料庫中的處理狀態
     const { error: updateErr } = await db
       .from('orders')
       .update({ "處理狀態": newStatus })
@@ -1038,18 +1036,38 @@ async function updateOrderStatus(orderId, newStatus) {
 
     if (updateErr) throw updateErr;
 
+    // 3. 狀態變更時發送通知信（特別是已取消）
+    if (typeof sendPreOrderEmail === 'function' && order["Email"]) {
+      try {
+        let items = order["訂單內容"] || [];
+        let productDetailsText = items.map(i => `${i.name} x ${i.qty || 1} ($${i.price || 0})`).join("\n");
+
+        await sendPreOrderEmail({
+          customerEmail: order["Email"],
+          lineName: order["買家名稱"] || "貴賓",
+          groupName: groupName,
+          productDetails: productDetailsText,
+          totalPrice: order["總金額"],
+          paymentMethod: "通知",
+          status: newStatus, // 傳遞「已取消」狀態
+          changeReason: changeReason || "訂單狀態異動通知"
+        });
+      } catch (mailErr) {
+        console.error("狀態變更寄信失敗：", mailErr);
+      }
+    }
+
     alert(`訂單狀態已更新為：${newStatus}`);
 
-    // 4. 重新載入列表與餘量選單
     if (typeof loadAllOrders === 'function') loadAllOrders();
     if (typeof loadPendingOrders === 'function') loadPendingOrders();
-    if (typeof loadSurplusGroups === 'function') loadSurplusGroups();
 
   } catch (err) {
     alert("狀態更新失敗：" + err.message);
   }
 }
 window.updateOrderStatus = updateOrderStatus;
+  
 async function loadPendingOrders() {
   let container = document.getElementById('pendingOrdersList') || document.getElementById('pendingList');
   if (!container) return;
