@@ -548,14 +548,42 @@
     statusMsg.innerText = "正在送出預購訂單...";
 
     try {
+      // 1. 寫入 Supabase orders 表格
       const { error } = await db.from('orders').insert([{
         "團務名稱": selectedGroupName, "買家名稱": lineName, "手機號碼": phone,
         "Email": email, "訂單內容": selectedItems, "總金額": totalPrice, "處理狀態": "待確認"
       }]);
       if (error) throw error;
 
+      // 2.【補上關鍵寄信邏輯】發送 Email 通知信
+      if (typeof sendPreOrderEmail === 'function') {
+        try {
+          let paymentMethod = "預購填單";
+          const currentGroupObj = groupsData.find(g => g["團務名稱"] === selectedGroupName);
+          if (currentGroupObj && currentGroupObj["付款方式"]) {
+            paymentMethod = currentGroupObj["付款方式"];
+          }
+
+          let productDetailsText = selectedItems.map(i => `${i.name} x ${i.qty} ($${i.price} / 小計: $${i.price * i.qty})`).join("\n");
+
+          await sendPreOrderEmail({
+            customerEmail: email,
+            lineName: lineName,
+            groupName: selectedGroupName,
+            productDetails: productDetailsText,
+            totalPrice: totalPrice,
+            paymentMethod: paymentMethod,
+            status: "待確認",
+            changeReason: "無"
+          });
+        } catch (emailErr) {
+          console.error("預購寄信失敗：", emailErr);
+        }
+      }
+
+      // 3. 顯示成功訊息
       statusMsg.style.color = "#10b981";
-      statusMsg.innerText = "✓ 預購登記成功！";
+      statusMsg.innerText = "✓ 預購登記成功！已寄送明細至您的 Email。如未收到請至「查詢記錄」頁面查詢";
       document.getElementById('lineName').value = "";
       document.getElementById('phone').value = "";
       document.getElementById('email').value = "";
@@ -569,7 +597,6 @@
       document.getElementById('submitBtn').disabled = false;
     }
   }
-
   // 查詢個人訂單記錄
   async function queryOrder() {
     let searchKey = document.getElementById('searchKey').value.trim();
