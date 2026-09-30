@@ -1424,26 +1424,33 @@ function closeLightbox() {
     }
   }
 
-  // 管理員後台控制
-  function toggleAdminLogin() {
-    let form = document.getElementById('adminLoginForm');
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
-  }
-
-  function verifyAdmin() {
-    let pwd = document.getElementById('adminPassword').value;
-    if (pwd === "841250") {
-        document.getElementById('adminLoginForm').style.display = 'none';
-        document.getElementById('adminDashboard').style.display = 'block';
-        
-        loadPendingOrders();
-        loadAllOrders(); 
-        loadOrderStats();
-      loadExportGroupOptions(); // 👈 新增這一行：自動載入匯出區塊的團務選單！
-    } else {
-        alert("密碼錯誤！");
+ // 🔐 管理員後台控制（改為網址暗號 #admin 機制）
+  function checkAdminHash() {
+    if (window.location.hash === '#admin') {
+      const pwd = prompt("🔐 請輸入管理員密碼：");
+      
+      if (pwd === "qingyuan") {
+        const adminDash = document.getElementById('adminDashboard');
+        if (adminDash) {
+          adminDash.style.display = 'block';
+          
+          // 載入後台相關資料
+          if (typeof loadPendingOrders === 'function') loadPendingOrders();
+          if (typeof loadAllOrders === 'function') loadAllOrders(); 
+          if (typeof loadOrderStats === 'function') loadOrderStats();
+          if (typeof loadExportGroupOptions === 'function') loadExportGroupOptions();
+          
+          alert("🎉 管理員登入成功！");
+        }
+      } else if (pwd !== null) {
+        alert("❌ 密碼錯誤！");
+      }
     }
   }
+
+  // 監聽網址 Hash 變化與頁面載入
+  window.addEventListener('DOMContentLoaded', checkAdminHash);
+  window.addEventListener('hashchange', checkAdminHash);
 
   // 統計數據
   async function loadOrderStats() {
