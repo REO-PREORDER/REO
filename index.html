@@ -869,6 +869,203 @@ async function loadPendingOrders() {
       container.innerHTML = "<p style='color:#f87171;'>載入訂單失敗。</p>"; 
     }
 }
+  async function loadAllOrders() {
+    let container = document.getElementById('allOrdersList'); // 假設您的 HTML 中有這個容器
+    if (!container) return;
+    container.innerHTML = "載入中...";
+    
+    try {
+      const { data, error } = await db.from('orders').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        container.innerHTML = ""; 
+        
+        for (let o of data) {
+          let itemsHtml = "";
+          o["訂單內容"].forEach((i, index) => { 
+            let subtotal = i.price * i.qty;
+            itemsHtml += `
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-size: 11px; background:#181818; padding:4px 6px; border-radius:4px;">
+                <span>${i.name}</span>
+                <span>$${i.price} x ${i.qty} = $${subtotal}</span>
+              </div>`; 
+          });
+
+          let card = document.createElement('div');
+          card.style.cssText = "background:#242424; padding:12px; border-radius:8px; margin-bottom:10px; font-size:12px;";
+          card.innerHTML = `
+            <div><b>時間：</b>${new Date(o.created_at).toLocaleString()} | <b>團名：</b>${o["團務名稱"]}</div>
+            <div><b>買家：</b>${o["買家名稱"]} (${o["手機號碼"]}) | <b>狀態：</b><span style="color:#60a5fa;">${o["處理狀態"]}</span></div>
+            <div style="margin:6px 0; background:#121212; padding:6px; border-radius:4px;">${itemsHtml}</div>
+            <div style="font-weight:bold; margin-bottom:8px;">總金額：$${o["總金額"]}</div>
+            <div style="display: flex; gap: 8px;" id="all-actions-${o.id}"></div>
+          `;
+          container.appendChild(card);
+
+          let actionDiv = card.querySelector(`#all-actions-${o.id}`);
+          
+          // 變更按鈕
+          let btnModify = document.createElement('button');
+          btnModify.innerText = "✏️ 變更訂單";
+          btnModify.style.cssText = "background-color: #3b82f6; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;";
+          btnModify.onclick = () => openModifyModal(o);
+
+          // 取消按鈕
+          let btnCancel = document.createElement('button');
+          btnCancel.innerText = "✕ 取消訂單";
+          btnCancel.style.cssText = "background-color: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;";
+          btnCancel.onclick = () => updateOrderStatus(o.id, '已取消');
+
+          actionDiv.appendChild(btnModify);
+          actionDiv.appendChild(btnCancel);
+        }
+      } else { 
+        container.innerHTML = "<p style='color:#aaa; font-size:12px;'>目前沒有任何訂單紀錄。</p>"; 
+      }
+    } catch (err) { 
+      container.innerHTML = "<p style='color:#f87171;'>載入訂單紀錄失敗。</p>"; 
+    }
+}
+  // 開啟變更訂單的介面
+function openModifyModal(order) {
+    // 建立一個簡單的互動視窗 (Modal)
+    let modalBg = document.createElement('div');
+    modalBg.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;";
+    
+    let modalBox = document.createElement('div');
+    modalBox.style.cssText = "background: #1e1e1e; padding: 20px; border-radius: 10px; width: 95%; max-width: 500px; color: #fff; font-size: 13px; max-height: 90vh; overflow-y: auto;";
+    
+    let itemsHtml = "";
+    order["訂單內容"].forEach((item, idx) => {
+        itemsHtml += `
+            <div style="background: #2a2a2a; padding: 10px; border-radius: 6px; margin-bottom: 8px;" class="modify-item-row" data-index="${idx}">
+                <div style="font-weight: bold; margin-bottom: 4px;">${item.name}</div>
+                <div style="display: flex; gap: 10px;">
+                    <div>
+                        單價：<input type="number" class="item-price" value="${item.price}" style="width: 80px; padding: 4px; background: #121212; border: 1px solid #444; color: #fff; border-radius: 4px;">
+                    </div>
+                    <div>
+                        數量：<input type="number" class="item-qty" value="${item.qty}" min="0" style="width: 60px; padding: 4px; background: #121212; border: 1px solid #444; color: #fff; border-radius: 4px;">
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    modalBox.innerHTML = `
+        <h3 style="margin-bottom: 12px; text-align: center;">修改訂單內容 (${order["買家名稱"]})</h3>
+        <div id="modifyItemsContainer">${itemsHtml}</div>
+        <div style="margin: 15px 0; font-size: 15px; font-weight: bold; text-align: right; color: #60a5fa;" id="modalTotalPrice">
+            新總金額：$${order["總金額"]}
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button id="saveModifyBtn" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">儲存變更</button>
+            <button id="closeModifyBtn" style="background: #555; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">取消</button>
+        </div>
+    `;
+
+    modalBg.appendChild(modalBox);
+    document.body.appendChild(modalBg);
+
+    // 即時計算總金額的監聽函式
+    const calculateTotal = () => {
+        let total = 0;
+        let rows = modalBox.querySelectorAll('.modify-item-row');
+        rows.forEach(row => {
+            let price = parseFloat(row.querySelector('.item-price').value) || 0;
+            let qty = parseInt(row.querySelector('.item-qty').value) || 0;
+            total += price * qty;
+        });
+        modalBox.querySelector('#modalTotalPrice').innerText = `新總金額：$${total}`;
+        return total;
+    };
+
+    // 當輸入框數值改變時，自動重新計算總金額
+    modalBox.querySelectorAll('.item-price, .item-qty').forEach(input => {
+        input.addEventListener('input', calculateTotal);
+    });
+
+    // 關閉按鈕
+    modalBox.querySelector('#closeModifyBtn').onclick = () => {
+        document.body.removeChild(modalBg);
+    };
+
+    // 儲存變更按鈕
+    modalBox.querySelector('#saveModifyBtn').onclick = async () => {
+        let newItems = [];
+        let rows = modalBox.querySelectorAll('.modify-item-row');
+
+        rows.forEach(row => {
+            let idx = row.getAttribute('data-index');
+            let origItem = order["訂單內容"][idx];
+            let price = parseFloat(row.querySelector('.item-price').value);
+            let qty = parseInt(row.querySelector('.item-qty').value);
+
+            if (qty > 0) {
+                newItems.push({
+                    ...origItem,
+                    price: price,
+                    qty: qty
+                });
+            }
+        });
+
+        if (newItems.length === 0) {
+            alert("訂單內至少需保留一項商品！");
+            return;
+        }
+
+        let newTotal = calculateTotal();
+
+        // 詢問變更原因與備註
+        let changeReason = prompt("請輸入變更訂單的原因或備註說明（選填）：", "商品數量/價格調整") || "無";
+
+        if (!confirm(`確定要儲存變更嗎？\n新總金額將改為：$${newTotal}`)) return;
+
+        try {
+            // 1. 更新 Supabase 內的訂單內容、總金額，並將狀態改為「已變更」
+            const { error } = await db.from('orders').update({
+                "訂單內容": newItems,
+                "總金額": newTotal,
+                "處理狀態": "已變更"
+            }).eq('id', order.id);
+
+            if (error) throw error;
+
+            // 2. 從 groups 表抓取該團的付款方式
+            let paymentMethod = "事先匯款";
+            const { data: groupData, error: groupError } = await db.from('groups').select('*').eq('團務名稱', order["團務名稱"]).single();
+            if (!groupError && groupData && groupData["付款方式"]) {
+                paymentMethod = groupData["付款方式"];
+            }
+
+            // 3. 將新的商品清單轉為好讀的文字字串
+            let productText = newItems.map(i => `${i.name} x ${i.qty} ($${i.price} / 小計: $${i.price * i.qty})`).join("\n");
+
+            // 4. 呼叫全域寄信函式發送通知信
+            if (typeof sendPreOrderEmail === 'function') {
+                await sendPreOrderEmail({
+                    customerEmail: order["Email"],          
+                    lineName: order["買家名稱"],              
+                    groupName: order["團務名稱"],             
+                    productDetails: productText,        
+                    totalPrice: newTotal,              
+                    paymentMethod: paymentMethod, 
+                    status: "已變更",                            
+                    changeReason: changeReason                    
+                });
+            }
+
+            alert("訂單已成功修改、更新並已發送通知信！");
+            document.body.removeChild(modalBg);
+            loadAllOrders(); // 重新整理所有訂單列表
+            if (typeof loadPendingOrders === 'function') loadPendingOrders(); // 同步重新整理待確認
+        } catch (err) {
+            alert("更新失敗：" + err.message);
+        }
+    };
+}
 </script>
 
 </body>
