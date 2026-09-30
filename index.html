@@ -181,7 +181,32 @@
     <!-- 管理員後台控制面板 -->
     <div id="adminDashboard" style="display: none; margin-top: 15px; text-align: left;">
       <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
-      
+      <!-- ➕ 新增團務工具 -->
+<h4 style="color: #3b82f6; margin-bottom: 10px; text-align: center;">➕ 新增團務</h4>
+<div style="background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+  <label style="font-size: 12px; color: #ccc;">團務名稱 *</label>
+  <input type="text" id="newGroupName" placeholder="例如：藍色監獄-11月預購" style="margin-top: 4px;">
+
+  <label style="font-size: 12px; color: #ccc;">團務圖片網址 (可貼 Google Drive 連結或一般圖片網址)</label>
+  <input type="text" id="newGroupImg" placeholder="https://..." style="margin-top: 4px;">
+
+  <div style="display: flex; gap: 10px;">
+    <div style="flex: 1;">
+      <label style="font-size: 12px; color: #ccc;">截單時間</label>
+      <input type="text" id="newGroupDeadline" placeholder="例如：10/15 20:00" style="margin-top: 4px;">
+    </div>
+    <div style="flex: 1;">
+      <label style="font-size: 12px; color: #ccc;">付款方式</label>
+      <input type="text" id="newGroupPayment" placeholder="例如：貨到付款 (取付) / 事先匯款" value="貨到付款 (取付)" style="margin-top: 4px;">
+    </div>
+  </div>
+
+  <label style="font-size: 12px; color: #ccc;">團務備註 (代購須知下方顯示的特有備註)</label>
+  <textarea id="newGroupRemark" rows="3" placeholder="例如：此團喊單後不接受取消、需湊滿10件才成團等..." style="margin-top: 4px;"></textarea>
+
+  <button class="primary-btn" onclick="submitCreateGroup()" style="background: #2563eb; margin-top: 6px;">建立新團務</button>
+  <p id="createGroupMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
+</div>
       <h4 style="color: #10b981; margin-bottom: 10px; text-align: center;">批次新增商品工具</h4>
       <div style="background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
         <label style="font-size: 12px; color: #ccc;">選擇要加入商品的團務：</label>
