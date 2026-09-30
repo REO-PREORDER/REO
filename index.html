@@ -502,7 +502,7 @@ async function deleteCurrentGroup() {
 
   try {
     // A. 刪除所有屬於該團務的商品
-    await db.from('products').delete().eq('group_id', groupId); // 或以 group_name 刪除
+    await db.from('products').delete().eq('group_id', groupId);
 
     // B. 刪除團務本身
     const { error } = await db.from('groups').delete().eq('id', groupId);
