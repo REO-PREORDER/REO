@@ -740,7 +740,10 @@
       msgElem.innerText = "新增失敗：" + err.message;
     }
   }
-
+// 務必確認是寫 window.updateOrderStatus
+window.updateOrderStatus = async function(orderId, newStatus) {
+    // 裡面的程式碼保持不動...
+}
   async function loadPendingOrders() {
     let container = document.getElementById('pendingOrdersList');
     container.innerHTML = "載入中...";
