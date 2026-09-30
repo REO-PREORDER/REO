@@ -684,20 +684,51 @@ window.loadOrderStats = loadOrderStats;
   }
 
   async function loadSurplusGroups() {
-    let container = document.getElementById('surplusGroupList');
-    container.innerHTML = "載入中...";
-    try {
-      const { data: groups, error } = await db.from('groups').select('*');
-      if (error) throw error;
-      if (groups && groups.length > 0) {
-        let html = "<p style='color:#aaa; font-size:13px; margin-bottom:8px;'>請選擇要查看餘量的團務：</p>";
-        groups.forEach(g => {
-          html += `<button onclick="loadSurplusProducts('${g["團務名稱"]}')" style="display:block; width:100%; margin-bottom:6px; padding:10px; background:#242424; color:white; border:1px solid #444; border-radius:6px; text-align:left; cursor:pointer;">${g["團務名稱"]}</button>`;
-        });
-        container.innerHTML = html;
-      } else { container.innerHTML = "<p style='color:#aaa;'>目前沒有團務。</p>"; }
-    } catch (err) { container.innerHTML = "<p style='color:#f87171;'>載入失敗。</p>"; }
+  let container = document.getElementById('surplusGroupList');
+  container.innerHTML = "載入餘量團務中...";
+
+  try {
+    // 1. 先從 products 撈出所有「餘量 > 0」的商品，取得它們對應的團務名稱
+    const { data: surplusProducts, error: prodErr } = await db
+      .from('products')
+      .select('團務名稱')
+      .gt('餘量', 0);
+
+    if (prodErr) throw prodErr;
+
+    // 若沒有任何商品有餘量
+    if (!surplusProducts || surplusProducts.length === 0) {
+      container.innerHTML = "<p style='color:#aaa; font-size:13px;'>目前沒有任何有現貨餘量的團務囉！</p>";
+      document.getElementById('surplusProductList').innerHTML = "";
+      return;
+    }
+
+    // 2. 收集有餘量的團務名稱（不重複）
+    const validGroupNames = [...new Set(surplusProducts.map(p => p["團務名稱"]))];
+
+    // 3. 只撈取這些有餘量的團務資料
+    const { data: groups, error: groupErr } = await db
+      .from('groups')
+      .select('*')
+      .in('團務名稱', validGroupNames);
+
+    if (groupErr) throw groupErr;
+
+    if (groups && groups.length > 0) {
+      let html = "<p style='color:#aaa; font-size:13px; margin-bottom:8px;'>請選擇要查看餘量的團務：</p>";
+      groups.forEach(g => {
+        html += `<button onclick="loadSurplusProducts('${g["團務名稱"]}')" style="display:block; width:100%; margin-bottom:6px; padding:10px; background:#242424; color:white; border:1px solid #444; border-radius:6px; text-align:left; cursor:pointer;">${g["團務名稱"]}</button>`;
+      });
+      container.innerHTML = html;
+      document.getElementById('surplusProductList').innerHTML = "";
+    } else {
+      container.innerHTML = "<p style='color:#aaa; font-size:13px;'>目前沒有任何有現貨餘量的團務囉！</p>";
+    }
+  } catch (err) {
+    container.innerHTML = "<p style='color:#f87171;'>載入失敗：" + err.message + "</p>";
   }
+}
+window.loadSurplusGroups = loadSurplusGroups;
 
   async function loadSurplusProducts(groupName) {
     activeSurplusGroup = groupName;
@@ -708,7 +739,7 @@ window.loadOrderStats = loadOrderStats;
       if (error) throw error;
       currentSurplusProducts = products || [];
 
-      let html = `<h4 style="color:#fff; margin: 10px 0;">${groupName} 現貨餘量</h4>`;
+      let html = `<h4 style="color:#fff; margin: 10px 0;">${groupName} 餘量</h4>`;
       if (currentSurplusProducts.length > 0) {
         html += `<div style="background:#252525; padding:10px; margin-bottom:10px; border-radius:6px;">
           <input type="text" id="surplus_name" placeholder="Line / FB 暱稱 *" style="margin-bottom:6px;">
@@ -718,7 +749,7 @@ window.loadOrderStats = loadOrderStats;
           html += `<div style="background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
             <div>
               <div style="font-weight:bold; font-size:13px; color:#fff;">${p["商品名稱"]}</div>
-              <div style="color:#10b981; font-size:12px;">$${p["單價"]} | <span style="color:#f59e0b;">剩餘庫存：${p["餘量"]} 個</span></div>
+              <div style="color:#10b981; font-size:12px;">$${p["單價"]} | <span style="color:#f59e0b;">餘量：${p["餘量"]} 個</span></div>
             </div>
             <select id="surplus_qty_${index}" style="width: 80px; padding: 4px;">
               <option value="0">0 個</option>`;
@@ -726,7 +757,7 @@ window.loadOrderStats = loadOrderStats;
           html += `</select></div>`;
         });
         html += `<button class="primary-btn" onclick="submitSurplusClaim()" style="margin-top:10px;">確認送出餘量認領</button>`;
-      } else { html += "<p style='color:#aaa; font-size:12px;'>目前此團務沒有剩餘庫存囉！</p>"; }
+      } else { html += "<p style='color:#aaa; font-size:12px;'>目前此團務沒有餘量囉！</p>"; }
       container.innerHTML = html;
     } catch (err) { container.innerHTML = "<p style='color:#f87171;'>載入餘量商品失敗。</p>"; }
   }
