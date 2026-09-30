@@ -1038,78 +1038,97 @@
     }
   }
 
-  async function updateOrderStatus(orderId, newStatus, changeReason = "無") {
-    try {
-      const { data: order, error: fetchErr } = await db
-        .from('orders')
-        .select('*')
-        .eq('id', orderId)
-        .single();
-
-      if (fetchErr) throw fetchErr;
-
-      let oldStatus = order["處理狀態"];
-      if (oldStatus === newStatus) return;
-
-      let groupName = order["團務名稱"] || "";
-      let remark = order["備註"] || "";
-      let isSurplusOrder = groupName.includes("餘量認領") || remark.includes("餘量認領");
-
-      if (isSurplusOrder && newStatus === "已取消" && oldStatus !== "已取消") {
-        let items = order["訂單內容"] || [];
-        let cleanGroupName = groupName.replace(" (現貨餘量認領)", "").replace(" (餘量認領)", "").trim();
-
-        for (let item of items) {
-          const { data: prodData } = await db
-            .from('products')
-            .select('*')
-            .eq('團務名稱', cleanGroupName)
-            .eq('商品名稱', item.name)
-            .single();
-
-          if (prodData) {
-            let currentSurplus = parseInt(prodData["餘量"]) || 0;
-            let restoreQty = parseInt(item.qty) || 0;
-            await db.from('products').update({ "餘量": currentSurplus + restoreQty }).eq('id', prodData.id);
-          }
-        }
-      }
-
-      const { error: updateErr } = await db
-        .from('orders')
-        .update({ "處理狀態": newStatus })
-        .eq('id', orderId);
-
-      if (updateErr) throw updateErr;
-
-      if (typeof sendPreOrderEmail === 'function' && order["Email"]) {
-        try {
-          let items = order["訂單內容"] || [];
-          let productDetailsText = items.map(i => `${i.name} x ${i.qty || 1} ($${i.price || 0})`).join("\n");
-
-          await sendPreOrderEmail({
-            customerEmail: order["Email"],
-            lineName: order["買家名稱"] || "貴賓",
-            groupName: groupName,
-            productDetails: productDetailsText,
-            totalPrice: order["總金額"],
-            paymentMethod: "通知",
-            status: newStatus,
-            changeReason: changeReason || "訂單狀態異動通知"
-          });
-        } catch (mailErr) {
-          console.error("狀態變更寄信失敗：", mailErr);
-        }
-      }
-
-      alert(`訂單狀態已更新為：${newStatus}`);
-      loadAllOrders();
-      loadPendingOrders();
-
-    } catch (err) {
-      alert("狀態更新失敗：" + err.message);
+ async function updateOrderStatus(orderId, newStatus) {
+  try {
+    // 1. 如果是改為「已取消」，先跳出輸入框讓管理員填寫原因
+    let changeReason = "無";
+    if (newStatus === "已取消") {
+      let inputReason = prompt("請輸入取消訂單的原因或備註說明（例如：未填寫實名表單 / 官方砍單）：", "未填寫實名表單");
+      if (inputReason === null) return; // 如果管理員點「取消」，不執行更新
+      changeReason = inputReason.trim() || "無";
     }
+
+    // 2. 撈取原訂單內容
+    const { data: order, error: fetchErr } = await db
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchErr) throw fetchErr;
+
+    let oldStatus = order["處理狀態"];
+    if (oldStatus === newStatus && newStatus !== "已取消") return;
+
+    let groupName = order["團務名稱"] || "";
+    let remark = order["備註"] || "";
+    let isSurplusOrder = groupName.includes("餘量認領") || remark.includes("餘量認領");
+
+    // 3. 若改為已取消且為餘量訂單，自動退還庫存
+    if (isSurplusOrder && newStatus === "已取消" && oldStatus !== "已取消") {
+      let items = order["訂單內容"] || [];
+      let cleanGroupName = groupName.replace(" (現貨餘量認領)", "").replace(" (餘量認領)", "").trim();
+
+      for (let item of items) {
+        const { data: prodData } = await db
+          .from('products')
+          .select('*')
+          .eq('團務名稱', cleanGroupName)
+          .eq('商品名稱', item.name)
+          .single();
+
+        if (prodData) {
+          let currentSurplus = parseInt(prodData["餘量"]) || 0;
+          let restoreQty = parseInt(item.qty) || 0;
+          await db.from('products').update({ "餘量": currentSurplus + restoreQty }).eq('id', prodData.id);
+        }
+      }
+    }
+
+    // 4. 更新資料庫中的處理狀態與備註欄位
+    let updatePayload = { "處理狀態": newStatus };
+    if (newStatus === "已取消") {
+      updatePayload["備註"] = changeReason; // 同步寫入備註欄位，供買家查詢紀錄看到
+    }
+
+    const { error: updateErr } = await db
+      .from('orders')
+      .update(updatePayload)
+      .eq('id', orderId);
+
+    if (updateErr) throw updateErr;
+
+    // 5. 發送 Email 通知信（帶入取消原因）
+    if (typeof sendPreOrderEmail === 'function' && order["Email"]) {
+      try {
+        let items = order["訂單內容"] || [];
+        let productDetailsText = items.map(i => `${i.name} x ${i.qty || 1} ($${i.price || 0})`).join("\n");
+
+        await sendPreOrderEmail({
+          customerEmail: order["Email"],
+          lineName: order["買家名稱"] || "貴賓",
+          groupName: groupName,
+          productDetails: productDetailsText,
+          totalPrice: order["總金額"],
+          paymentMethod: "通知",
+          status: newStatus,
+          changeReason: changeReason
+        });
+      } catch (mailErr) {
+        console.error("狀態變更寄信失敗：", mailErr);
+      }
+    }
+
+    alert(`訂單狀態已更新為：${newStatus}`);
+
+    if (typeof loadAllOrders === 'function') loadAllOrders();
+    if (typeof loadPendingOrders === 'function') loadPendingOrders();
+
+  } catch (err) {
+    alert("狀態更新失敗：" + err.message);
   }
+}
+window.updateOrderStatus = updateOrderStatus;
 
   async function loadPendingOrders() {
     let container = document.getElementById('pendingOrdersList');
