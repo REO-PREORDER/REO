@@ -447,7 +447,7 @@ async function submitGroupForm() {
 window.submitGroupForm = submitGroupForm;
 window.submitCreateGroup = submitGroupForm;
 
-// 📦 讀取並顯示指定團務底下的商品清單供編輯（含新增商品表單）
+// 📦 讀取並顯示指定團務底下的商品清單供編輯（含新增與分類修改）
 async function loadProductsForEdit(groupId) {
   const container = document.getElementById('productListContainer');
   if (!container) return;
@@ -479,6 +479,8 @@ async function loadProductsForEdit(groupId) {
             <input type="number" id="newProdPrice" placeholder="單價 ($)" style="flex: 1; padding: 4px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
             <input type="text" id="newProdCategory" placeholder="商品分類 (預設: 一般)" value="一般" style="flex: 1; padding: 4px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
           </div>
+          <button type="button" onclick="addProductToCurrentGroup()" style="background: #2563eb; color: white; border: none; padding: 6px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; margin-top: 4px;">確認新增商品</button>
+        </div>
       </div>
       <div style="font-size: 12px; color: #aaa; margin-bottom: 6px; font-weight: bold;">現有商品列表：</div>
     `;
@@ -491,8 +493,9 @@ async function loadProductsForEdit(groupId) {
           <div style="display: flex; gap: 6px; align-items: center; background: #1a1a1a; padding: 8px; border-radius: 4px; margin-bottom: 6px;">
             <input type="text" id="prodName_${p.id}" value="${p.商品名稱 || ''}" placeholder="商品名稱" style="flex: 2; padding: 4px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
             <input type="number" id="prodPrice_${p.id}" value="${p.單價 || 0}" placeholder="單價" style="flex: 1; padding: 4px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-            <button type="button" onclick="saveProduct('${p.id}')" style="background: #059669; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">💾</button>
-            <button type="button" onclick="deleteProduct('${p.id}')" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">🗑️️</button>
+            <input type="text" id="prodCat_${p.id}" value="${p.商品分類 || '一般'}" placeholder="分類" style="flex: 1; padding: 4px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+            <button type="button" onclick="saveProduct('${p.id}')" style="background: #059669; color: white; border: none; padding: 6px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;" title="儲存修改">💾</button>
+            <button type="button" onclick="deleteProduct('${p.id}')" style="background: #dc2626; color: white; border: none; padding: 6px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;" title="刪除商品">🗑</button>
           </div>
         `;
       });
@@ -551,15 +554,17 @@ async function addProductToCurrentGroup() {
 }
 window.addProductToCurrentGroup = addProductToCurrentGroup;
 
-// 💾 儲存單一商品修改
+// 💾 儲存單一商品修改（包含名稱、單價、分類）
 async function saveProduct(prodId) {
   const nameInput = document.getElementById(`prodName_${prodId}`);
   const priceInput = document.getElementById(`prodPrice_${prodId}`);
+  const catInput = document.getElementById(`prodCat_${prodId}`);
   
-  if (!nameInput || !priceInput) return;
+  if (!nameInput || !priceInput || !catInput) return;
   
   const newName = nameInput.value.trim();
   const newPrice = Number(priceInput.value);
+  const newCategory = catInput.value.trim() || "一般";
 
   if (!newName) {
     alert("商品名稱不可為空白！");
@@ -568,7 +573,11 @@ async function saveProduct(prodId) {
 
   const { error } = await db
     .from('products')
-    .update({ 商品名稱: newName, 單價: newPrice })
+    .update({ 
+      商品名稱: newName, 
+      單價: newPrice, 
+      商品分類: newCategory 
+    })
     .eq('id', prodId);
 
   if (error) {
