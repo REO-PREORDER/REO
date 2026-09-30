@@ -402,11 +402,14 @@ async function loadGroupSelectForEdit() {
   }
 }
 
-// 3. 選擇團務時自動帶入表單欄位
+// 3. 選擇團務時自動帶入表單欄位與商品清單
 function onSelectGroupToEdit() {
   let selectedId = document.getElementById('editGroupSelect').value;
   if (!selectedId) {
     clearGroupForm();
+    // 順便清空商品清單
+    const container = document.getElementById('productListContainer');
+    if (container) container.innerHTML = "";
     return;
   }
 
@@ -419,9 +422,13 @@ function onSelectGroupToEdit() {
     document.getElementById('newGroupPayment').value = group["付款方式"] || "貨到付款 (取付)";
     document.getElementById('newGroupRemark').value = group["團務備註"] || "";
   }
+
+  // 🎯 關鍵：加上這行，才會去讀取並顯示該團務底下的商品！
+  if (typeof loadProductsForEdit === 'function') {
+    loadProductsForEdit(selectedId);
+  }
 }
 window.onSelectGroupToEdit = onSelectGroupToEdit;
-
 // 4. 清空表單
 function clearGroupForm() {
   document.getElementById('editingGroupId').value = "";
