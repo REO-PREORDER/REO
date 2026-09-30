@@ -250,17 +250,25 @@
     <h4 style="color: #fff; margin-bottom: 8px; text-align: center;">待確認訂單管理</h4>
     <div id="pendingOrdersList">載入中...</div>
     
-<!-- 📥 Excel 數據匯出區塊 (貼在這裡！) -->
-      <div style="background: #252525; padding: 12px; border-radius: 8px; margin-top: 20px; border: 1px solid #444;">
-        <h4 style="color: #60a5fa; margin-bottom: 10px; text-align: center;">📥 後台資料匯出 (Excel / 試算表)</h4>
-        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-          <button onclick="exportBuyerOrdersCSV()" style="background: #059669; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
-            📦 匯出買家訂單與出貨明細 (.csv)
-          </button>
-          <button onclick="exportProductSummaryCSV()" style="background: #d97706; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
-            📊 匯出團務商品採購總數 (.csv)
-          </button>
-        </div>
+<!-- 📥 Excel 數據匯出區塊 (含團務篩選) -->
+<div style="background: #252525; padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px solid #444;">
+  <h4 style="color: #60a5fa; margin-bottom: 10px; text-align: center;">📥 後台資料匯出 (Excel / 試算表)</h4>
+  
+  <div style="margin-bottom: 12px;">
+    <label style="font-size: 12px; color: #ccc; font-weight: bold;">選擇要匯出的團務：</label>
+    <select id="exportGroupSelect" style="width: 100%; padding: 8px; margin-top: 4px; background: #121212; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 13px;">
+      <option value="ALL">-- 匯出全部團務資料 --</option>
+    </select>
+  </div>
+
+  <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+    <button onclick="exportBuyerOrdersCSV()" style="flex: 1; min-width: 160px; background: #059669; color: white; border: none; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold;">
+      📦 匯出買家出貨明細 (.csv)
+    </button>
+    <button onclick="exportProductSummaryCSV()" style="flex: 1; min-width: 160px; background: #d97706; color: white; border: none; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold;">
+      📊 匯出商品採購總數 (.csv)
+    </button>
+  </div>
 
       <!-- 📋 所有訂單紀錄區塊 -->
       <div style="margin-top: 30px; border-top: 1px solid #444; padding-top: 15px;">
@@ -491,12 +499,38 @@ function downloadCSV(filename, csvContent) {
   document.body.removeChild(link);
 }
 
-// 1. 📦 匯出買家訂單與出貨明細表
-async function exportBuyerOrdersCSV() {
+// 載入匯出區塊的團務下拉選單
+async function loadExportGroupOptions() {
+  const selectElem = document.getElementById('exportGroupSelect');
+  if (!selectElem) return;
+
   try {
-    const { data: orders, error } = await db.from('orders').select('*').order('created_at', { ascending: false });
+    const { data: groups, error } = await db.from('groups').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+
+    let html = `<option value="ALL">-- 匯出全部團務資料 --</option>`;
+    (groups || []).forEach(g => {
+      html += `<option value="${g["團務名稱"]}">${g["團務名稱"]}</option>`;
+    });
+    selectElem.innerHTML = html;
+  } catch (err) {
+    console.error("載入匯出團務選單失敗：", err);
+  }
+}
+
+// 1. 📦 匯出買家訂單與出貨明細表 (支援指定團務)
+async function exportBuyerOrdersCSV() {
+  const selectedGroup = document.getElementById('exportGroupSelect')?.value || "ALL";
+
+  try {
+    let query = db.from('orders').select('*').order('created_at', { ascending: false });
+    if (selectedGroup !== "ALL") {
+      query = query.eq('group_name', selectedGroup);
+    }
+
+    const { data: orders, error } = await query;
     if (error || !orders || orders.length === 0) {
-      alert("目前沒有訂單可供匯出！");
+      alert("該團務目前沒有任何訂單紀錄可供匯出！");
       return;
     }
 
@@ -512,7 +546,6 @@ async function exportBuyerOrdersCSV() {
       const total = ord.total_price || ord['總金額'] || 0;
       const status = `"${ord.status || '已成立'}"`;
 
-      // 打包商品明細文字 (例如: 明信片組 x 2; 徽章 x 1)
       const itemsList = ord.items || ord['商品列表'] || [];
       const itemsStr = itemsList.map(item => {
         const iName = item.name || item['商品名稱'] || '';
@@ -525,39 +558,44 @@ async function exportBuyerOrdersCSV() {
     });
 
     const today = new Date().toISOString().split('T')[0];
-    downloadCSV(`買家訂單出貨明細_${today}.csv`, csv);
+    const fileName = selectedGroup === "ALL" ? `買家出貨明細_全部團務_${today}.csv` : `買家出貨明細_${selectedGroup}_${today}.csv`;
+    downloadCSV(fileName, csv);
   } catch (err) {
     console.error("匯出失敗：", err);
     alert("匯出訂單失敗：" + err.message);
   }
 }
 
-// 📊 匯出團務商品採購總數表（含商品分類與排序）
+// 2. 📊 匯出團務商品採購總數表 (支援指定團務與分類)
 async function exportProductSummaryCSV() {
+  const selectedGroup = document.getElementById('exportGroupSelect')?.value || "ALL";
+
   try {
-    const { data: orders, error } = await db.from('orders').select('*');
+    let query = db.from('orders').select('*');
+    if (selectedGroup !== "ALL") {
+      query = query.eq('group_name', selectedGroup);
+    }
+
+    const { data: orders, error } = await query;
     if (error || !orders || orders.length === 0) {
-      alert("目前沒有訂單資料以計算商品總數！");
+      alert("該團務目前沒有任何訂單可計算採購總數！");
       return;
     }
 
-    // 依「團務名稱 + 商品分類 + 商品名稱」進行數量統計
     const summaryMap = {};
 
     orders.forEach(ord => {
-      // 僅統計非取消的訂單
-      if (ord.status === '已取消') return;
+      if (ord.status === '已取消') return; // 過濾取消訂單
 
       const groupName = ord.group_name || ord['團名'] || '未分類團務';
       const itemsList = ord.items || ord['商品列表'] || [];
 
       itemsList.forEach(item => {
         const pName = item.name || item['商品名稱'] || '未知商品';
-        const pCategory = item.category || item['商品分類'] || item['分類'] || '未分類'; // 讀取商品分類
+        const pCategory = item.category || item['商品分類'] || item['分類'] || '未分類';
         const pPrice = Number(item.price || item['單價'] || 0);
         const pQty = Number(item.qty || item['數量'] || 1);
 
-        // 使用 團務_分類_商品名 作為 Key，確保精準歸類
         const key = `${groupName}__${pCategory}__${pName}`;
 
         if (!summaryMap[key]) {
@@ -573,14 +611,12 @@ async function exportProductSummaryCSV() {
       });
     });
 
-    // 將資料轉為陣列並進行「分類排序」（先依團務排序，再依分類排序，最後依商品名稱）
     const sortedSummary = Object.values(summaryMap).sort((a, b) => {
       if (a.group !== b.group) return a.group.localeCompare(b.group);
       if (a.category !== b.category) return a.category.localeCompare(b.category);
       return a.name.localeCompare(b.name);
     });
 
-    // 建立 CSV 表頭 (新增「商品分類」欄位)
     let csv = "團務名稱,商品分類,商品名稱,單價,總預購數量,預估總金額\n";
 
     sortedSummary.forEach(item => {
@@ -593,7 +629,8 @@ async function exportProductSummaryCSV() {
     });
 
     const today = new Date().toISOString().split('T')[0];
-    downloadCSV(`團務商品採購總數表_含分類_${today}.csv`, csv);
+    const fileName = selectedGroup === "ALL" ? `商品採購總數表_全部團務_${today}.csv` : `商品採購總數表_${selectedGroup}_${today}.csv`;
+    downloadCSV(fileName, csv);
   } catch (err) {
     console.error("匯出失敗：", err);
     alert("匯出採購統計失敗：" + err.message);
@@ -1343,6 +1380,7 @@ function closeLightbox() {
         loadPendingOrders();
         loadAllOrders(); 
         loadOrderStats();
+      loadExportGroupOptions(); // 👈 新增這一行：自動載入匯出區塊的團務選單！
     } else {
         alert("密碼錯誤！");
     }
