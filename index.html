@@ -1749,76 +1749,110 @@ window.addEventListener('hashchange', checkAdminHash);
   }
 
   async function submitBatchProducts() {
-  let targetGroup = document.getElementById('adminTargetGroup').value;
-  let rawText = document.getElementById('batchProductsInput').value.trim();
-  let msgElem = document.getElementById('batchMsg');
+  try {
+    // 1. 檢查目標團務選擇器
+    let groupSelect = document.getElementById('adminTargetGroup');
+    if (!groupSelect) {
+      alert("找不到群組選擇元件 (adminTargetGroup)");
+      return;
+    }
+    let targetGroup = groupSelect.value;
+    if (!targetGroup) {
+      alert("請先選擇團務！");
+      return;
+    }
 
-  if (!targetGroup) { alert("請先選擇團務！"); return; }
-  if (!rawText) { alert("請輸入要新增的商品資料！"); return; }
+    // 2. 檢查輸入框
+    let inputElem = document.getElementById('batchProductsInput');
+    if (!inputElem) {
+      alert("找不到輸入框元件 (batchProductsInput)");
+      return;
+    }
+    let rawText = inputElem.value.trim();
+    if (!rawText) {
+      alert("請輸入要新增的商品資料！");
+      return;
+    }
 
-  msgElem.style.color = "#aaa";
-  msgElem.innerText = "正在解析並新增商品...";
+    let msgElem = document.getElementById('batchMsg');
+    if (msgElem) {
+      msgElem.style.color = "#aaa";
+      msgElem.innerText = "正在解析並新增商品...";
+    }
 
-  // 1. 直接以「行」為單位來切分每一個商品
-  let lines = rawText.split('\n');
-  let newProducts = [];
+    // 3. 處理文字與換行
+    let lines = rawText.split('\n');
+    let newProducts = [];
 
-  for (let line of lines) {
-    line = line.trim();
-    if (!line) continue;
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
 
-    // 2. 每一行裡面，用 Tab (\t) 或多個空格把欄位拆開
-    let parts = line.includes('\t') ? line.split('\t') : line.split(/\s+/);
-    parts = parts.map(p => p.trim()).filter(p => p !== "");
+      let parts = line.includes('\t') ? line.split('\t') : line.split(/\s+/);
+      parts = parts.map(p => p.trim()).filter(p => p !== "");
 
-    // 確保至少有 分類、名稱、單價 (3個欄位以上)
-    if (parts.length >= 3) {
-      let pCat = parts[0] || "一般";
-      let pName = parts[1] || "";
-      let pPrice = parseFloat(parts[2]) || 0;
-      let pImg = parts[3] || "";
-      let pDesc = parts.slice(4).join(" "); // 後面剩下的全部當作商品說明
+      if (parts.length >= 3) {
+        let pCat = parts[0] || "一般";
+        let pName = parts[1] || "";
+        let pPrice = parseFloat(parts[2]) || 0;
+        let pImg = parts[3] || "";
+        let pDesc = parts.slice(4).join(" ");
 
-      // 修正網址內的空格問題
-      pImg = pImg.replace(/(\?|\&)\s+/g, '$1');
+        pImg = pImg.replace(/(\?|\&)\s+/g, '$1');
 
-      if (pName && !isNaN(pPrice)) {
-        newProducts.push({
-          "團務名稱": targetGroup,
-          "商品分類": pCat,
-          "商品名稱": pName,
-          "單價": pPrice,
-          "圖片": formatImageUrl(pImg),
-          "商品說明": pDesc,
-          "isExpired": false
-        });
+        if (pName && !isNaN(pPrice)) {
+          newProducts.push({
+            "團務名稱": targetGroup,
+            "商品分類": pCat,
+            "商品名稱": pName,
+            "單價": pPrice,
+            "圖片": typeof formatImageUrl === 'function' ? formatImageUrl(pImg) : pImg,
+            "商品說明": pDesc,
+            "isExpired": false
+          });
+        }
       }
     }
-  }
 
-  if (newProducts.length === 0) {
-    msgElem.style.color = "#f87171";
-    msgElem.innerText = "解析失敗！請確認貼上的格式是否正確（分類、名稱、單價）。";
-    return;
-  }
+    if (newProducts.length === 0) {
+      if (msgElem) {
+        msgElem.style.color = "#f87171";
+        msgElem.innerText = "解析失敗！沒有成功抓到任何商品（請確認至少有分類、名稱、單價）。";
+      } else {
+        alert("解析失敗！沒有成功抓到任何商品。");
+      }
+      return;
+    }
 
-  try {
+    // 4. 寫入資料庫
+    if (typeof db === 'undefined') {
+      alert("資料庫物件 (db) 未定義！");
+      return;
+    }
+
     const { error } = await db.from('products').insert(newProducts);
     if (error) throw error;
     
-    msgElem.style.color = "#10b981";
-    msgElem.innerText = `✓ 成功批次新增 ${newProducts.length} 項商品！`;
-    document.getElementById('batchProductsInput').value = "";
+    if (msgElem) {
+      msgElem.style.color = "#10b981";
+      msgElem.innerText = `✓ 成功批次新增 ${newProducts.length} 項商品！`;
+    } else {
+      alert(`✓ 成功批次新增 ${newProducts.length} 項商品！`);
+    }
+
+    inputElem.value = "";
     
     if (typeof loadGroupProducts === 'function') {
       loadGroupProducts(targetGroup);
     }
+
   } catch (err) {
-    msgElem.style.color = "#f87171";
-    msgElem.innerText = "新增失敗：" + err.message;
+    console.error(err);
+    alert("批次新增發生錯誤：" + err.message);
   }
 }
 
+// 確保全域可以呼叫
 window.submitBatchProducts = submitBatchProducts;
  async function updateOrderStatus(orderId, newStatus) {
   try {
