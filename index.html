@@ -547,7 +547,7 @@ async function exportBuyerOrdersCSV() {
   }
 }
 
-// 2. 📊 匯出團務商品採購總數表
+// 📊 匯出團務商品採購總數表（含商品分類與排序）
 async function exportProductSummaryCSV() {
   try {
     const { data: orders, error } = await db.from('orders').select('*');
@@ -556,7 +556,7 @@ async function exportProductSummaryCSV() {
       return;
     }
 
-    // 依「團務名稱 + 商品名稱」進行數量統計
+    // 依「團務名稱 + 商品分類 + 商品名稱」進行數量統計
     const summaryMap = {};
 
     orders.forEach(ord => {
@@ -568,14 +568,17 @@ async function exportProductSummaryCSV() {
 
       itemsList.forEach(item => {
         const pName = item.name || item['商品名稱'] || '未知商品';
+        const pCategory = item.category || item['商品分類'] || item['分類'] || '未分類'; // 讀取商品分類
         const pPrice = Number(item.price || item['單價'] || 0);
         const pQty = Number(item.qty || item['數量'] || 1);
 
-        const key = `${groupName}__${pName}`;
+        // 使用 團務_分類_商品名 作為 Key，確保精準歸類
+        const key = `${groupName}__${pCategory}__${pName}`;
 
         if (!summaryMap[key]) {
           summaryMap[key] = {
             group: groupName,
+            category: pCategory,
             name: pName,
             price: pPrice,
             totalQty: 0
@@ -585,18 +588,27 @@ async function exportProductSummaryCSV() {
       });
     });
 
-    let csv = "團務名稱,商品名稱,單價,總預購數量,預估總金額\n";
+    // 將資料轉為陣列並進行「分類排序」（先依團務排序，再依分類排序，最後依商品名稱）
+    const sortedSummary = Object.values(summaryMap).sort((a, b) => {
+      if (a.group !== b.group) return a.group.localeCompare(b.group);
+      if (a.category !== b.category) return a.category.localeCompare(b.category);
+      return a.name.localeCompare(b.name);
+    });
 
-    Object.values(summaryMap).forEach(item => {
+    // 建立 CSV 表頭 (新增「商品分類」欄位)
+    let csv = "團務名稱,商品分類,商品名稱,單價,總預購數量,預估總金額\n";
+
+    sortedSummary.forEach(item => {
       const gName = `"${item.group.replace(/"/g, '""')}"`;
+      const cName = `"${item.category.replace(/"/g, '""')}"`;
       const pName = `"${item.name.replace(/"/g, '""')}"`;
       const totalPrice = item.price * item.totalQty;
 
-      csv += `${gName},${pName},${item.price},${item.totalQty},${totalPrice}\n`;
+      csv += `${gName},${cName},${pName},${item.price},${item.totalQty},${totalPrice}\n`;
     });
 
     const today = new Date().toISOString().split('T')[0];
-    downloadCSV(`團務商品採購總數表_${today}.csv`, csv);
+    downloadCSV(`團務商品採購總數表_含分類_${today}.csv`, csv);
   } catch (err) {
     console.error("匯出失敗：", err);
     alert("匯出採購統計失敗：" + err.message);
