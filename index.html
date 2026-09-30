@@ -1066,9 +1066,11 @@ function openModifyModal(order) {
                     status: "已變更",                            
                     changeReason: changeReason                    
                 });
-            } catch (emailErr) {
+           } catch (emailErr) {
                 console.error("寄信失敗詳情：", emailErr);
-                alert("訂單已更新，但通知信發送失敗：" + (emailErr.message || JSON.stringify(emailErr)));
+                // 👉 確保能正確印出錯誤文字
+                let errMsg = emailErr.message || (typeof emailErr === 'string' ? emailErr : JSON.stringify(emailErr));
+                alert("訂單已更新，但通知信發送失敗：" + errMsg);
             }
         }
 
