@@ -169,7 +169,7 @@
     <div id="surplusProductList" style="margin-top: 15px;"></div>
   </div>
 
-  <!-- 管理員後台登入入口 -->
+<!-- 管理員後台登入入口 -->
   <div style="margin-top: 30px; border-top: 1px solid #333; padding-top: 15px; text-align: center;">
     <button onclick="toggleAdminLogin()" style="background: transparent; border: none; color: #777; font-size: 11px; cursor: pointer;">管理員後台登入</button>
     
@@ -205,13 +205,14 @@
 
       <h4 style="color: #fff; margin-bottom: 8px; text-align: center;">待確認訂單管理</h4>
       <div id="pendingOrdersList">載入中...</div>
+
+      <!-- 📋 所有訂單紀錄區塊移至這裡，受 adminDashboard 保護與控制 -->
+      <div style="margin-top: 30px; border-top: 1px solid #444; padding-top: 15px;">
+        <h3 style="color: #fff; margin-bottom: 10px; text-align: center;">📋 所有訂單紀錄</h3>
+        <div id="allOrdersList">載入中...</div>
+      </div>
     </div>
-    <div style="margin-top: 30px;">
-    <h3 style="color: #fff; margin-bottom: 10px;">📋 所有訂單紀錄</h3>
-    <div id="allOrdersList">載入中...</div>
-</div>
   </div>
-</div>
 
 <!-- 燈箱圖片檢視 -->
 <div id="lightbox" onclick="closeLightbox()">
@@ -698,15 +699,20 @@
     form.style.display = form.style.display === 'none' ? 'block' : 'none';
   }
 
-  async function verifyAdmin() {
-    if (document.getElementById('adminPassword').value === "841250") { 
-      document.getElementById('adminLoginForm').style.display = 'none';
-      document.getElementById('adminDashboard').style.display = 'block';
-      loadPendingOrders();
-      loadGroupList();
-    } else { alert("密碼錯誤！"); }
-  }
-
+  function verifyAdmin() {
+    let pwd = document.getElementById('adminPassword').value;
+    if (pwd === "841250") { // 換成您原本的密碼判斷
+        document.getElementById('adminLoginForm').style.display = 'none';
+        document.getElementById('adminDashboard').style.display = 'block';
+        
+        // 🚀 在這裡加入這幾行，登入後自動載入資料
+        if (typeof loadPendingOrders === 'function') loadPendingOrders();
+        if (typeof loadAllOrders === 'function') loadAllOrders(); 
+        if (typeof loadAdminGroups === 'function') loadAdminGroups();
+    } else {
+        alert("密碼錯誤！");
+    }
+}
   async function submitBatchProducts() {
     let targetGroup = document.getElementById('adminTargetGroup').value;
     let rawText = document.getElementById('batchProductsInput').value.trim();
