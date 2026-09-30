@@ -318,82 +318,158 @@
   }
   window.sendPreOrderEmail = sendPreOrderEmail;
 
-  // 建立新團務寫入 Supabase groups 資料表
-async function submitCreateGroup() {
-  // 1. 測試點擊事件是否正常觸發
-  console.log("【測試】已點擊建立新團務按鈕");
+ let currentGroupMode = "create"; // 'create' 或 'edit'
+let allGroupsData = []; // 暫存所有團務原始資料
 
-  let gNameElem = document.getElementById('newGroupName');
-  let gImgElem = document.getElementById('newGroupImg');
-  let gDeadlineElem = document.getElementById('newGroupDeadline');
-  let gPaymentElem = document.getElementById('newGroupPayment');
-  let gRemarkElem = document.getElementById('newGroupRemark');
+// 1. 切換新增 / 編輯模式
+function switchGroupTab(mode) {
+  currentGroupMode = mode;
+  let btnCreate = document.getElementById('tabCreateGroupBtn');
+  let btnEdit = document.getElementById('tabEditGroupBtn');
+  let selectBox = document.getElementById('editGroupSelectBox');
+  let submitBtn = document.getElementById('groupSubmitBtn');
   let msgElem = document.getElementById('createGroupMsg');
+  if (msgElem) msgElem.innerText = "";
 
-  // 防呆判斷：檢查輸入框元素是否存在
-  if (!gNameElem) {
-    alert("系統錯誤：找不到團務名稱輸入框 (newGroupName)！請檢查 HTML ID 設定。");
+  if (mode === 'create') {
+    btnCreate.style.background = "#2563eb";
+    btnCreate.style.color = "#fff";
+    btnEdit.style.background = "#444";
+    btnEdit.style.color = "#ccc";
+    selectBox.style.display = "none";
+    submitBtn.innerText = "建立新團務";
+    submitBtn.style.background = "#2563eb";
+    clearGroupForm();
+  } else {
+    btnEdit.style.background = "#2563eb";
+    btnEdit.style.color = "#fff";
+    btnCreate.style.background = "#444";
+    btnCreate.style.color = "#ccc";
+    selectBox.style.display = "block";
+    submitBtn.innerText = "💾 儲存修改內容";
+    submitBtn.style.background = "#10b981";
+    loadGroupSelectForEdit();
+  }
+}
+window.switchGroupTab = switchGroupTab;
+
+// 2. 載入編輯團務下拉選單
+async function loadGroupSelectForEdit() {
+  const selectElem = document.getElementById('editGroupSelect');
+  if (!selectElem) return;
+  selectElem.innerHTML = "<option value=''>載入中...</option>";
+
+  try {
+    const { data, error } = await db.from('groups').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+
+    allGroupsData = data || [];
+    if (allGroupsData.length === 0) {
+      selectElem.innerHTML = "<option value=''>尚無任何團務</option>";
+      return;
+    }
+
+    selectElem.innerHTML = "<option value=''>-- 請選擇欲編輯的團務 --</option>";
+    allGroupsData.forEach(g => {
+      selectElem.innerHTML += `<option value="${g.id}">${g["團務名稱"]}</option>`;
+    });
+  } catch (err) {
+    alert("載入團務失敗：" + err.message);
+  }
+}
+
+// 3. 選擇團務時自動帶入表單欄位
+function onSelectGroupToEdit() {
+  let selectedId = document.getElementById('editGroupSelect').value;
+  if (!selectedId) {
+    clearGroupForm();
     return;
   }
 
-  let gName = gNameElem.value.trim();
-  let gImg = gImgElem ? gImgElem.value.trim() : "";
-  let gDeadline = (gDeadlineElem && gDeadlineElem.value.trim()) ? gDeadlineElem.value.trim() : "未定";
-  let gPayment = (gPaymentElem && gPaymentElem.value.trim()) ? gPaymentElem.value.trim() : "貨到付款 (取付)";
-  let gRemark = (gRemarkElem && gRemarkElem.value.trim()) ? gRemarkElem.value.trim() : "";
-
-  if (!gName) {
-    alert("請填寫團務名稱！");
-    return;
+  let group = allGroupsData.find(g => String(g.id) === String(selectedId));
+  if (group) {
+    document.getElementById('editingGroupId').value = group.id;
+    document.getElementById('newGroupName').value = group["團務名稱"] || "";
+    document.getElementById('newGroupImg').value = group["圖片"] || "";
+    document.getElementById('newGroupDeadline').value = group["截單時間"] || "";
+    document.getElementById('newGroupPayment').value = group["付款方式"] || "貨到付款 (取付)";
+    document.getElementById('newGroupRemark').value = group["團務備註"] || "";
   }
+}
+window.onSelectGroupToEdit = onSelectGroupToEdit;
+
+// 4. 清空表單
+function clearGroupForm() {
+  document.getElementById('editingGroupId').value = "";
+  document.getElementById('newGroupName').value = "";
+  document.getElementById('newGroupImg').value = "";
+  document.getElementById('newGroupDeadline').value = "";
+  document.getElementById('newGroupPayment').value = "貨到付款 (取付)";
+  document.getElementById('newGroupRemark').value = "";
+}
+
+// 5. 統一提交表單（自動判斷是【新增】還是【更新】）
+async function submitGroupForm() {
+  let gName = document.getElementById('newGroupName')?.value.trim();
+  let gImg = document.getElementById('newGroupImg')?.value.trim();
+  let gDeadline = document.getElementById('newGroupDeadline')?.value.trim() || "未定";
+  let gPayment = document.getElementById('newGroupPayment')?.value.trim() || "貨到付款 (取付)";
+  let gRemark = document.getElementById('newGroupRemark')?.value.trim() || "";
+  let msgElem = document.getElementById('createGroupMsg');
+  let editingId = document.getElementById('editingGroupId')?.value;
+
+  if (!gName) { alert("請填寫團務名稱！"); return; }
 
   if (msgElem) {
     msgElem.style.color = "#aaa";
-    msgElem.innerText = "正在建立團務...";
+    msgElem.innerText = currentGroupMode === 'create' ? "正在建立團務..." : "正在儲存修改...";
   }
 
-  try {
-    // 寫入 Supabase groups 資料表
-    const { data, error } = await db.from('groups').insert([{
-      "團務名稱": gName,
-      "圖片": gImg,
-      "截單時間": gDeadline,
-      "isExpired": false,
-      "團務備註": gRemark,
-      "付款方式": gPayment
-    }]).select();
+  let payload = {
+    "團務名稱": gName,
+    "圖片": gImg,
+    "截單時間": gDeadline,
+    "團務備註": gRemark,
+    "付款方式": gPayment
+  };
 
-    if (error) throw error;
+  try {
+    if (currentGroupMode === 'create') {
+      // 新增模式
+      payload["isExpired"] = false;
+      const { error } = await db.from('groups').insert([payload]);
+      if (error) throw error;
+      alert(`✓ 成功建立團務：「${gName}」！`);
+    } else {
+      // 編輯模式 (更新 Supabase)
+      if (!editingId) { alert("請先選擇要編輯的團務！"); return; }
+      const { error } = await db.from('groups').update(payload).eq('id', editingId);
+      if (error) throw error;
+      alert(`✓ 團務「${gName}」已更新成功！`);
+    }
 
     if (msgElem) {
       msgElem.style.color = "#10b981";
-      msgElem.innerText = `✓ 成功建立團務：「${gName}」！`;
+      msgElem.innerText = "✓ 操作成功！";
     }
-    alert(`✓ 成功建立團務：「${gName}」！`);
 
-    // 清空欄位
-    gNameElem.value = "";
-    if (gImgElem) gImgElem.value = "";
-    if (gDeadlineElem) gDeadlineElem.value = "";
-    if (gRemarkElem) gRemarkElem.value = "";
+    clearGroupForm();
 
-    // 重新載入團務選單
-    if (typeof loadGroupList === 'function') {
-      await loadGroupList();
-    }
+    // 重新載入全站團務資料 (買家端與後台下拉選單同步連動)
+    if (typeof loadGroupList === 'function') await loadGroupList();
+    if (currentGroupMode === 'edit') await loadGroupSelectForEdit();
 
   } catch (err) {
-    console.error("建立團務失敗：", err);
-    let errMsg = err.message || JSON.stringify(err);
     if (msgElem) {
       msgElem.style.color = "#f87171";
-      msgElem.innerText = "建立團務失敗：" + errMsg;
+      msgElem.innerText = "操作失敗：" + err.message;
     }
-    alert("建立團務失敗：" + errMsg);
+    alert("操作失敗：" + err.message);
   }
 }
-// 確保掛載至全域視窗，避免作用域問題
-window.submitCreateGroup = submitCreateGroup;
+window.submitGroupForm = submitGroupForm;
+// 保持舊名稱相容，避免報錯
+window.submitCreateGroup = submitGroupForm;
   
   // 轉換 Google 雲端硬碟網址為直接顯示圖片格式
   function formatImageUrl(url) {
