@@ -1483,13 +1483,31 @@ function closeLightbox() {
     }
   }
 
- // 🔐 管理員後台控制（改為網址暗號 #admin 機制）
+ // 🔐 管理員後台控制（支援 sessionStorage 保持登入狀態）
   function checkAdminHash() {
+    const adminDash = document.getElementById('adminDashboard');
+    
+    // 1. 如果本分頁已經驗證過密碼，直接顯示後台
+    if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
+      if (adminDash) {
+        adminDash.style.display = 'block';
+        // 載入後台相關資料
+        if (typeof loadPendingOrders === 'function') loadPendingOrders();
+        if (typeof loadAllOrders === 'function') loadAllOrders(); 
+        if (typeof loadOrderStats === 'function') loadOrderStats();
+        if (typeof loadExportGroupOptions === 'function') loadExportGroupOptions();
+      }
+      return;
+    }
+
+    // 2. 如果網址帶有 #admin 且尚未登入，才跳出密碼提示
     if (window.location.hash === '#admin') {
       const pwd = prompt("🔐 請輸入管理員密碼：");
       
       if (pwd === "qingyuan") {
-        const adminDash = document.getElementById('adminDashboard');
+        // 記錄登入狀態到 sessionStorage（關閉分頁後會自動清除）
+        sessionStorage.setItem('isAdminLoggedIn', 'true');
+
         if (adminDash) {
           adminDash.style.display = 'block';
           
@@ -1507,9 +1525,9 @@ function closeLightbox() {
     }
   }
 
-  // 監聽網址 Hash 變化與頁面載入
-  window.addEventListener('DOMContentLoaded', checkAdminHash);
-  window.addEventListener('hashchange', checkAdminHash);
+// 監聽網址 Hash 變化與頁面載入
+window.addEventListener('DOMContentLoaded', checkAdminHash);
+window.addEventListener('hashchange', checkAdminHash);
 
   // 統計數據
   async function loadOrderStats() {
