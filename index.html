@@ -294,6 +294,67 @@
       }
   }
   window.sendPreOrderEmail = sendPreOrderEmail;
+
+  // 建立新團務寫入 Supabase groups 資料表
+async function submitCreateGroup() {
+  let gName = document.getElementById('newGroupName')?.value.trim();
+  let gImg = document.getElementById('newGroupImg')?.value.trim();
+  let gDeadline = document.getElementById('newGroupDeadline')?.value.trim() || "未定";
+  let gPayment = document.getElementById('newGroupPayment')?.value.trim() || "貨到付款 (取付)";
+  let gRemark = document.getElementById('newGroupRemark')?.value.trim() || "";
+  let msgElem = document.getElementById('createGroupMsg');
+
+  if (!gName) {
+    alert("請填寫團務名稱！");
+    return;
+  }
+
+  if (msgElem) {
+    msgElem.style.color = "#aaa";
+    msgElem.innerText = "正在建立團務...";
+  }
+
+  try {
+    // 嚴格對應資料庫的 6 個欄位名稱
+    const { data, error } = await db.from('groups').insert([{
+      "團務名稱": gName,
+      "圖片": gImg,
+      "截單時間": gDeadline,
+      "isExpired": false,
+      "團務備註": gRemark,
+      "付款方式": gPayment
+    }]).select();
+
+    if (error) throw error;
+
+    if (msgElem) {
+      msgElem.style.color = "#10b981";
+      msgElem.innerText = `✓ 成功建立團務：「${gName}」！`;
+    }
+    alert(`✓ 成功建立團務：「${gName}」！`);
+
+    // 清空輸入框
+    document.getElementById('newGroupName').value = "";
+    document.getElementById('newGroupImg').value = "";
+    document.getElementById('newGroupDeadline').value = "";
+    document.getElementById('newGroupRemark').value = "";
+
+    // 重新載入團務選單（買家端與後台下拉選單同步更新）
+    if (typeof loadGroupList === 'function') {
+      await loadGroupList();
+    }
+
+  } catch (err) {
+    console.error("建立團務失敗：", err);
+    let errMsg = err.message || JSON.stringify(err);
+    if (msgElem) {
+      msgElem.style.color = "#f87171";
+      msgElem.innerText = "建立團務失敗：" + errMsg;
+    }
+    alert("建立團務失敗：" + errMsg);
+  }
+}
+window.submitCreateGroup = submitCreateGroup;
   
   // 轉換 Google 雲端硬碟網址為直接顯示圖片格式
   function formatImageUrl(url) {
