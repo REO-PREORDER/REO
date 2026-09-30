@@ -833,6 +833,42 @@
       loadPendingOrders();
     } catch (err) { alert("更新失敗：" + err.message); }
   }
+async function sendPreOrderEmail({ customerEmail, lineName, groupName, productDetails, totalPrice, paymentMethod, status, changeReason }) {
+    // 您的 Cloudflare Worker 專屬代理網址
+    const workerUrl = 'https://rapid-tree-ad77.you751019.workers.dev'; 
+
+    try {
+        const response = await fetch(workerUrl, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                customerEmail,
+                lineName,
+                groupName,
+                productDetails,
+                totalPrice,
+                paymentMethod,
+                status,
+                changeReason
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            console.log('團務通知信發送成功！');
+            return true;
+        } else {
+            console.error('團務通知信發送失敗：', result.error);
+            return false;
+        }
+    } catch (error) {
+        console.error('網路連線錯誤：', error);
+        return false;
+    }
+}
 </script>
 
 </body>
