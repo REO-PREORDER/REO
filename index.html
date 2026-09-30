@@ -489,36 +489,6 @@ async function submitGroupForm() {
     }
 
     clearGroupForm();
-// 🗑️ 刪除目前正在編輯的團務（含該團務與相關商品、訂單）
-async function deleteCurrentGroup() {
-  const groupId = document.getElementById('editingGroupId').value;
-  const groupName = document.getElementById('newGroupName').value;
-
-  if (!groupId) {
-    alert("請先選擇要刪除的團務！");
-    return;
-  }
-
-  if (!confirm(`⚠️ 確定要刪除團務「${groupName}」嗎？\n這將會一併刪除該團務下的所有商品與訂單！`)) return;
-
-  try {
-    // 1. 刪除該團務相關的訂單
-    await db.from('orders').delete().eq('團務名稱', groupName);
-
-    // 2. 刪除該團務相關的商品
-    await db.from('products').delete().eq('group_id', groupId);
-
-    // 3. 刪除團務本身
-    const { error } = await db.from('groups').delete().eq('id', groupId);
-    if (error) throw error;
-
-    alert("團務及其附屬商品與訂單已成功刪除！");
-    location.reload(); // 重新整理頁面
-  } catch (err) {
-    alert("刪除失敗：" + err.message);
-  }
-}
-window.deleteCurrentGroup = deleteCurrentGroup;
     
     async function loadProductsForEdit(groupId) {
   const container = document.getElementById('productListContainer');
@@ -682,7 +652,37 @@ async function exportBuyerOrdersCSV() {
     alert("匯出訂單失敗：" + err.message);
   }
 }
+// 🗑️ 刪除目前正在編輯的團務（含該團務與相關商品、訂單）
+async function deleteCurrentGroup() {
+  const groupId = document.getElementById('editingGroupId').value;
+  const groupName = document.getElementById('newGroupName').value;
 
+  if (!groupId) {
+    alert("請先選擇要刪除的團務！");
+    return;
+  }
+
+  if (!confirm(`⚠️ 確定要刪除團務「${groupName}」嗎？\n這將會一併刪除該團務下的所有商品與訂單！`)) return;
+
+  try {
+    // 1. 刪除該團務相關的訂單
+    await db.from('orders').delete().eq('團務名稱', groupName);
+
+    // 2. 刪除該團務相關的商品
+    await db.from('products').delete().eq('group_id', groupId);
+
+    // 3. 刪除團務本身
+    const { error } = await db.from('groups').delete().eq('id', groupId);
+    if (error) throw error;
+
+    alert("團務及其附屬商品與訂單已成功刪除！");
+    location.reload(); // 重新整理頁面
+  } catch (err) {
+    alert("刪除失敗：" + err.message);
+  }
+}
+window.deleteCurrentGroup = deleteCurrentGroup;
+  
 // 📊 匯出團務商品採購總數表 (已移除商品分類欄位)
 async function exportProductSummaryCSV() {
   const selectEl = document.getElementById('exportGroupSelect');
