@@ -1028,12 +1028,12 @@ async function updateOrderStatus(orderId, newStatus) {
 
     let groupName = order["團務名稱"] || "";
     let remark = order["備註"] || "";
-    let isSurplusOrder = groupName.includes("現貨餘量認領") || remark.includes("現貨餘量認領");
+    let isSurplusOrder = groupName.includes("餘量認領") || remark.includes("餘量認領");
 
     // 2. 只有「現貨餘量認領」訂單被取消時，才將庫存加回
     if (isSurplusOrder && newStatus === "已取消" && oldStatus !== "已取消") {
       let items = order["訂單內容"] || [];
-      let cleanGroupName = groupName.replace(" (現貨餘量認領)", "").trim();
+      let cleanGroupName = groupName.replace(" (餘量認領)", "").trim();
 
       for (let item of items) {
         const { data: prodData } = await db
@@ -1074,67 +1074,78 @@ async function updateOrderStatus(orderId, newStatus) {
 }
 window.updateOrderStatus = updateOrderStatus;
 async function loadPendingOrders() {
-    let container = document.getElementById('pendingOrdersList');
-    container.innerHTML = "載入中...";
-    try {
-      const { data, err } = await db.from('orders').select('*').eq('處理狀態', '待確認');
-      if (err) throw err;
+  let container = document.getElementById('pendingOrdersList') || document.getElementById('pendingList');
+  if (!container) return;
 
-      if (data && data.length > 0) {
-        container.innerHTML = ""; // 清空容器
-        data.forEach(o => {
-          let itemsHtml = "";
-          o["訂單內容"].forEach(i => { 
-            let imgUrl = formatImageUrl(i.image);
-            let imgTag = imgUrl ? `<img src="${imgUrl}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openLightbox('${imgUrl}')">` : '';
-            itemsHtml += `
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                ${imgTag}
-                <div style="flex: 1;">${i.name} x ${i.qty} ($${i.price * i.qty})</div>
-              </div>`; 
-          });
+  container.innerHTML = "載入待審核訂單中...";
 
-          // 建立卡片外觀
-          let card = document.createElement('div');
-          card.style.cssText = "background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; font-size:12px;";
-          card.innerHTML = `
-            <div><b>時間：</b>${new Date(o.created_at).toLocaleString()} | <b>團名：</b>${o["團務名稱"]}</div>
-            <div><b>買家：</b>${o["買家名稱"]} (${o["手機號碼"]})</div>
-            <div style="margin:4px 0; background:#121212; padding:6px; border-radius:4px;">${itemsHtml}</div>
-            <div><b>總金額：</b>$${o["總金額"]}</div>
-            <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;" id="actions-${o.id}"></div>
-          `;
-          container.appendChild(card);
+  try {
+    // 撈取狀態為「待處理」或「待確認」的所有訂單（包含一般預購與餘量認領）
+    const { data: orders, error } = await db
+      .from('orders')
+      .select('*')
+      .or('處理狀態.eq.待處理,處理狀態.eq.待確認')
+      .order('id', { ascending: false });
 
-          // 用程式動態產生按鈕並綁定事件（完美避開 Module 限制）
-          let actionDiv = card.querySelector(`#actions-${o.id}`);
-          
-          let btnAccept = document.createElement('button');
-          btnAccept.innerText = "✓ 已成立";
-          btnAccept.style.cssText = "background-color: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;";
-          btnAccept.onclick = () => updateOrderStatus(o.id, '已成立');
+    if (error) throw error;
 
-          let btnCancel = document.createElement('button');
-          btnCancel.innerText = "✕ 已取消";
-          btnCancel.style.cssText = "background-color: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;";
-          btnCancel.onclick = () => updateOrderStatus(o.id, '已取消');
-
-          let btnChange = document.createElement('button');
-          btnChange.innerText = "⚠️ 已變更";
-          btnChange.style.cssText = "background-color: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;";
-          btnChange.onclick = () => updateOrderStatus(o.id, '已變更');
-
-          actionDiv.appendChild(btnAccept);
-          actionDiv.appendChild(btnCancel);
-          actionDiv.appendChild(btnChange);
-        });
-      } else { 
-        container.innerHTML = "<p style='color:#aaa; font-size:12px;'>目前沒有待確認的訂單。</p>"; 
-      }
-    } catch (err) { 
-      container.innerHTML = "<p style='color:#f87171;'>載入訂單失敗。</p>"; 
+    if (!orders || orders.length === 0) {
+      container.innerHTML = "<p style='color:#aaa; font-size:13px; text-align:center; padding:20px;'>目前沒有待審核的訂單！</p>";
+      return;
     }
+
+    let html = "";
+    orders.forEach(order => {
+      let groupName = order["團務名稱"] || "";
+      let remark = order["備註"] || "";
+      let isSurplus = groupName.includes("餘量認領") || remark.includes("餘量認領");
+
+      // 類型標籤
+      let typeBadge = isSurplus 
+        ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">現貨餘量登記</span>`
+        : `<span style="background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">預購填單</span>`;
+
+      // 商品列表 HTML
+      let itemsHtml = "";
+      let items = order["訂單內容"] || [];
+      items.forEach(item => {
+        itemsHtml += `<div style="font-size: 13px; color: #e4e4e7; margin-bottom: 4px;">
+          • ${item.name || item["商品名稱"]} x ${item.qty || item["數量"]} ($${item.price || item["單價"] || 0})
+        </div>`;
+      });
+
+      html += `
+        <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff; text-align: left;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <div>團務：${groupName} ${typeBadge}</div>
+            <div style="font-size: 12px; color: #f59e0b;">狀態：${order["處理狀態"]}</div>
+          </div>
+          <div style="font-size: 13px; color: #aaa; margin-bottom: 6px;">
+            買家：${order["買家名稱"]} | 手機：${order["手機號碼"]} | Email：${order["Email"] || "無"}
+          </div>
+          <div style="background: #09090b; padding: 8px; border-radius: 6px; margin-bottom: 8px;">
+            ${itemsHtml}
+          </div>
+          <div style="font-size: 13px; font-weight: bold; margin-bottom: 10px;">
+            總金額：<span style="color: #60a5fa;">$${order["總金額"]}</span>
+          </div>
+          <!-- 管理員審核按鈕 -->
+          <div style="display: flex; gap: 8px;">
+            <button onclick="updateOrderStatus(${order.id}, '已成立')" style="flex: 1; padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">審核通過 (成立)</button>
+            <button onclick="updateOrderStatus(${order.id}, '已取消')" style="flex: 1; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">拒絕申請 (取消)</button>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+
+  } catch (err) {
+    console.error("載入待處理訂單失敗：", err);
+    container.innerHTML = `<p style="color:#ef4444; font-size:13px; text-align:center;">載入失敗：${err.message}</p>`;
+  }
 }
+window.loadPendingOrders = loadPendingOrders;
   async function loadAllOrders() {
     let container = document.getElementById('allOrdersList'); // 假設您的 HTML 中有這個容器
     if (!container) return;
