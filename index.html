@@ -783,7 +783,7 @@ async function loadPendingOrders() {
       if (err) throw err;
 
       if (data && data.length > 0) {
-        let html = "";
+        container.innerHTML = ""; // 清空容器
         data.forEach(o => {
           let itemsHtml = "";
           o["訂單內容"].forEach(i => { 
@@ -795,29 +795,47 @@ async function loadPendingOrders() {
                 <div style="flex: 1;">${i.name} x ${i.qty} ($${i.price * i.qty})</div>
               </div>`; 
           });
-          html += `
-            <div style="background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; font-size:12px;">
-              <div><b>時間：</b>${new Date(o.created_at).toLocaleString()} | <b>團名：</b>${o["團務名稱"]}</div>
-              <div><b>買家：</b>${o["買家名稱"]} (${o["手機號碼"]})</div>
-              <div style="margin:4px 0; background:#121212; padding:6px; border-radius:4px;">${itemsHtml}</div>
-              <div><b>總金額：</b>$${o["總金額"]}</div>
-              <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
-                <button onclick="updateOrderStatus(${o.id}, '已成立')" style="background-color: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s;">
-                    ✓ 已成立
-                </button>
-                <button onclick="updateOrderStatus(${o.id}, '已取消')" style="background-color: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s;">
-                    ✕ 已取消
-                </button>
-                <button onclick="updateOrderStatus(${o.id}, '已變更')" style="background-color: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s;">
-                    ⚠️ 已變更
-                </button>
-              </div>
-            </div>
+
+          // 建立卡片外觀
+          let card = document.createElement('div');
+          card.style.cssText = "background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; font-size:12px;";
+          card.innerHTML = `
+            <div><b>時間：</b>${new Date(o.created_at).toLocaleString()} | <b>團名：</b>${o["團務名稱"]}</div>
+            <div><b>買家：</b>${o["買家名稱"]} (${o["手機號碼"]})</div>
+            <div style="margin:4px 0; background:#121212; padding:6px; border-radius:4px;">${itemsHtml}</div>
+            <div><b>總金額：</b>$${o["總金額"]}</div>
+            <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;" id="actions-${o.id}"></div>
           `;
+          container.appendChild(card);
+
+          // 用程式動態產生按鈕並綁定事件（完美避開 Module 限制）
+          let actionDiv = card.querySelector(`#actions-${o.id}`);
+          
+          let btnAccept = document.createElement('button');
+          btnAccept.innerText = "✓ 已成立";
+          btnAccept.style.cssText = "background-color: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;";
+          btnAccept.onclick = () => updateOrderStatus(o.id, '已成立');
+
+          let btnCancel = document.createElement('button');
+          btnCancel.innerText = "✕ 已取消";
+          btnCancel.style.cssText = "background-color: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;";
+          btnCancel.onclick = () => updateOrderStatus(o.id, '已取消');
+
+          let btnChange = document.createElement('button');
+          btnChange.innerText = "⚠️ 已變更";
+          btnChange.style.cssText = "background-color: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;";
+          btnChange.onclick = () => updateOrderStatus(o.id, '已變更');
+
+          actionDiv.appendChild(btnAccept);
+          actionDiv.appendChild(btnCancel);
+          actionDiv.appendChild(btnChange);
         });
-        container.innerHTML = html;
-      } else { container.innerHTML = "<p style='color:#aaa; font-size:12px;'>目前沒有待確認的訂單。</p>"; }
-    } catch (err) { container.innerHTML = "<p style='color:#f87171;'>載入訂單失敗。</p>"; }
+      } else { 
+        container.innerHTML = "<p style='color:#aaa; font-size:12px;'>目前沒有待確認的訂單。</p>"; 
+      }
+    } catch (err) { 
+      container.innerHTML = "<p style='color:#f87171;'>載入訂單失敗。</p>"; 
+    }
 }
 </script>
 
