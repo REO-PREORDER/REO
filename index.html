@@ -1082,8 +1082,7 @@ function openModifyModal(order) {
         alert("更新失敗：" + err.message);
     }
 };
-// 獨立的統計載入函數與事件綁定
-async function executeOrderStats() {
+async function loadOrderStats() {
     let groupSelect = document.getElementById('adminStatsGroup');
     let resultContainer = document.getElementById('orderStatsResult');
     if (!groupSelect || !resultContainer) return;
@@ -1150,25 +1149,6 @@ async function executeOrderStats() {
         resultContainer.innerHTML = "<p style='color:#f87171;'>載入統計失敗：" + err.message + "</p>";
     }
 }
-
-// 自動監聽選單變更與初始化
-document.addEventListener('DOMContentLoaded', () => {
-    let selectEl = document.getElementById('adminStatsGroup');
-    if (selectEl) {
-        selectEl.addEventListener('change', executeOrderStats);
-    }
-});
-
-setTimeout(() => {
-    let selectEl = document.getElementById('adminStatsGroup');
-    if (selectEl) {
-        selectEl.removeEventListener('change', executeOrderStats);
-        selectEl.addEventListener('change', executeOrderStats);
-        if (selectEl.value) {
-            executeOrderStats();
-        }
-    }
-}, 1000);
 </script>
 
 </body>
