@@ -1054,7 +1054,8 @@ function openModifyModal(order) {
             let productText = newItems.map(i => `${i.name} x ${i.qty} ($${i.price} / 小計: $${i.price * i.qty})`).join("\n");
 
             // 4. 呼叫全域寄信函式發送通知信
-            if (typeof sendPreOrderEmail === 'function') {
+        if (typeof sendPreOrderEmail === 'function') {
+            try {
                 await sendPreOrderEmail({
                     customerEmail: order["Email"],          
                     lineName: order["買家名稱"],              
@@ -1065,17 +1066,11 @@ function openModifyModal(order) {
                     status: "已變更",                            
                     changeReason: changeReason                    
                 });
+            } catch (emailErr) {
+                console.error("寄信失敗詳情：", emailErr);
+                alert("訂單已更新，但通知信發送失敗：" + (emailErr.message || JSON.stringify(emailErr)));
             }
-
-            alert("訂單已成功修改、更新並已發送通知信！");
-            document.body.removeChild(modalBg);
-            loadAllOrders(); // 重新整理所有訂單列表
-            if (typeof loadPendingOrders === 'function') loadPendingOrders(); // 同步重新整理待確認
-        } catch (err) {
-            alert("更新失敗：" + err.message);
         }
-    };
-}
 </script>
 
 </body>
