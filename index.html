@@ -1070,7 +1070,16 @@ function openModifyModal(order) {
                 console.error("寄信失敗詳情：", emailErr);
                 alert("訂單已更新，但通知信發送失敗：" + (emailErr.message || JSON.stringify(emailErr)));
             }
-       };
+        }
+
+        alert("訂單已成功修改、更新並已發送通知信！");
+        document.body.removeChild(modalBg);
+        loadAllOrders(); // 重新整理所有訂單列表
+        if (typeof loadPendingOrders === 'function') loadPendingOrders(); // 同步重新整理待確認
+    } catch (err) {
+        alert("更新失敗：" + err.message);
+    }
+};
 </script>
 
 </body>
