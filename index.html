@@ -1750,15 +1750,25 @@ window.addEventListener('hashchange', checkAdminHash);
 
   async function submitBatchProducts() {
   try {
-    // 1. 檢查目標團務選擇器
-    let groupSelect = document.getElementById('adminTargetGroup');
+    // 1. 改用正確的下拉選單 id: editGroupSelect
+    let groupSelect = document.getElementById('editGroupSelect');
     if (!groupSelect) {
-      alert("找不到群組選擇元件 (adminTargetGroup)");
+      alert("找不到群組選擇元件 (editGroupSelect)");
       return;
     }
-    let targetGroup = groupSelect.value;
-    if (!targetGroup) {
+    
+    let selectedId = groupSelect.value;
+    if (!selectedId) {
       alert("請先選擇團務！");
+      return;
+    }
+
+    // 取得選中的團務名稱（從 allGroupsData 裡面找到對應的團務名稱）
+    let group = allGroupsData ? allGroupsData.find(g => String(g.id) === String(selectedId)) : null;
+    let targetGroup = group ? group["團務名稱"] : document.getElementById('newGroupName').value;
+
+    if (!targetGroup) {
+      alert("無法取得目前的團務名稱，請確認是否已選擇團務！");
       return;
     }
 
@@ -1780,7 +1790,7 @@ window.addEventListener('hashchange', checkAdminHash);
       msgElem.innerText = "正在解析並新增商品...";
     }
 
-    // 3. 處理文字與換行
+    // 3. 處理文字與換行（支援從試算表複製過來的 Tab 與多行格式）
     let lines = rawText.split('\n');
     let newProducts = [];
 
@@ -1798,6 +1808,7 @@ window.addEventListener('hashchange', checkAdminHash);
         let pImg = parts[3] || "";
         let pDesc = parts.slice(4).join(" ");
 
+        // 修正 Google 雲端硬碟或其他網址內的空格問題
         pImg = pImg.replace(/(\?|\&)\s+/g, '$1');
 
         if (pName && !isNaN(pPrice)) {
@@ -1817,14 +1828,14 @@ window.addEventListener('hashchange', checkAdminHash);
     if (newProducts.length === 0) {
       if (msgElem) {
         msgElem.style.color = "#f87171";
-        msgElem.innerText = "解析失敗！沒有成功抓到任何商品（請確認至少有分類、名稱、單價）。";
+        msgElem.innerText = "解析失敗！沒有成功抓到任何商品（請確認順序：分類, 名稱, 單價）。";
       } else {
         alert("解析失敗！沒有成功抓到任何商品。");
       }
       return;
     }
 
-    // 4. 寫入資料庫
+    // 4. 寫入 Supabase 資料庫
     if (typeof db === 'undefined') {
       alert("資料庫物件 (db) 未定義！");
       return;
@@ -1842,8 +1853,9 @@ window.addEventListener('hashchange', checkAdminHash);
 
     inputElem.value = "";
     
-    if (typeof loadGroupProducts === 'function') {
-      loadGroupProducts(targetGroup);
+    // 重新載入該團務的商品列表
+    if (typeof loadProductsForEdit === 'function') {
+      loadProductsForEdit(selectedId);
     }
 
   } catch (err) {
@@ -1852,7 +1864,6 @@ window.addEventListener('hashchange', checkAdminHash);
   }
 }
 
-// 確保全域可以呼叫
 window.submitBatchProducts = submitBatchProducts;
  async function updateOrderStatus(orderId, newStatus) {
   try {
