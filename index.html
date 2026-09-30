@@ -674,11 +674,11 @@ window.loadOrderStats = loadOrderStats;
       let remark = order["備註"] || "";
       
       // 判斷是否為餘量認領訂單
-      let isSurplus = groupName.includes("現貨餘量認領") || remark.includes("現貨餘量認領");
+      let isSurplus = groupName.includes("餘量認領") || remark.includes("餘量認領");
 
       // 訂單類型標籤：餘量訂單顯示 [現貨餘量登記]，一般預購顯示 [預購填單]
       let typeBadge = isSurplus 
-        ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">現貨餘量登記</span>`
+        ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">餘量登記</span>`
         : `<span style="background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">預購填單</span>`;
 
       // 處理狀態顏色
