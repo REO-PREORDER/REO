@@ -641,47 +641,104 @@ window.loadOrderStats = loadOrderStats;
   }
 
   async function queryOrder() {
-    let key = document.getElementById('searchKey').value.trim();
-    let resultDiv = document.getElementById('queryResult');
-    if (!key) { alert("請輸入手機或 Email！"); return; }
+  let searchName = document.getElementById('searchName')?.value.trim();
+  let searchPhone = document.getElementById('searchPhone')?.value.trim();
+  let resultDiv = document.getElementById('searchResult');
 
-    resultDiv.innerHTML = "查詢中...";
-    try {
-      const { data: orders, error } = await db.from('orders').select('*').or(`手機號碼.eq.${key},Email.eq.${key}`);
-      if (error) throw error;
-
-      if (orders && orders.length > 0) {
-        let html = "";
-        orders.forEach(o => {
-          let statusClass = o["處理狀態"] === "已成立" ? "status-confirmed" : (o["處理狀態"] === "已取消" ? "status-cancelled" : "status-pending");
-          let itemsHtml = "";
-          o["訂單內容"].forEach(i => { 
-            let imgUrl = formatImageUrl(i.image);
-            let imgTag = imgUrl ? `<img src="${imgUrl}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openLightbox('${imgUrl}')">` : '';
-            itemsHtml += `
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                ${imgTag}
-                <div style="flex: 1;">${i.name} x ${i.qty} ($${i.price * i.qty})</div>
-              </div>`; 
-          });
-          html += `
-            <div class="card" style="font-size: 12px; background:#242424; padding:10px; border-radius:8px; margin-bottom:10px;">
-              <div><b>團務名稱：</b>${o["團務名稱"]}</div>
-              <div style="margin: 6px 0;"><b>預購項目：</b></div>
-              <div style="background: #121212; padding: 6px; border-radius: 4px; margin-bottom: 6px;">${itemsHtml}</div>
-              <div><b>金額總計：</b>$${o["總金額"]}</div>
-              <div><b>處理狀態：</b><span class="${statusClass}">${o["處理狀態"]}</span></div>
-            </div>
-          `;
-        });
-        resultDiv.innerHTML = html;
-      } else {
-        resultDiv.innerHTML = "<p style='color:#f87171; text-align:center;'>查無相關預購紀錄。</p>";
-      }
-    } catch (err) {
-      resultDiv.innerHTML = "<p style='color:#f87171; text-align:center;'>查詢發生錯誤。</p>";
-    }
+  if (!searchName || !searchPhone) {
+    alert("請輸入暱稱與手機號碼進行查詢！");
+    return;
   }
+
+  resultDiv.innerHTML = "查詢中...";
+
+  try {
+    // 撈取符合暱稱與手機號碼的訂單
+    const { data: orders, error } = await db
+      .from('orders')
+      .select('*')
+      .eq('買家名稱', searchName)
+      .eq('手機號碼', searchPhone)
+      .order('id', { ascending: false });
+
+    if (error) throw error;
+
+    if (!orders || orders.length === 0) {
+      resultDiv.innerHTML = "<p style='color:#aaa; font-size:13px;'>查無相關預購/認領紀錄。</p>";
+      return;
+    }
+
+    let html = "";
+    orders.forEach(order => {
+      let groupName = order["團務名稱"] || "";
+      let remark = order["備註"] || "";
+      
+      // 判斷是否為餘量認領訂單
+      let isSurplus = groupName.includes("現貨餘量認領") || remark.includes("現貨餘量認領");
+
+      // 訂單類型標籤：餘量訂單顯示 [現貨餘量登記]，一般預購顯示 [預購填單]
+      let typeBadge = isSurplus 
+        ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">現貨餘量登記</span>`
+        : `<span style="background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">預購填單</span>`;
+
+      // 處理狀態顏色
+      let statusColor = "#3b82f6"; // 藍色（預設）
+      let statusText = order["處理狀態"] || "待處理";
+
+      if (statusText === "已成立") statusColor = "#10b981"; // 綠色
+      if (statusText === "已變更") statusColor = "#f59e0b"; // 黃/橘色
+      if (statusText === "已取消") statusColor = "#ef4444"; // 紅色
+
+      // 渲染商品清單項目
+      let itemsHtml = "";
+      let items = order["訂單內容"] || [];
+      items.forEach(item => {
+        let imgUrl = item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "";
+        let imgTag = imgUrl 
+          ? `<img src="${imgUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:4px; margin-right:8px; vertical-align:middle;">`
+          : "";
+
+        itemsHtml += `<div style="margin-bottom: 6px; font-size: 13px; color: #e4e4e7; display: flex; align-items: center;">
+          ${imgTag}
+          <span>${item.name || item["商品名稱"]} x ${item.qty || item["數量"]} ($${item.price || item["單價"] || 0})</span>
+        </div>`;
+      });
+
+      // 備註顯示邏輯（若有備註才渲染）
+      let remarkHtml = remark 
+        ? `<div style="margin-top: 6px; font-size: 12px; color: #a1a1aa; border-top: 1px dashed #3f3f46; padding-top: 6px;">
+            <strong style="color: #cbd5e1;">備註說明：</strong>${remark}
+           </div>`
+        : "";
+
+      // 組合卡片 HTML
+      html += `
+        <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px;">
+            團務名稱：${groupName.replace(" (現貨餘量認領)", "")} ${typeBadge}
+          </div>
+          <div style="font-size: 13px; color: #aaa; margin-bottom: 4px;">預購/認領項目：</div>
+          <div style="background: #09090b; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
+            ${itemsHtml}
+          </div>
+          <div style="font-size: 13px; font-weight: bold; margin-bottom: 4px;">
+            金額總計：<span style="color: #60a5fa;">$${order["總金額"]}</span>
+          </div>
+          <div style="font-size: 13px; font-weight: bold;">
+            處理狀態：<span style="color: ${statusColor};">${statusText}</span>
+          </div>
+          ${remarkHtml}
+        </div>
+      `;
+    });
+
+    resultDiv.innerHTML = html;
+
+  } catch (err) {
+    resultDiv.innerHTML = `<p style="color:#ef4444; font-size:13px;">查詢失敗：${err.message}</p>`;
+  }
+}
+window.queryOrder = queryOrder;
 
   async function loadSurplusGroups() {
   let container = document.getElementById('surplusGroupList');
