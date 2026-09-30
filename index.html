@@ -646,24 +646,6 @@ window.deleteProduct = deleteProduct;
   }
   window.sendPreOrderEmail = sendPreOrderEmail;
 
- let currentGroupMode = "create"; // 'create' 或 'edit'
-let allGroupsData = []; // 暫存所有團務原始資料
-    
-    // 重新載入全站團務資料 (買家端與後台下拉選單同步連動)
-    if (typeof loadGroupList === 'function') await loadGroupList();
-    if (currentGroupMode === 'edit') await loadGroupSelectForEdit();
-
-  } catch (err) {
-    if (msgElem) {
-      msgElem.style.color = "#f87171";
-      msgElem.innerText = "操作失敗：" + err.message;
-    }
-    alert("操作失敗：" + err.message);
-  }
-}
-window.submitGroupForm = submitGroupForm;
-// 保持舊名稱相容，避免報錯
-window.submitCreateGroup = submitGroupForm;
   // 輔助函式：觸發瀏覽器下載 CSV 檔案（包含 UTF-8 BOM 防止 Excel 簡體/繁體亂碼）
 function downloadCSV(filename, csvContent) {
   const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
