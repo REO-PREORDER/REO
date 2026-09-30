@@ -249,7 +249,34 @@
     <!-- 待確認訂單管理 -->
     <h4 style="color: #fff; margin-bottom: 8px; text-align: center;">待確認訂單管理</h4>
     <div id="pendingOrdersList">載入中...</div>
+    
+<!-- 📥 Excel 數據匯出區塊 (貼在這裡！) -->
+      <div style="background: #252525; padding: 12px; border-radius: 8px; margin-top: 20px; border: 1px solid #444;">
+        <h4 style="color: #60a5fa; margin-bottom: 10px; text-align: center;">📥 後台資料匯出 (Excel / 試算表)</h4>
+        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+          <button onclick="exportBuyerOrdersCSV()" style="background: #059669; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+            📦 匯出買家訂單與出貨明細 (.csv)
+          </button>
+          <button onclick="exportProductSummaryCSV()" style="background: #d97706; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+            📊 匯出團務商品採購總數 (.csv)
+          </button>
+        </div>
+      </div>
 
+      <!-- 📋 所有訂單紀錄區塊 -->
+      <div style="margin-top: 30px; border-top: 1px solid #444; padding-top: 15px;">
+        <h3 style="color: #fff; margin-bottom: 12px; text-align: center;">📋 所有訂單紀錄</h3>
+        
+        <div class="nav-tabs" style="margin-bottom: 12px;">
+          <button id="btnConfirmedOrders" class="active" onclick="switchOrderRecordTab('已成立')">已成立訂單</button>
+          <button id="btnCancelledOrders" onclick="switchOrderRecordTab('已取消')">已取消訂單</button>
+        </div>
+
+        <div id="allOrdersList">請點擊上方按鈕查看訂單紀錄</div>
+      </div>
+
+    </div> <!-- /#adminDashboard 正確閉合 -->
+  </div>
     <!-- 📋 所有訂單紀錄區塊 -->
     <div style="margin-top: 30px; border-top: 1px solid #444; padding-top: 15px;">
       <h3 style="color: #fff; margin-bottom: 12px; text-align: center;">📋 所有訂單紀錄</h3>
@@ -467,6 +494,114 @@ async function submitGroupForm() {
 window.submitGroupForm = submitGroupForm;
 // 保持舊名稱相容，避免報錯
 window.submitCreateGroup = submitGroupForm;
+  // 輔助函式：觸發瀏覽器下載 CSV 檔案（包含 UTF-8 BOM 防止 Excel 簡體/繁體亂碼）
+function downloadCSV(filename, csvContent) {
+  const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// 1. 📦 匯出買家訂單與出貨明細表
+async function exportBuyerOrdersCSV() {
+  try {
+    const { data: orders, error } = await db.from('orders').select('*').order('created_at', { ascending: false });
+    if (error || !orders || orders.length === 0) {
+      alert("目前沒有訂單可供匯出！");
+      return;
+    }
+
+    let csv = "訂單時間,團務名稱,買家姓名,聯絡電話,付款方式,配送方式,商品明細,總金額,訂單狀態\n";
+
+    orders.forEach(ord => {
+      const time = `"${ord.created_at || ''}"`;
+      const group = `"${(ord.group_name || ord['團名'] || '').replace(/"/g, '""')}"`;
+      const name = `"${(ord.buyer_name || ord['買家姓名'] || ord['姓名'] || '').replace(/"/g, '""')}"`;
+      const phone = `"${ord.phone || ord['電話'] || ord['手機'] || ''}"`;
+      const payment = `"${ord.payment || ord['付款方式'] || ''}"`;
+      const shipping = `"${ord.shipping || ord['配送方式'] || ''}"`;
+      const total = ord.total_price || ord['總金額'] || 0;
+      const status = `"${ord.status || '已成立'}"`;
+
+      // 打包商品明細文字 (例如: 明信片組 x 2; 徽章 x 1)
+      const itemsList = ord.items || ord['商品列表'] || [];
+      const itemsStr = itemsList.map(item => {
+        const iName = item.name || item['商品名稱'] || '';
+        const iQty = item.qty || item['數量'] || 1;
+        return `${iName} x${iQty}`;
+      }).join(' ; ');
+      const itemsEscaped = `"${itemsStr.replace(/"/g, '""')}"`;
+
+      csv += `${time},${group},${name},${phone},${payment},${shipping},${itemsEscaped},${total},${status}\n`;
+    });
+
+    const today = new Date().toISOString().split('T')[0];
+    downloadCSV(`買家訂單出貨明細_${today}.csv`, csv);
+  } catch (err) {
+    console.error("匯出失敗：", err);
+    alert("匯出訂單失敗：" + err.message);
+  }
+}
+
+// 2. 📊 匯出團務商品採購總數表
+async function exportProductSummaryCSV() {
+  try {
+    const { data: orders, error } = await db.from('orders').select('*');
+    if (error || !orders || orders.length === 0) {
+      alert("目前沒有訂單資料以計算商品總數！");
+      return;
+    }
+
+    // 依「團務名稱 + 商品名稱」進行數量統計
+    const summaryMap = {};
+
+    orders.forEach(ord => {
+      // 僅統計非取消的訂單
+      if (ord.status === '已取消') return;
+
+      const groupName = ord.group_name || ord['團名'] || '未分類團務';
+      const itemsList = ord.items || ord['商品列表'] || [];
+
+      itemsList.forEach(item => {
+        const pName = item.name || item['商品名稱'] || '未知商品';
+        const pPrice = Number(item.price || item['單價'] || 0);
+        const pQty = Number(item.qty || item['數量'] || 1);
+
+        const key = `${groupName}__${pName}`;
+
+        if (!summaryMap[key]) {
+          summaryMap[key] = {
+            group: groupName,
+            name: pName,
+            price: pPrice,
+            totalQty: 0
+          };
+        }
+        summaryMap[key].totalQty += pQty;
+      });
+    });
+
+    let csv = "團務名稱,商品名稱,單價,總預購數量,預估總金額\n";
+
+    Object.values(summaryMap).forEach(item => {
+      const gName = `"${item.group.replace(/"/g, '""')}"`;
+      const pName = `"${item.name.replace(/"/g, '""')}"`;
+      const totalPrice = item.price * item.totalQty;
+
+      csv += `${gName},${pName},${item.price},${item.totalQty},${totalPrice}\n`;
+    });
+
+    const today = new Date().toISOString().split('T')[0];
+    downloadCSV(`團務商品採購總數表_${today}.csv`, csv);
+  } catch (err) {
+    console.error("匯出失敗：", err);
+    alert("匯出採購統計失敗：" + err.message);
+  }
+}
   
   // 轉換 Google 雲端硬碟網址為直接顯示圖片格式
   function formatImageUrl(url) {
