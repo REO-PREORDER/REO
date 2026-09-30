@@ -652,33 +652,39 @@ async function exportBuyerOrdersCSV() {
     alert("匯出訂單失敗：" + err.message);
   }
 }
-// 🗑️ 刪除目前正在編輯的團務（含該團務與相關商品、訂單）
+// 🗑️ 最簡單直接的刪除團務函數
 async function deleteCurrentGroup() {
-  const groupId = document.getElementById('editingGroupId').value;
-  const groupName = document.getElementById('newGroupName').value;
-
-  if (!groupId) {
+  const selectEl = document.getElementById('editGroupSelect');
+  if (!selectEl) {
+    alert("找不到下拉選單！");
+    return;
+  }
+  
+  const groupName = selectEl.value;
+  if (!groupName || groupName === "-- 請選擇欲編輯的團務 --") {
     alert("請先選擇要刪除的團務！");
     return;
   }
 
-  if (!confirm(`⚠️ 確定要刪除團務「${groupName}」嗎？\n這將會一併刪除該團務下的所有商品與訂單！`)) return;
+  if (!confirm(`⚠️ 確定要刪除團務「${groupName}」嗎？\n這將會一併刪除該團務底下的所有商品與訂單！`)) {
+    return;
+  }
 
   try {
-    // 1. 刪除該團務相關的訂單
+    // 1. 刪除該團務的訂單
     await db.from('orders').delete().eq('團務名稱', groupName);
 
-    // 2. 刪除該團務相關的商品
-    await db.from('products').delete().eq('group_id', groupId);
+    // 2. 刪除該團務的商品（如果您的商品表是用團務名稱關聯，請改成 .eq('團務名稱', groupName)，如果是用 id 則保留原本的）
+    await db.from('products').delete().eq('團務名稱', groupName);
 
     // 3. 刪除團務本身
-    const { error } = await db.from('groups').delete().eq('id', groupId);
+    const { error } = await db.from('groups').delete().eq('團務名稱', groupName);
     if (error) throw error;
 
-    alert("團務及其附屬商品與訂單已成功刪除！");
+    alert("🎉 團務及其附屬商品與訂單已成功刪除！");
     location.reload(); // 重新整理頁面
   } catch (err) {
-    alert("刪除失敗：" + err.message);
+    alert("❌ 刪除失敗：" + err.message);
   }
 }
 window.deleteCurrentGroup = deleteCurrentGroup;
