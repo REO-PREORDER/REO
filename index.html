@@ -297,12 +297,27 @@
 
   // 建立新團務寫入 Supabase groups 資料表
 async function submitCreateGroup() {
-  let gName = document.getElementById('newGroupName')?.value.trim();
-  let gImg = document.getElementById('newGroupImg')?.value.trim();
-  let gDeadline = document.getElementById('newGroupDeadline')?.value.trim() || "未定";
-  let gPayment = document.getElementById('newGroupPayment')?.value.trim() || "貨到付款 (取付)";
-  let gRemark = document.getElementById('newGroupRemark')?.value.trim() || "";
+  // 1. 測試點擊事件是否正常觸發
+  console.log("【測試】已點擊建立新團務按鈕");
+
+  let gNameElem = document.getElementById('newGroupName');
+  let gImgElem = document.getElementById('newGroupImg');
+  let gDeadlineElem = document.getElementById('newGroupDeadline');
+  let gPaymentElem = document.getElementById('newGroupPayment');
+  let gRemarkElem = document.getElementById('newGroupRemark');
   let msgElem = document.getElementById('createGroupMsg');
+
+  // 防呆判斷：檢查輸入框元素是否存在
+  if (!gNameElem) {
+    alert("系統錯誤：找不到團務名稱輸入框 (newGroupName)！請檢查 HTML ID 設定。");
+    return;
+  }
+
+  let gName = gNameElem.value.trim();
+  let gImg = gImgElem ? gImgElem.value.trim() : "";
+  let gDeadline = (gDeadlineElem && gDeadlineElem.value.trim()) ? gDeadlineElem.value.trim() : "未定";
+  let gPayment = (gPaymentElem && gPaymentElem.value.trim()) ? gPaymentElem.value.trim() : "貨到付款 (取付)";
+  let gRemark = (gRemarkElem && gRemarkElem.value.trim()) ? gRemarkElem.value.trim() : "";
 
   if (!gName) {
     alert("請填寫團務名稱！");
@@ -315,7 +330,7 @@ async function submitCreateGroup() {
   }
 
   try {
-    // 嚴格對應資料庫的 6 個欄位名稱
+    // 寫入 Supabase groups 資料表
     const { data, error } = await db.from('groups').insert([{
       "團務名稱": gName,
       "圖片": gImg,
@@ -333,13 +348,13 @@ async function submitCreateGroup() {
     }
     alert(`✓ 成功建立團務：「${gName}」！`);
 
-    // 清空輸入框
-    document.getElementById('newGroupName').value = "";
-    document.getElementById('newGroupImg').value = "";
-    document.getElementById('newGroupDeadline').value = "";
-    document.getElementById('newGroupRemark').value = "";
+    // 清空欄位
+    gNameElem.value = "";
+    if (gImgElem) gImgElem.value = "";
+    if (gDeadlineElem) gDeadlineElem.value = "";
+    if (gRemarkElem) gRemarkElem.value = "";
 
-    // 重新載入團務選單（買家端與後台下拉選單同步更新）
+    // 重新載入團務選單
     if (typeof loadGroupList === 'function') {
       await loadGroupList();
     }
@@ -354,6 +369,7 @@ async function submitCreateGroup() {
     alert("建立團務失敗：" + errMsg);
   }
 }
+// 確保掛載至全域視窗，避免作用域問題
 window.submitCreateGroup = submitCreateGroup;
   
   // 轉換 Google 雲端硬碟網址為直接顯示圖片格式
