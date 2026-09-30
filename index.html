@@ -199,7 +199,7 @@
       <h4 style="color: #f59e0b; margin-bottom: 8px; text-align: center;">📊 已成立訂單商品總數量統計</h4>
       <div style="background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
         <label style="font-size: 12px; color: #ccc;">選擇要統計的團務：</label>
-        <select id="adminStatsGroup" style="margin-top: 4px;" onchange="loadOrderStats()"></select>
+        <select id="adminStatsGroup" style="margin-top: 4px;"></select>
         <div id="orderStatsResult" style="margin-top: 10px; font-size: 12px;">請選擇團務以查看統計</div>
       </div>
 
@@ -1082,7 +1082,8 @@ function openModifyModal(order) {
         alert("更新失敗：" + err.message);
     }
 };
-async function loadOrderStats() {
+// 獨立的統計載入函數與事件綁定
+async function executeOrderStats() {
     let groupSelect = document.getElementById('adminStatsGroup');
     let resultContainer = document.getElementById('orderStatsResult');
     if (!groupSelect || !resultContainer) return;
@@ -1149,6 +1150,25 @@ async function loadOrderStats() {
         resultContainer.innerHTML = "<p style='color:#f87171;'>載入統計失敗：" + err.message + "</p>";
     }
 }
+
+// 自動監聽選單變更與初始化
+document.addEventListener('DOMContentLoaded', () => {
+    let selectEl = document.getElementById('adminStatsGroup');
+    if (selectEl) {
+        selectEl.addEventListener('change', executeOrderStats);
+    }
+});
+
+setTimeout(() => {
+    let selectEl = document.getElementById('adminStatsGroup');
+    if (selectEl) {
+        selectEl.removeEventListener('change', executeOrderStats);
+        selectEl.addEventListener('change', executeOrderStats);
+        if (selectEl.value) {
+            executeOrderStats();
+        }
+    }
+}, 1000);
 </script>
 
 </body>
