@@ -698,7 +698,7 @@ window.loadOrderStats = loadOrderStats;
 
     // 若沒有任何商品有餘量
     if (!surplusProducts || surplusProducts.length === 0) {
-      container.innerHTML = "<p style='color:#aaa; font-size:13px;'>目前沒有任何有現貨餘量的團務囉！</p>";
+      container.innerHTML = "<p style='color:#aaa; font-size:13px;'>目前沒有任何有餘量的團務囉！</p>";
       document.getElementById('surplusProductList').innerHTML = "";
       return;
     }
@@ -722,7 +722,7 @@ window.loadOrderStats = loadOrderStats;
       container.innerHTML = html;
       document.getElementById('surplusProductList').innerHTML = "";
     } else {
-      container.innerHTML = "<p style='color:#aaa; font-size:13px;'>目前沒有任何有現貨餘量的團務囉！</p>";
+      container.innerHTML = "<p style='color:#aaa; font-size:13px;'>目前沒有任何有餘量的團務囉！</p>";
     }
   } catch (err) {
     container.innerHTML = "<p style='color:#f87171;'>載入失敗：" + err.message + "</p>";
