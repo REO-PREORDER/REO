@@ -1199,63 +1199,75 @@ window.updateOrderStatus = updateOrderStatus;
     }
   }
 
-  async function loadAllOrders() {
-    let container = document.getElementById('allOrdersList');
-    if (!container) return;
-    container.innerHTML = "載入中...";
-    
-    try {
-      const { data, error } = await db.from('orders').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
+ async function loadAllOrders() {
+  let container = document.getElementById('allOrdersList');
+  if (!container) return;
+  container.innerHTML = "載入中...";
+  
+  try {
+    // 關鍵修改：只撈取「已成立」、「已變更」、「已取消」的訂單紀錄
+    const { data, error } = await db
+      .from('orders')
+      .select('*')
+      .in('處理狀態', ['已成立', '已變更', '已取消'])
+      .order('created_at', { ascending: false });
 
-      if (data && data.length > 0) {
-        container.innerHTML = ""; 
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      container.innerHTML = ""; 
+      
+      for (let o of data) {
+        let itemsHtml = "";
+        (o["訂單內容"] || []).forEach((i) => { 
+          let subtotal = (i.price || 0) * (i.qty || 1);
+          itemsHtml += `
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-size: 11px; background:#181818; padding:4px 6px; border-radius:4px;">
+              <span>${i.name}</span>
+              <span>$${i.price} x ${i.qty} = $${subtotal}</span>
+            </div>`; 
+        });
+
+        // 狀態顏色動態設定
+        let statusColor = "#3b82f6";
+        if (o["處理狀態"] === "已成立") statusColor = "#10b981";
+        if (o["處理狀態"] === "已變更") statusColor = "#f59e0b";
+        if (o["處理狀態"] === "已取消") statusColor = "#ef4444";
+
+        let card = document.createElement('div');
+        card.style.cssText = "background:#242424; padding:12px; border-radius:8px; margin-bottom:10px; font-size:12px;";
+        card.innerHTML = `
+          <div><b>時間：</b>${new Date(o.created_at).toLocaleString()} | <b>團名：</b>${o["團務名稱"]}</div>
+          <div><b>買家：</b>${o["買家名稱"]} (${o["手機號碼"]}) | <b>狀態：</b><span style="color:${statusColor}; font-weight:bold;">${o["處理狀態"]}</span></div>
+          <div style="margin:6px 0; background:#121212; padding:6px; border-radius:4px;">${itemsHtml}</div>
+          <div style="font-weight:bold; margin-bottom:8px;">總金額：$${o["總金額"]}</div>
+          <div style="display: flex; gap: 8px;" id="all-actions-${o.id}"></div>
+        `;
+        container.appendChild(card);
+
+        let actionDiv = card.querySelector(`#all-actions-${o.id}`);
         
-        for (let o of data) {
-          let itemsHtml = "";
-          (o["訂單內容"] || []).forEach((i) => { 
-            let subtotal = (i.price || 0) * (i.qty || 1);
-            itemsHtml += `
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-size: 11px; background:#181818; padding:4px 6px; border-radius:4px;">
-                <span>${i.name}</span>
-                <span>$${i.price} x ${i.qty} = $${subtotal}</span>
-              </div>`; 
-          });
+        let btnModify = document.createElement('button');
+        btnModify.innerText = "✏️ 變更訂單";
+        btnModify.style.cssText = "background-color: #3b82f6; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;";
+        btnModify.onclick = () => openModifyModal(o);
 
-          let card = document.createElement('div');
-          card.style.cssText = "background:#242424; padding:12px; border-radius:8px; margin-bottom:10px; font-size:12px;";
-          card.innerHTML = `
-            <div><b>時間：</b>${new Date(o.created_at).toLocaleString()} | <b>團名：</b>${o["團務名稱"]}</div>
-            <div><b>買家：</b>${o["買家名稱"]} (${o["手機號碼"]}) | <b>狀態：</b><span style="color:#60a5fa;">${o["處理狀態"]}</span></div>
-            <div style="margin:6px 0; background:#121212; padding:6px; border-radius:4px;">${itemsHtml}</div>
-            <div style="font-weight:bold; margin-bottom:8px;">總金額：$${o["總金額"]}</div>
-            <div style="display: flex; gap: 8px;" id="all-actions-${o.id}"></div>
-          `;
-          container.appendChild(card);
+        let btnCancel = document.createElement('button');
+        btnCancel.innerText = "✕ 取消訂單";
+        btnCancel.style.cssText = "background-color: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;";
+        btnCancel.onclick = () => updateOrderStatus(o.id, '已取消');
 
-          let actionDiv = card.querySelector(`#all-actions-${o.id}`);
-          
-          let btnModify = document.createElement('button');
-          btnModify.innerText = "✏️ 變更訂單";
-          btnModify.style.cssText = "background-color: #3b82f6; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;";
-          btnModify.onclick = () => openModifyModal(o);
-
-          let btnCancel = document.createElement('button');
-          btnCancel.innerText = "✕ 取消訂單";
-          btnCancel.style.cssText = "background-color: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;";
-          btnCancel.onclick = () => updateOrderStatus(o.id, '已取消');
-
-          actionDiv.appendChild(btnModify);
-          actionDiv.appendChild(btnCancel);
-        }
-      } else { 
-        container.innerHTML = "<p style='color:#aaa; font-size:12px;'>目前沒有任何訂單紀錄。</p>"; 
+        actionDiv.appendChild(btnModify);
+        actionDiv.appendChild(btnCancel);
       }
-    } catch (err) { 
-      container.innerHTML = "<p style='color:#f87171;'>載入訂單紀錄失敗。</p>"; 
+    } else { 
+      container.innerHTML = "<p style='color:#aaa; font-size:12px; text-align:center;'>目前沒有已成立或已取消的訂單紀錄。</p>"; 
     }
+  } catch (err) { 
+    container.innerHTML = "<p style='color:#f87171;'>載入訂單紀錄失敗：" + err.message + "</p>"; 
   }
-
+}
+window.loadAllOrders = loadAllOrders;
   function openModifyModal(order) {
     let modalBg = document.createElement('div');
     modalBg.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;";
