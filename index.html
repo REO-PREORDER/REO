@@ -767,11 +767,17 @@
               <div><b>買家：</b>${o["買家名稱"]} (${o["手機號碼"]})</div>
               <div style="margin:4px 0; background:#121212; padding:6px; border-radius:4px;">${itemsHtml}</div>
               <div><b>總金額：</b>$${o["總金額"]}</div>
-              <div style="display:flex; gap:6px; margin-top:8px;">
-<button onclick="updateOrderStatus('item.id', '已成立')">設為已成立</button>
-<button onclick="updateOrderStatus('item.id', '已取消')">設為已取消</button>
-<button onclick="updateOrderStatus('item.id', '已出貨')">設為已出貨</button>
-              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+    <button onclick="updateOrderStatus(item.id, '已成立')" style="background-color: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s;">
+        ✓ 已成立
+    </button>
+    <button onclick="updateOrderStatus(item.id, '已取消')" style="background-color: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s;">
+        ✕ 已取消
+    </button>
+    <button onclick="updateOrderStatus(item.id, '已變更')" style="background-color: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s;">
+        ⚠️已變更
+    </button>
+</div>
             </div>
           `;
         });
