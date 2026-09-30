@@ -1082,7 +1082,7 @@ function openModifyModal(order) {
         alert("更新失敗：" + err.message);
     }
 };
-window.loadOrderStats = async function() {
+async function loadOrderStats() {
     let groupSelect = document.getElementById('adminStatsGroup');
     let resultContainer = document.getElementById('orderStatsResult');
     if (!groupSelect || !resultContainer) return;
@@ -1148,15 +1148,7 @@ window.loadOrderStats = async function() {
     } catch (err) {
         resultContainer.innerHTML = "<p style='color:#f87171;'>載入統計失敗：" + err.message + "</p>";
     }
-};
-
-// 👉 確保團務選單載入後，如果已經有選項，就自動跑一次統計
-setTimeout(() => {
-    if (typeof window.loadOrderStats === 'function') {
-        window.loadOrderStats();
-    }
-}, 1000);
-  
+}
 </script>
 
 </body>
