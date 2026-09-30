@@ -768,8 +768,9 @@
               <div style="margin:4px 0; background:#121212; padding:6px; border-radius:4px;">${itemsHtml}</div>
               <div><b>總金額：</b>$${o["總金額"]}</div>
               <div style="display:flex; gap:6px; margin-top:8px;">
-                <button onclick="updateOrderStatus(${o.id}, '已成立')" style="flex:1; background:#10b981; color:white; border:none; padding:6px; border-radius:4px; cursor:pointer;">✔️ 確認訂單</button>
-                <button onclick="updateOrderStatus(${o.id}, '已取消')" style="flex:1; background:#ef4444; color:white; border:none; padding:6px; border-radius:4px; cursor:pointer;">❌ 取消訂單</button>
+<button onclick="updateOrderStatus('訂單ID', '已成立')">設為已成立</button>
+<button onclick="updateOrderStatus('訂單ID', '已取消')">設為已取消</button>
+<button onclick="updateOrderStatus('訂單ID', '已出貨')">設為已出貨</button>
               </div>
             </div>
           `;
@@ -825,49 +826,45 @@
   }
 
   async function updateOrderStatus(orderId, newStatus) {
+    // 如果是「已取消」或其他狀態，彈出輸入框讓管理者輸入備註/原因（直接按確定則使用預設值）
+    let changeReason = "";
+    if (newStatus === '已取消') {
+        changeReason = prompt("請輸入取消訂單的原因或備註（選填）：", "商品缺貨 / 買家主動取消") || "無";
+    } else {
+        changeReason = prompt("請輸入該狀態的備註說明（選填）：", "無") || "無";
+    }
+
     if (!confirm(`確定要將此訂單改為「${newStatus}」嗎？`)) return;
+
     try {
-      const { error } = await db.from('orders').update({ "處理狀態": newStatus }).eq('id', orderId);
+      // 1. 更新資料庫狀態（同時可把備註存回資料庫，若資料庫有「訂單備註」欄位的話）
+      const updateData = { "處理狀態": newStatus };
+      // 如果您的資料庫有「訂單備註」這個欄位，可以取消下面這行的註解來同步更新資料庫
+      // updateData["訂單備註"] = changeReason;
+
+      const { error } = await db.from('orders').update(updateData).eq('id', orderId);
       if (error) throw error;
-      alert("狀態更新成功！");
+
+      // 2. 取得該筆訂單的詳細資料以用來寄信
+      const { data: orderData, error: fetchError } = await db.from('orders').select('*').eq('id', orderId).single();
+      
+      if (!fetchError && orderData) {
+          // 透過 Cloudflare Worker 寄送通知信
+          await sendPreOrderEmail({
+              customerEmail: orderData["Email"],          
+              lineName: orderData["買家名稱"],              
+              groupName: orderData["團務名稱"],             
+              productDetails: orderData["訂單內容"],        
+              totalPrice: orderData["總金額"],              
+              paymentMethod: "事先匯款",                     
+              status: newStatus,                            // 支援「已成立」、「已取消」或任何您自訂的新狀態
+              changeReason: changeReason                    // 帶入管理者剛才輸入的備註
+          });
+      }
+
+      alert(`狀態已成功更新為「${newStatus}」並已發送通知信！`);
       loadPendingOrders();
     } catch (err) { alert("更新失敗：" + err.message); }
-  }
-async function sendPreOrderEmail({ customerEmail, lineName, groupName, productDetails, totalPrice, paymentMethod, status, changeReason }) {
-    // 您的 Cloudflare Worker 專屬代理網址
-    const workerUrl = 'https://rapid-tree-ad77.you751019.workers.dev'; 
-
-    try {
-        const response = await fetch(workerUrl, {
-            method: 'POST',
-            headers: {
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                customerEmail,
-                lineName,
-                groupName,
-                productDetails,
-                totalPrice,
-                paymentMethod,
-                status,
-                changeReason
-            })
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.success) {
-            console.log('團務通知信發送成功！');
-            return true;
-        } else {
-            console.error('團務通知信發送失敗：', result.error);
-            return false;
-        }
-    } catch (error) {
-        console.error('網路連線錯誤：', error);
-        return false;
-    }
 }
 </script>
 
