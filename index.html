@@ -789,8 +789,8 @@ window.updateOrderStatus = async function(orderId, newStatus) {
       const { data: orderData, error: fetchError } = await db.from('orders').select('*').eq('id', orderId).single();
       
       if (!fetchError && orderData) {
-          // 2. 從後台 groups 資料表抓取該團務的付款方式（若找不到則預設為 "事先匯款"）
-          let paymentMethod = "事先匯款";
+          // 2. 從後台 groups 資料表抓取該團務的付款方式（若找不到則預設為 "賣貨便貨到付款(不含運費38)"）
+          let paymentMethod = "賣貨便貨到付款(不含運費38)";
           const { data: groupData, error: groupError } = await db.from('groups').select('*').eq('團務名稱', orderData["團務名稱"]).single();
           if (!groupError && groupData && groupData["付款方式"]) {
               paymentMethod = groupData["付款方式"];
