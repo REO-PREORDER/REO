@@ -818,7 +818,7 @@ window.loadSurplusProducts = loadSurplusProducts;
   }
 
   try {
-    // 1. 新增認領訂單至 orders 資料表
+    // 1. 新增認領訂單至 orders，狀態設定為「待處理」
     const { data: orderData, error: orderErr } = await db.from('orders').insert([{
       "團務名稱": activeSurplusGroup,
       "買家名稱": name,
@@ -826,25 +826,15 @@ window.loadSurplusProducts = loadSurplusProducts;
       "Email": email,
       "訂單內容": selectedItems,
       "總金額": totalPrice,
-      "處理狀態": "已成立",
-      "備註": "餘量認領"
+      "處理狀態": "待處理" // <--- 修改為待處理，等管理員至後台點選成立
     }]).select();
 
     if (orderErr) throw orderErr;
 
-    // 2. 扣減 products 表格內的商品餘量
-    for (let item of selectedItems) {
-      let targetProd = currentSurplusProducts.find(p => p.id === item.id);
-      if (targetProd) {
-        let newSurplus = (parseInt(targetProd["餘量"]) || 0) - item.qty;
-        await db.from('products').update({ "餘量": Math.max(0, newSurplus) }).eq('id', item.id);
-      }
-    }
-
-    // 3. 發送寄信通知
+    // 2. 寄發認領收到通知信（狀態標示為待審核/待處理）
     if (typeof sendPreOrderEmail === 'function') {
       try {
-        let paymentMethod = "餘量認領";
+        let paymentMethod = "現貨餘量認領";
         const { data: groupData } = await db.from('groups').select('付款方式').eq('團務名稱', activeSurplusGroup).single();
         if (groupData && groupData["付款方式"]) paymentMethod = groupData["付款方式"];
 
@@ -853,11 +843,11 @@ window.loadSurplusProducts = loadSurplusProducts;
         await sendPreOrderEmail({
           customerEmail: email,
           lineName: name,
-          groupName: activeSurplusGroup + " (餘量認領)",
+          groupName: activeSurplusGroup + " (現貨餘量認領)",
           productDetails: productDetailsText,
           totalPrice: totalPrice,
           paymentMethod: paymentMethod,
-          status: "已成立",
+          status: "待處理", // <--- 通知信狀態同步改為待處理
           changeReason: "無"
         });
       } catch (emailErr) {
@@ -865,8 +855,8 @@ window.loadSurplusProducts = loadSurplusProducts;
       }
     }
 
-    alert("餘量認領成功！確認信件已發送至您的 Email。");
-    loadSurplusProducts(activeSurplusGroup); // 重新渲染當前商品與庫存
+    alert("餘量認領申請已送出！請等待管理員審核確認。");
+    loadSurplusProducts(activeSurplusGroup);
   } catch (err) {
     alert("認領失敗：" + err.message);
   }
