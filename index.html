@@ -1848,19 +1848,31 @@ window.submitBatchProducts = submitBatchProducts;
     if (isSurplusOrder && newStatus === "已取消" && oldStatus !== "已取消") {
       let items = order["訂單內容"] || [];
       let cleanGroupName = groupName.replace(" (餘量認領)", "").replace(" (餘量認領)", "").trim();
+      
+      console.log("清理後的團務名稱：", cleanGroupName); // 👈 檢查這裡印出來的是什麼
 
       for (let item of items) {
-        const { data: prodData } = await db
+        console.log("正在找尋商品：", item.name); // 👈 檢查尋找的商品名稱是什麼
+        
+        const { data: prodData, error: findErr } = await db
           .from('products')
           .select('*')
           .eq('團務名稱', cleanGroupName)
           .eq('商品名稱', item.name)
           .single();
 
+        if (findErr) {
+          console.error("找不到對應商品錯誤：", findErr); // 👈 如果這裡報錯，就能知道為什麼找不到
+        }
+
         if (prodData) {
           let currentSurplus = parseInt(prodData["餘量"]) || 0;
           let restoreQty = parseInt(item.qty) || 0;
+          console.log(`原庫存: ${currentSurplus}, 欲加回: ${restoreQty}`); // 👈 檢查有沒有執行到這步
+          
           await db.from('products').update({ "餘量": currentSurplus + restoreQty }).eq('id', prodData.id);
+        } else {
+          console.warn("在資料庫中找不到對應的商品記錄！");
         }
       }
     }
