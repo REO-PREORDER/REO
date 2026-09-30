@@ -159,8 +159,8 @@
   <div id="querySection" class="section">
     <p style="color: #aaa; font-size: 13px; margin-bottom: 8px;">輸入手機號碼或 Email 查詢您的歷史預購：</p>
     <input type="text" id="searchKey" placeholder="請輸入手機或 Email">
-    <button class="primary-btn" onclick="queryOrder()">開始查詢</button>
-    <div id="queryResult" style="margin-top: 15px;"></div>
+   <button onclick="queryOrder()">開始查詢</button>
+   <div id="searchResult"></div>
   </div>
 
   <!-- 3. 餘量認領區塊 -->
@@ -640,21 +640,24 @@ window.loadOrderStats = loadOrderStats;
     }
   }
 
-  async function queryOrder() {
-  // 取得輸入框的值（支援輸入手機或 Email）
-  let inputVal = document.getElementById('searchKey')?.value.trim() 
-              || document.getElementById('searchPhone')?.value.trim();
-  let resultDiv = document.getElementById('searchResult');
+ async function queryOrder() {
+  // 自動抓取頁面上的輸入框（支援各種可能取名的 ID）
+  let inputEl = document.getElementById('searchKey') || 
+                document.getElementById('searchPhone') || 
+                document.getElementById('searchInput');
+  
+  let inputVal = inputEl ? inputEl.value.trim() : "";
+  let resultDiv = document.getElementById('searchResult') || document.getElementById('queryResult');
 
   if (!inputVal) {
     alert("請輸入手機號碼或 Email 進行查詢！");
     return;
   }
 
-  resultDiv.innerHTML = "查詢中...";
+  if (resultDiv) resultDiv.innerHTML = "<div style='color:#aaa; font-size:13px; text-align:center;'>查詢中...</div>";
 
   try {
-    // 使用 .or() 同時比對「手機號碼」或「Email」
+    // 修正 Supabase .or() 語法傳參方式
     const { data: orders, error } = await db
       .from('orders')
       .select('*')
@@ -664,7 +667,7 @@ window.loadOrderStats = loadOrderStats;
     if (error) throw error;
 
     if (!orders || orders.length === 0) {
-      resultDiv.innerHTML = "<p style='color:#aaa; font-size:13px;'>查無相關預購/認領紀錄。</p>";
+      if (resultDiv) resultDiv.innerHTML = "<p style='color:#aaa; font-size:13px; text-align:center; padding: 20px 0;'>查無相關預購/認領紀錄。</p>";
       return;
     }
 
@@ -689,7 +692,7 @@ window.loadOrderStats = loadOrderStats;
       if (statusText === "已變更") statusColor = "#f59e0b";
       if (statusText === "已取消") statusColor = "#ef4444";
 
-      // 渲染商品清單項目
+      // 渲染商品項目
       let itemsHtml = "";
       let items = order["訂單內容"] || [];
       items.forEach(item => {
@@ -711,9 +714,9 @@ window.loadOrderStats = loadOrderStats;
            </div>`
         : "";
 
-      // 卡片 HTML
+      // 卡片渲染
       html += `
-        <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff;">
+        <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff; text-align: left;">
           <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px;">
             團務名稱：${groupName.replace(" (現貨餘量認領)", "")} ${typeBadge}
           </div>
@@ -732,10 +735,11 @@ window.loadOrderStats = loadOrderStats;
       `;
     });
 
-    resultDiv.innerHTML = html;
+    if (resultDiv) resultDiv.innerHTML = html;
 
   } catch (err) {
-    resultDiv.innerHTML = `<p style="color:#ef4444; font-size:13px;">查詢失敗：${err.message}</p>`;
+    console.error("查詢報錯：", err);
+    if (resultDiv) resultDiv.innerHTML = `<p style="color:#ef4444; font-size:13px; text-align:center;">查詢失敗：${err.message}</p>`;
   }
 }
 window.queryOrder = queryOrder;
