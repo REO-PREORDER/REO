@@ -1082,8 +1082,8 @@ function openModifyModal(order) {
         alert("更新失敗：" + err.message);
     }
 };
-  async function loadOrderStats() {
-    let groupSelect = document.getElementById('adminStatsGroup');
+window.loadOrderStats = async function() {
+  let groupSelect = document.getElementById('adminStatsGroup');
     let resultContainer = document.getElementById('orderStatsResult');
     if (!groupSelect || !resultContainer) return;
 
