@@ -2205,6 +2205,7 @@ window.updateOrderStatus = updateOrderStatus;
            <div style="display: flex; gap: 8px;">
               <button onclick="updateOrderStatus(${order.id}, '已成立', '${order["Email"] || ""}')" style="flex: 1; padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">審核通過 (成立)</button>
               <button onclick="updateOrderStatus(${order.id}, '已取消', '${order["Email"] || ""}')" style="flex: 1; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">拒絕申請 (取消)</button>
+              <button onclick="updateOrderStatus(${order.id}, '已變更', '${order["Email"] || ""}')" style="background:#3b82f6; color:white; border:none; border-radius:4px; ...">變更</button>
             </div>
           </div>
         `;
