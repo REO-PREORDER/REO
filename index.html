@@ -2026,7 +2026,7 @@ window.addEventListener('hashchange', checkAdminHash);
 }
 
 window.submitBatchProducts = submitBatchProducts;
- async function updateOrderStatus(orderId, newStatus) {
+ async function updateOrderStatus(orderId, newStatus,buyerEmail) {
   try {
     // 1. 如果是改為「已取消」，先跳出輸入框讓管理員填寫原因
     let changeReason = "無";
