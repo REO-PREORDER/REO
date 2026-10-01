@@ -1104,9 +1104,9 @@ function renderProductGrid() {
     html += `
       <div class="product-card">
         <div>
-          <!-- 💡 把 onclick 直接加在圖片容器上，點擊圖片即可放大 -->
-          <div class="product-img-box" style="position: relative; cursor: pointer;" ${imgList.length > 0 ? `onclick="openLightbox('${rawImg.replace(/'/g, "\\'")}')"` : ''}>
-            ${mainImg ? `<img src="${formatImageUrl(mainImg)}" alt="商品圖片" style="width:100%; height:100%; object-fit:contain;">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#555;">暫無圖片</div>'}
+          <!-- 💡 加上專屬 class，不直接寫 onclick -->
+          <div class="product-img-box product-img-clickable" data-raw-img="${rawImg.replace(/"/g, '&quot;')}" style="position: relative; cursor: pointer;">
+            ${mainImg ? `<img src="${formatImageUrl(mainImg)}" alt="商品圖片" style="width:100%; height:100%; object-fit:contain; pointer-events: none;">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#555;">暫無圖片</div>'}
             ${multiBadge}
           </div>
           
@@ -1125,6 +1125,18 @@ function renderProductGrid() {
     `;
   });
   gridContainer.innerHTML = html;
+
+  // 💡 在渲染完成後，強制全面綁定所有圖片框的點擊事件
+  document.querySelectorAll('.product-img-clickable').forEach(box => {
+    box.addEventListener('click', function(e) {
+      e.stopPropagation();
+      let rawUrl = this.getAttribute('data-raw-img');
+      if (rawUrl) {
+        openLightbox(rawUrl);
+      }
+    });
+  });
+
   updateCartSummary();
   checkCanSubmit();
 }
