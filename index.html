@@ -785,7 +785,7 @@ async function exportBuyerOrdersCSV() {
     alert("匯出訂單失敗：" + err.message);
   }
 }
-// 🗑️ 最簡單直接的刪除團務函數
+// 🗑️ 改進版的刪除團務函數（加上錯誤攔截）
 async function deleteCurrentGroup() {
   const selectEl = document.getElementById('editGroupSelect');
   if (!selectEl) {
@@ -805,19 +805,22 @@ async function deleteCurrentGroup() {
 
   try {
     // 1. 刪除該團務的訂單
-    await db.from('orders').delete().eq('團務名稱', groupName);
+    const { error: orderErr } = await db.from('orders').delete().eq('團務名稱', groupName);
+    if (orderErr) throw new Error("刪除訂單失敗: " + orderErr.message);
 
-    // 2. 刪除該團務的商品（如果您的商品表是用團務名稱關聯，請改成 .eq('團務名稱', groupName)，如果是用 id 則保留原本的）
-    await db.from('products').delete().eq('團務名稱', groupName);
+    // 2. 刪除該團務的商品
+    const { error: prodErr } = await db.from('products').delete().eq('團務名稱', groupName);
+    if (prodErr) throw new Error("刪除商品失敗: " + prodErr.message);
 
     // 3. 刪除團務本身
-    const { error } = await db.from('groups').delete().eq('團務名稱', groupName);
-    if (error) throw error;
+    const { error: groupErr } = await db.from('groups').delete().eq('團務名稱', groupName);
+    if (groupErr) throw new Error("刪除團務失敗: " + groupErr.message);
 
     alert("🎉 團務及其附屬商品與訂單已成功刪除！");
     location.reload(); // 重新整理頁面
   } catch (err) {
-    alert("❌ 刪除失敗：" + err.message);
+    console.error(err);
+    alert("❌ " + err.message);
   }
 }
 window.deleteCurrentGroup = deleteCurrentGroup;
