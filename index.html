@@ -108,6 +108,10 @@
   <button type="button" id="tabActive" onclick="switchGroupTab('active')" style="padding: 6px 14px; border-radius: 6px; border: none; background: #2563eb; color: #fff; cursor: pointer; font-size: 12px; font-weight: bold;">開團中</button>
   <button type="button" id="tabExpired" onclick="switchGroupTab('expired')" style="padding: 6px 14px; border-radius: 6px; border: none; background: #2f2f35; color: #aaa; cursor: pointer; font-size: 12px; font-weight: bold;">已結單</button>
 </div>
+      <!-- 搜尋輸入框 -->
+<div style="margin-bottom: 12px;">
+  <input type="text" id="groupSearchInput" placeholder="🔍 搜尋團務名稱..." oninput="filterGroupsList()" style="width: 100%; padding: 8px 12px; background: #252525; border: 1px solid #444; color: white; border-radius: 6px; font-size: 13px;">
+</div>
       <div id="groupCardsContainer">載入團務列表中...</div>
     </div>
 
@@ -504,7 +508,7 @@ function switchGroupTab(tab) {
   renderGroupsList();
 }
 
-// 2. 負責過濾、排序並顯示團務
+// 2. 負責過濾、排序並顯示團務（含搜尋關鍵字功能）
 function renderGroupsList() {
   const container = document.getElementById('groupCardsContainer');
   if (!container) return;
@@ -514,13 +518,23 @@ function renderGroupsList() {
     return;
   }
 
-  // 根據目前分頁過濾 (開團中 / 已結單)
+  // 取得搜尋框輸入的關鍵字（並轉成小寫以方便比對）
+  const searchInput = document.getElementById('groupSearchInput');
+  const keyword = searchInput ? searchInput.value.trim().toLowerCase() : "";
+
+  // 1. 根據目前分頁 (開團中/已結單) 以及 搜尋關鍵字 進行雙重過濾
   let filtered = groupsData.filter(g => {
     let isExp = g["isExpired"] || false;
-    return currentGroupTab === 'active' ? !isExp : isExp;
+    let matchTab = (currentGroupTab === 'active') ? !isExp : isExp;
+    
+    // 檢查團務名稱是否包含關鍵字
+    let gName = g["團務名稱"] || "";
+    let matchKeyword = keyword === "" || gName.toLowerCase().includes(keyword);
+
+    return matchTab && matchKeyword;
   });
 
-  // 依照截單時間「從近到遠」排序
+  // 2. 依照截單時間「從近到遠」排序
   filtered.sort((a, b) => {
     let timeA = new Date(a["截單時間"] || "9999-12-31");
     let timeB = new Date(b["截單時間"] || "9999-12-31");
@@ -528,7 +542,7 @@ function renderGroupsList() {
   });
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="text-align:center; color:#666; padding:20px;">目前沒有${currentGroupTab === 'active' ? '開團中' : '已結單'}的團務</div>`;
+    container.innerHTML = `<div style="text-align:center; color:#aaa; padding:20px;">找不到符合的團務</div>`;
     return;
   }
 
@@ -558,6 +572,11 @@ function renderGroupsList() {
   });
 
   container.innerHTML = html;
+}
+
+// 讓搜尋框即時觸發過濾的輔助函數
+function filterGroupsList() {
+  renderGroupsList();
 }
 
 // 📦 讀取並顯示指定團務底下的商品清單供編輯（含圖片網址與商品說明）
