@@ -2458,7 +2458,7 @@ function updateFilterGroupOptions(orders) {
                 "訂單內容": newItems,
                 "總金額": newTotal,
                 "處理狀態": "已變更"
-            }).eq('id', order.id);
+            }).eq('id', orderId);
 
             if (error) throw error;
 
