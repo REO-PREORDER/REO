@@ -968,12 +968,6 @@ async function exportProductSummaryCSV() {
       if (adminStatsGroup) adminStatsGroup.innerHTML = "<option value=''>請選擇團務</option>";
 
       if (groupsData.length > 0) {
-       //💡 依照截單時間從近到遠排序（時間越早、越快截單的排在越前面）
-      groupsData.sort((a, b) => {
-        let timeA = new Date(a["截單時間"] || "9999-12-31");
-        let timeB = new Date(b["截單時間"] || "9999-12-31");
-        return timeA - timeB;
-      });
         let html = "", selectHtml = "", statsHtml = "<option value=''>請選擇團務</option>";
         groupsData.forEach(g => {
           let gName = g["團務名稱"];
