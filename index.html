@@ -295,7 +295,20 @@
 <script>
   let currentGroupMode = "create"; // 'create' 或 'edit'
 let allGroupsData = []; // 暫存所有團務原始資料
+const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  let orderQuantities = {};
+  let currentProducts = [];
+  let currentCategories = [];
+  let activeCategory = "全部";
+  let selectedGroupName = "";
+  let activeSurplusGroup = "";
+  let currentSurplusProducts = [];
+  let groupsData = [];
+
+  window.addEventListener('DOMContentLoaded', () => { loadGroupList(); });
 // 1. 切換新增 / 編輯模式
 function switchGroupTab(mode) {
   currentGroupMode = mode;
@@ -636,21 +649,6 @@ async function deleteProduct(prodId) {
   }
 }
 window.deleteProduct = deleteProduct;
-  
-  const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
-  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  let orderQuantities = {};
-  let currentProducts = [];
-  let currentCategories = [];
-  let activeCategory = "全部";
-  let selectedGroupName = "";
-  let activeSurplusGroup = "";
-  let currentSurplusProducts = [];
-  let groupsData = [];
-
-  window.addEventListener('DOMContentLoaded', () => { loadGroupList(); });
 
 // 發送 Email 通知 Worker（自動防呆：若漏掉 subject 會自動補上預設主旨）
 async function sendPreOrderEmail(emailData) {
