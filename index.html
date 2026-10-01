@@ -1641,7 +1641,7 @@ function closeLightbox() {
             totalPrice: totalPrice,
             paymentMethod: paymentMethod,
             status: "待確認",
-            changeReason: "無"
+            changeReason: "無",
             orderId: `#REO-${orderId}`
           });
         } catch (emailErr) {
@@ -1991,7 +1991,7 @@ window.submitBatchProducts = submitBatchProducts;
           totalPrice: order["總金額"],
           paymentMethod: currentPaymentMethod, // 帶入正確從 groups 查到的付款方式
           status: newStatus,
-          changeReason: changeReason
+          changeReason: changeReason,
           orderId: `#REO-${orderId}`
         });
       } catch (mailErr) {
@@ -2336,7 +2336,7 @@ function updateFilterGroupOptions(orders) {
                         totalPrice: newTotal,              
                         paymentMethod: paymentMethod, 
                         status: "已變更",                            
-                        changeReason: changeReason   
+                        changeReason: changeReason,   
                       orderId: `#REO-${orderId}`
                     });
                 } catch (emailErr) {
