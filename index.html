@@ -490,7 +490,7 @@ async function loadProductsForEdit(groupId) {
         <input type="number" id="newProdPrice" placeholder="單價 ($)" style="flex: 1; padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
         <input type="text" id="newProdCategory" placeholder="商品分類 (預設: 一般)" value="一般" style="flex: 1; padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
       </div>
-      <input type="text" id="newProdImg" placeholder="商品圖片網址 (URL)" style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+      <textarea id="newProdImg" placeholder="商品圖片網址 (URL，每行一張或用逗號分隔)" style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 50px;"></textarea>
       <textarea id="newProdDesc" placeholder="商品說明..." style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 50px;"></textarea>
       <button type="button" onclick="addProductToCurrentGroup()" style="background: #2563eb; color: white; border: none; padding: 8px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; margin-top: 4px;">確認新增商品</button>
     </div>
@@ -1077,9 +1077,9 @@ function renderProductGrid() {
     let originalIndex = currentProducts.indexOf(p);
     let qty = orderQuantities[originalIndex] || 0;
     
-    // 處理多張圖片
+    // 處理多張圖片（支援換行、逗號、半形/全形逗號、或 | 分隔）
     let rawImg = p["圖片"] || "";
-    let imgList = rawImg.split('|').map(u => formatImageUrl(u.trim())).filter(u => u !== "");
+    let imgList = rawImg ? String(rawImg).split(/[\r\n,|，\s]+/).map(u => formatImageUrl(u.trim())).filter(u => u !== "") : [];
     let mainImg = imgList.length > 0 ? imgList[0] : "";
     let desc = p["商品說明"] || "";
 
@@ -1125,10 +1125,10 @@ let isDragging = false;
 
 function openLightbox(urlStr, index = 0) {
   if (!urlStr) return;
-  // 支援使用 | 分隔多張圖片
-  currentLightboxImages = urlStr.split('|').map(u => formatImageUrl(u.trim())).filter(u => u !== "");
+  // 支援使用 換行、逗號、空格 或 | 分隔多張圖片
+  currentLightboxImages = String(urlStr).split(/[\r\n,|，\s]+/).map(u => formatImageUrl(u.trim())).filter(u => u !== "");
   currentLightboxIndex = index;
-
+  
   if (currentLightboxImages.length === 0) return;
 
   updateLightboxImage();
@@ -1414,10 +1414,23 @@ function closeLightbox() {
           let imgUrl = item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "";
           let category = item.category || item["分類"] || item["商品分類"] || "";
           
-          let imgTag = imgUrl 
-            ? `<img src="${formatImageUrl(imgUrl)}" style="width:45px; height:45px; object-fit:cover; border-radius:6px; margin-right:10px;">`
-            : `<div style="width:45px; height:45px; background:#27272a; border-radius:6px; margin-right:10px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#a1a1aa;">無圖</div>`;
-
+          let imgTag = "";
+          if (imgUrl) {
+            // 自動支援用換行、逗號或空格分隔的多張圖片網址
+            let urlList = String(imgUrl).split(/[\r\n,，\s]+/).filter(u => u.trim() !== "");
+            
+            if (urlList.length > 1) {
+              // 如果有多張圖片，自動橫向排列顯示小圖
+              imgTag = `<div style="display: flex; gap: 4px; flex-wrap: wrap; margin-right: 10px;">` + 
+                urlList.map(url => `<img src="${formatImageUrl(url.trim())}" style="width:40px; height:40px; object-fit:cover; border-radius:4px;">`).join("") + 
+                `</div>`;
+            } else {
+              // 只有一張圖時維持原本的顯示方式
+              imgTag = `<img src="${formatImageUrl(urlList[0].trim())}" style="width:45px; height:45px; object-fit:cover; border-radius:6px; margin-right:10px;">`;
+            }
+          } else {
+            imgTag = `<div style="width:45px; height:45px; background:#27272a; border-radius:6px; margin-right:10px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#a1a1aa;">無圖</div>`;
+          }
           let categoryBadge = category 
             ? `<span style="background:#3f3f46; color:#e4e4e7; font-size:10px; padding:1px 5px; border-radius:3px; margin-right:6px;">${category}</span>`
             : "";
