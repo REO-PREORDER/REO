@@ -981,7 +981,7 @@ async function exportProductSummaryCSV() {
           html += `
             <div onclick="selectGroup('${gName}', ${isExpired})" class="card" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; ${cardStyle}; padding:12px; border-radius:8px; margin-bottom:10px; border:1px solid #333;">
               <div style="display: flex; align-items: center; gap: 10px;">
-                ${img ? `<img src="${img}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">` : '<div style="width:50px;height:50px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;">🛒</div>'}
+                ${img ? `<img src="${img}" style="width: 50px; height: 50px; object-fit: contain; border-radius: 4px;">` : '<div style="width:50px;height:50px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;">🛒</div>'}
                 <div>
                   <div style="font-weight: bold; color: #fff; font-size: 14px;">${gName}</div>
                   <div style="font-size: 12px; margin-top: 4px;">${statusBadge} <span style="color: #aaa;">截單：${deadline}</span></div>
@@ -1105,7 +1105,7 @@ function renderProductGrid() {
       <div class="product-card">
         <div>
           <div class="product-img-box" style="position: relative;">
-            ${mainImg ? `<img src="${formatImageUrl(mainImg)}" alt="商品圖片" style="width:100%; height:100%; object-fit:cover;">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#555;">暫無圖片</div>'}
+            ${mainImg ? `<img src="${formatImageUrl(mainImg)}" alt="商品圖片" style="width:100%; height:100%; object-fit:contain;">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#555;">暫無圖片</div>'}
             ${multiBadge}
           </div>
           
@@ -1447,11 +1447,11 @@ function closeLightbox() {
             if (urlList.length > 1) {
               // 如果有多張圖片，自動橫向排列顯示小圖
               imgTag = `<div style="display: flex; gap: 4px; flex-wrap: wrap; margin-right: 10px;">` + 
-                urlList.map(url => `<img src="${formatImageUrl(url.trim())}" style="width:40px; height:40px; object-fit:cover; border-radius:4px;">`).join("") + 
+                urlList.map(url => `<img src="${formatImageUrl(url.trim())}" style="width:40px; height:40px; object-fit:contain; border-radius:4px;">`).join("") + 
                 `</div>`;
             } else {
               // 只有一張圖時維持原本的顯示方式
-              imgTag = `<img src="${formatImageUrl(urlList[0].trim())}" style="width:45px; height:45px; object-fit:cover; border-radius:6px; margin-right:10px;">`;
+              imgTag = `<img src="${formatImageUrl(urlList[0].trim())}" style="width:45px; height:45px; object-fit:contain; border-radius:6px; margin-right:10px;">`;
             }
           } else {
             imgTag = `<div style="width:45px; height:45px; background:#27272a; border-radius:6px; margin-right:10px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#a1a1aa;">無圖</div>`;
@@ -1574,7 +1574,7 @@ function closeLightbox() {
           let imgUrl = p["圖片"] || p["圖片網址"] || p["image"] || p["image_url"] || "";
 
           let imgHtml = imgUrl 
-            ? `<img src="${formatImageUrl(imgUrl)}" alt="${p["商品名稱"]}" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\'width:50px;height:50px;background:#333;border-radius:6px;margin-right:10px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa;flex-shrink:0;\'>圖無效</div>';" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin-right: 10px; flex-shrink: 0;">`
+            ? `<img src="${formatImageUrl(imgUrl)}" alt="${p["商品名稱"]}" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\'width:50px;height:50px;background:#333;border-radius:6px;margin-right:10px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa;flex-shrink:0;\'>圖無效</div>';" style="width: 50px; height: 50px; object-fit: contain; border-radius: 6px; margin-right: 10px; flex-shrink: 0;">`
             : `<div style="width: 50px; height: 50px; background: #333; border-radius: 6px; margin-right: 10px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #aaa; flex-shrink: 0;">無圖片</div>`;
 
           html += `<div style="background:#242424; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
