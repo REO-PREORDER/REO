@@ -2131,7 +2131,7 @@ window.submitBatchProducts = submitBatchProducts;
           paymentMethod: currentPaymentMethod, // 帶入正確從 groups 查到的付款方式
           status: newStatus,
           changeReason: changeReason,
-           orderId: newOrderId
+           orderId: orderId
         });
       } catch (mailErr) {
         console.error("狀態變更寄信失敗：", mailErr);
