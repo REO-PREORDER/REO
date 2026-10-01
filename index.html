@@ -1386,6 +1386,7 @@ function closeLightbox() {
 
       let html = "";
       orders.forEach(order => {
+        let orderId = order["id"] || "無編號"; // 取得訂單編號
         let groupName = order["團務名稱"] || "";
         let remark = order["備註"] || "";
         let rawDate = order["created_at"] || order["填單時間"] || order["下單時間"] || "";
@@ -1438,8 +1439,9 @@ function closeLightbox() {
 
         html += `
           <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff; text-align: left;">
-            <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px;">
-              團務名稱：${cleanTitle} ${typeBadge}
+            <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <span>團務名稱：${cleanTitle} ${typeBadge}</span>
+              <span style="font-size: 12px; color: #38bdf8; background: #0369a133; padding: 2px 6px; border-radius: 4px;">訂單編號: #${orderId}</span>
             </div>
             <div style="font-size: 12px; color: #a1a1aa; margin-bottom: 8px;">
               下單時間：${formattedDate}
@@ -1463,7 +1465,6 @@ function closeLightbox() {
       searchResult.innerHTML = `<p style="color:#f87171;">查詢失敗：${err.message}</p>`;
     }
   }
-
   // 載入餘量團務
   async function loadSurplusGroups() {
     let container = document.getElementById('surplusGroupList');
