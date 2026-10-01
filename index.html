@@ -343,9 +343,60 @@ function switchGroupTab(tab) {
   // 重新渲染團務列表（請確保你呼叫的是渲染團務的函數）
   renderGroupsList(); 
 }
-  let currentGroupMode = "create"; // 'create' 或 'edit'
-let allGroupsData = []; // 暫存所有團務原始資料
+  function renderGroupsList() {
+  const container = document.getElementById('groupCardsContainer');
+  if (!container) return;
 
+  if (!groupsData || groupsData.length === 0) {
+    container.innerHTML = '<div style="text-align:center; color:#666; padding:20px;">目前沒有團務資料</div>';
+    return;
+  }
+
+  // 1. 根據目前分頁過濾 (開團中 / 已結單)
+  let filtered = groupsData.filter(g => {
+    let isExp = g["isExpired"] || false;
+    return currentGroupTab === 'active' ? !isExp : isExp;
+  });
+
+  // 2. 依照截單時間「從近到遠」排序
+  filtered.sort((a, b) => {
+    let timeA = new Date(a["截單時間"] || "9999-12-31");
+    let timeB = new Date(b["截單時間"] || "9999-12-31");
+    return timeA - timeB;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="text-align:center; color:#666; padding:20px;">目前沒有${currentGroupTab === 'active' ? '開團中' : '已結單'}的團務</div>`;
+    return;
+  }
+
+  let html = "";
+  filtered.forEach(g => {
+    let gName = g["團務名稱"];
+    let img = formatImageUrl(g["圖片"] || "");
+    let deadline = g["截單時間"] || "未定";
+    let isExpired = g["isExpired"] || false;
+    let statusBadge = isExpired ? '<span style="color:#f87171;">已結單</span>' : '<span style="color:#4ade80;">開團中</span>';
+    let paymentMethod = g["付款方式"] || "未設定";
+    let cardStyle = isExpired ? 'opacity: 0.5; background: #181818;' : 'background: #242424;';
+
+    html += `
+      <div style="${cardStyle} border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;" onclick="selectGroup('${gName.replace(/'/g, "\\'")}')">
+        <div style="display: flex; align-items: center; gap: 12px; overflow: hidden;">
+          <img src="${img}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; flex-shrink: 0;">
+          <div>
+            <div style="font-weight: bold; color: #fff; font-size: 13px; line-height: 1.3;">${gName}</div>
+            <div style="font-size: 11px; color: #aaa; margin-top: 2px;">${statusBadge} 截單：${deadline}</div>
+            <div style="font-size: 11px; color: #888; margin-top: 1px;">付款方式：${paymentMethod}</div>
+          </div>
+        </div>
+        <div style="color: #aaa; font-size: 14px; padding-left: 8px;">➔</div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
 // 1. 切換新增 / 編輯模式
 function switchGroupTab(mode) {
   currentGroupMode = mode;
