@@ -1052,23 +1052,22 @@ async function exportProductSummaryCSV() {
       if (adminStatsGroup) adminStatsGroup.innerHTML = "<option value=''>請選擇團務</option>";
 
       if (groupsData.length > 0) {
-        let selectHtml = "<option value=''>請選擇團務</option>";
-        let statsHtml = "<option value=''>請選擇團務</option>";
-        
+       //💡 依照截單時間從近到遠排序（時間越早、越快截單的排在越前面）
+      groupsData.sort((a, b) => {
+        let timeA = new Date(a["截單時間"] || "9999-12-31");
+        let timeB = new Date(b["截單時間"] || "9999-12-31");
+        return timeA - timeB;
+      });
+        let html = "", selectHtml = "", statsHtml = "<option value=''>請選擇團務</option>";
         groupsData.forEach(g => {
           let gName = g["團務名稱"];
-          selectHtml += `<option value="${gName}">${gName}</option>`;
-          statsHtml += `<option value="${gName}">${gName}</option>`;
-        });
+          let img = formatImageUrl(g["圖片"] || "");
+          let deadline = g["截單時間"] || "未定";
+          let isExpired = g["isExpired"] || false;
+          let statusBadge = isExpired ? '<span style="color:#f87171;">已結單</span>' : '<span style="color:#4ade80;">開團中</span>';
+          let paymentMethod = g["付款方式"] || "未設定";
+          let cardStyle = isExpired ? 'opacity: 0.5; background: #181818;' : 'background: #242424;';
 
-        if (adminGroupSelect) adminGroupSelect.innerHTML = selectHtml;
-        if (adminStatsGroup) adminStatsGroup.innerHTML = statsHtml;
-
-        // 💡 關鍵：直接呼叫我們的過濾、排序與渲染函式！
-        renderGroupsList();
-      } else {
-        container.innerHTML = "<p style='text-align:center; color:#aaa;'>目前沒有進行中的團務。</p>";
-      }
           html += `
             <div onclick="selectGroup('${gName}', ${isExpired})" class="card" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; ${cardStyle}; padding:12px; border-radius:8px; margin-bottom:10px; border:1px solid #333;">
               <div style="display: flex; align-items: center; gap: 10px;">
