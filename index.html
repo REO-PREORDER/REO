@@ -104,6 +104,10 @@
   <div id="preorderSection" class="section active">
     <div id="groupListView">
       <p style="color: #aaa; font-size: 13px; margin-bottom: 8px;">請選擇參與的預購團務：</p>
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+  <button type="button" id="tabActive" onclick="switchGroupTab('active')" style="padding: 6px 14px; border-radius: 6px; border: none; background: #2563eb; color: #fff; cursor: pointer; font-size: 12px; font-weight: bold;">開團中</button>
+  <button type="button" id="tabExpired" onclick="switchGroupTab('expired')" style="padding: 6px 14px; border-radius: 6px; border: none; background: #2f2f35; color: #aaa; cursor: pointer; font-size: 12px; font-weight: bold;">已結單</button>
+</div>
       <div id="groupCardsContainer">載入團務列表中...</div>
     </div>
 
@@ -473,6 +477,88 @@ async function submitGroupForm() {
 }
 window.submitGroupForm = submitGroupForm;
 window.submitCreateGroup = submitGroupForm;
+  let currentGroupTab = 'active'; // 預設顯示開團中
+
+// 1. 切換分頁按鈕並更新樣式
+function switchGroupTab(tab) {
+  currentGroupTab = tab;
+  
+  let btnActive = document.getElementById('tabActive');
+  let btnExpired = document.getElementById('tabExpired');
+  
+  if (btnActive && btnExpired) {
+    if (tab === 'active') {
+      btnActive.style.background = '#2563eb';
+      btnActive.style.color = '#fff';
+      btnExpired.style.background = '#2f2f35';
+      btnExpired.style.color = '#aaa';
+    } else {
+      btnExpired.style.background = '#2563eb';
+      btnExpired.style.color = '#fff';
+      btnActive.style.background = '#2f2f35';
+      btnActive.style.color = '#aaa';
+    }
+  }
+  
+  // 重新渲染清單
+  renderGroupsList();
+}
+
+// 2. 負責過濾、排序並顯示團務
+function renderGroupsList() {
+  const container = document.getElementById('groupCardsContainer');
+  if (!container) return;
+
+  if (!groupsData || groupsData.length === 0) {
+    container.innerHTML = '<div style="text-align:center; color:#666; padding:20px;">目前沒有團務資料</div>';
+    return;
+  }
+
+  // 根據目前分頁過濾 (開團中 / 已結單)
+  let filtered = groupsData.filter(g => {
+    let isExp = g["isExpired"] || false;
+    return currentGroupTab === 'active' ? !isExp : isExp;
+  });
+
+  // 依照截單時間「從近到遠」排序
+  filtered.sort((a, b) => {
+    let timeA = new Date(a["截單時間"] || "9999-12-31");
+    let timeB = new Date(b["截單時間"] || "9999-12-31");
+    return timeA - timeB;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="text-align:center; color:#666; padding:20px;">目前沒有${currentGroupTab === 'active' ? '開團中' : '已結單'}的團務</div>`;
+    return;
+  }
+
+  let html = "";
+  filtered.forEach(g => {
+    let gName = g["團務名稱"];
+    let img = formatImageUrl(g["圖片"] || "");
+    let deadline = g["截單時間"] || "未定";
+    let isExpired = g["isExpired"] || false;
+    let statusBadge = isExpired ? '<span style="color:#f87171;">已結單</span>' : '<span style="color:#4ade80;">開團中</span>';
+    let paymentMethod = g["付款方式"] || "未設定";
+    let cardStyle = isExpired ? 'opacity: 0.5; background: #181818;' : 'background: #242424;';
+
+    html += `
+      <div onclick="selectGroup('${gName.replace(/'/g, "\\'")}', ${isExpired})" class="card" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; ${cardStyle}; padding:12px; border-radius:8px; margin-bottom:10px; border:1px solid #333;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          ${img ? `<img src="${img}" style="width: 50px; height: 50px; object-fit: contain; border-radius: 4px;">` : '<div style="width:50px;height:50px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;">🛒</div>'}
+          <div>
+            <div style="font-weight: bold; color: #fff; font-size: 14px;">${gName}</div>
+            <div style="font-size: 12px; margin-top: 4px;">${statusBadge} <span style="color: #aaa;">截單：${deadline}</span></div>
+            <div style="font-size: 12px; color: #60a5fa; margin-top: 4px;">付款方式：${paymentMethod}</div>
+          </div>
+        </div>
+        <div style="color: #888;">➔</div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
 
 // 📦 讀取並顯示指定團務底下的商品清單供編輯（含圖片網址與商品說明）
 async function loadProductsForEdit(groupId) {
@@ -968,35 +1054,20 @@ async function exportProductSummaryCSV() {
       if (adminStatsGroup) adminStatsGroup.innerHTML = "<option value=''>請選擇團務</option>";
 
       if (groupsData.length > 0) {
-        let html = "", selectHtml = "", statsHtml = "<option value=''>請選擇團務</option>";
+        let selectHtml = "<option value=''>請選擇團務</option>";
+        let statsHtml = "<option value=''>請選擇團務</option>";
+        
         groupsData.forEach(g => {
           let gName = g["團務名稱"];
-          let img = formatImageUrl(g["圖片"] || "");
-          let deadline = g["截單時間"] || "未定";
-          let isExpired = g["isExpired"] || false;
-          let statusBadge = isExpired ? '<span style="color:#f87171;">已結單</span>' : '<span style="color:#4ade80;">開團中</span>';
-          let paymentMethod = g["付款方式"] || "未設定";
-          let cardStyle = isExpired ? 'opacity: 0.5; background: #181818;' : 'background: #242424;';
-
-          html += `
-            <div onclick="selectGroup('${gName}', ${isExpired})" class="card" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; ${cardStyle}; padding:12px; border-radius:8px; margin-bottom:10px; border:1px solid #333;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                ${img ? `<img src="${img}" style="width: 50px; height: 50px; object-fit: contain; border-radius: 4px;">` : '<div style="width:50px;height:50px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;">🛒</div>'}
-                <div>
-                  <div style="font-weight: bold; color: #fff; font-size: 14px;">${gName}</div>
-                  <div style="font-size: 12px; margin-top: 4px;">${statusBadge} <span style="color: #aaa;">截單：${deadline}</span></div>
-                  <div style="font-size: 12px; color: #60a5fa; margin-top: 4px;">付款方式：${paymentMethod}</div>
-                </div>
-              </div>
-              <div style="color: #888;">➔</div>
-            </div>
-          `;
           selectHtml += `<option value="${gName}">${gName}</option>`;
           statsHtml += `<option value="${gName}">${gName}</option>`;
         });
-        container.innerHTML = html;
+
         if (adminGroupSelect) adminGroupSelect.innerHTML = selectHtml;
         if (adminStatsGroup) adminStatsGroup.innerHTML = statsHtml;
+
+        // 💡 關鍵：呼叫我們的過濾、排序與渲染函式！
+        renderGroupsList();
       } else {
         container.innerHTML = "<p style='text-align:center; color:#aaa;'>目前沒有進行中的團務。</p>";
       }
