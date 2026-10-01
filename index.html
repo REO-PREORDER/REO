@@ -104,6 +104,13 @@
   <div id="preorderSection" class="section active">
     <div id="groupListView">
       <p style="color: #aaa; font-size: 13px; margin-bottom: 8px;">請選擇參與的預購團務：</p>
+      
+      <!-- 💡 新增的開團中 / 已結單切換按鈕 -->
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <button type="button" id="tabActive" onclick="switchGroupTab('active')" style="padding: 6px 14px; border-radius: 6px; border: none; background: #2563eb; color: #fff; cursor: pointer; font-size: 12px; font-weight: bold;">開團中</button>
+        <button type="button" id="tabExpired" onclick="switchGroupTab('expired')" style="padding: 6px 14px; border-radius: 6px; border: none; background: #2f2f35; color: #aaa; cursor: pointer; font-size: 12px; font-weight: bold;">已結單</button>
+      </div>
+
       <div id="groupCardsContainer">載入團務列表中...</div>
     </div>
 
@@ -310,6 +317,32 @@
 </div>
 
 <script>
+  let currentGroupTab = 'active'; // 預設顯示開團中
+
+function switchGroupTab(tab) {
+  currentGroupTab = tab;
+  
+  // 切換按鈕的樣式高亮
+  let btnActive = document.getElementById('tabActive');
+  let btnExpired = document.getElementById('tabExpired');
+  
+  if (btnActive && btnExpired) {
+    if (tab === 'active') {
+      btnActive.style.background = '#2563eb';
+      btnActive.style.color = '#fff';
+      btnExpired.style.background = '#2f2f35';
+      btnExpired.style.color = '#aaa';
+    } else {
+      btnExpired.style.background = '#2563eb';
+      btnExpired.style.color = '#fff';
+      btnActive.style.background = '#2f2f35';
+      btnActive.style.color = '#aaa';
+    }
+  }
+  
+  // 重新渲染團務列表（請確保你呼叫的是渲染團務的函數）
+  renderGroupsList(); 
+}
   let currentGroupMode = "create"; // 'create' 或 'edit'
 let allGroupsData = []; // 暫存所有團務原始資料
 
