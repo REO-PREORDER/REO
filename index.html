@@ -254,6 +254,7 @@
      <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #ccc;">
         <thead>
           <tr style="background: #333; text-align: left;">
+            <th style="padding: 8px;">訂單編號</th>
             <th style="padding: 8px;">時間</th>
             <th style="padding: 8px;">買家姓名</th>
             <th style="padding: 8px;">團務名稱</th>
@@ -2134,12 +2135,13 @@ function renderOrdersTable(orders) {
   if (!tbody) return;
 
   if (!orders || orders.length === 0) {
-    tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; padding:15px; color:#888;'>目前沒有任何訂單紀錄</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='8' style='text-align:center; padding:15px; color:#888;'>目前沒有任何訂單紀錄</td></tr>";
     return;
   }
 
   let html = "";
   orders.forEach(o => {
+    let orderId = o.id || ""; // 取得訂單編號
     let timeStr = o.created_at ? new Date(o.created_at).toLocaleString() : "未知時間";
     
     // 狀態顏色
@@ -2162,6 +2164,7 @@ function renderOrdersTable(orders) {
 
     html += `
       <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px; color: #38bdf8; font-weight: bold;">#${orderId}</td>
         <td style="padding: 8px; color: #aaa;">${timeStr}</td>
         <td style="padding: 8px; color: #fff; font-weight: bold;">${o["買家名稱"] || '未填寫'}</td>
         <td style="padding: 8px; color: #60a5fa;">${o["團務名稱"] || '-'}</td>
@@ -2170,7 +2173,7 @@ function renderOrdersTable(orders) {
         <td style="padding: 8px; font-weight: bold; color: ${statusColor};">${o["處理狀態"] || '待確認'}</td>
         <td style="padding: 8px; display: flex; gap: 4px; flex-wrap: wrap;">
           <button onclick="updateOrderStatus('${o.id}', '已成立')" style="background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✓ 成立</button>
-          <button onclick='openModifyModal(${JSON.stringify(o)})' style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏️️ 變更</button>
+          <button onclick='openModifyModal(${JSON.stringify(o)})' style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏ 變更</button>
           <button onclick="updateOrderStatus('${o.id}', '已取消')" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✕ 取消</button>
         </td>
       </tr>
@@ -2187,7 +2190,10 @@ function filterOrders() {
   if (!window.allOrdersData) return;
 
   let filtered = window.allOrdersData.filter(o => {
+    let orderIdStr = o.id ? String(o.id).toLowerCase() : ""; // 取得訂單編號並轉成字串
+    
     let matchKeyword = !keyword || 
+      orderIdStr.includes(keyword) || // 👈 支援用訂單編號搜尋（不分大小寫，也可以輸入部分編號）
       (o["買家名稱"] && o["買家名稱"].toLowerCase().includes(keyword)) ||
       (o["手機號碼"] && o["手機號碼"].toLowerCase().includes(keyword)) ||
       (o["Email"] && o["Email"].toLowerCase().includes(keyword));
