@@ -1565,7 +1565,7 @@ function closeLightbox() {
     }
   }
 
-  // 提交餘量認領
+ // 提交餘量認領
   async function submitSurplusClaim() {
     let name = document.getElementById('surplus_name')?.value.trim();
     let phone = document.getElementById('surplus_phone')?.value.trim();
@@ -1575,11 +1575,16 @@ function closeLightbox() {
       alert("請填寫 暱稱、手機號碼 與 Email！");
       return;
     }
-// 💡 記憶買家在餘量認領填寫的聯絡資訊
+
+    // 💡 記憶買家在餘量認領填寫的聯絡資訊
     if (name) localStorage.setItem('reo_buyer_lineName', name);
     if (phone) localStorage.setItem('reo_buyer_phone', phone);
     if (email) localStorage.setItem('reo_buyer_email', email);
     
+    // 👈 補上這兩行宣告，讓餘量認領可以正常計算商品與總金額
+    let selectedItems = [];
+    let totalPrice = 0;
+
     currentSurplusProducts.forEach((p, index) => {
       let qtySelect = document.getElementById(`surplus_qty_${index}`);
       let qty = qtySelect ? parseInt(qtySelect.value) : 0;
@@ -1614,6 +1619,9 @@ function closeLightbox() {
 
       if (orderErr) throw orderErr;
 
+      // 取得剛剛自動生成的訂單編號
+      let newOrderId = orderData && orderData.length > 0 ? orderData[0].id : "未知";
+
       // 即時扣減庫存
       for (let item of selectedItems) {
         let targetProd = currentSurplusProducts.find(p => p.id === item.id);
@@ -1630,7 +1638,7 @@ function closeLightbox() {
           const { data: groupData } = await db.from('groups').select('付款方式').eq('團務名稱', activeSurplusGroup).single();
           if (groupData && groupData["付款方式"]) paymentMethod = groupData["付款方式"];
 
-          let productDetailsText = selectedItems.map(i => `${i.name} x ${i.qty} ($${i.price} / 小計: $${i.price * i.qty})`).join("\n");
+          let productDetailsText = selectedItems.map(i => `${i.name} x ${i.qty} ($${i.price} / 小計: ${i.price * i.qty})`).join("\n");
 
           await sendPreOrderEmail({
             customerEmail: email,
@@ -1640,14 +1648,15 @@ function closeLightbox() {
             totalPrice: totalPrice,
             paymentMethod: paymentMethod,
             status: "待確認",
-            changeReason: "無"
+            changeReason: "無",
+            orderId: newOrderId
           });
         } catch (emailErr) {
           console.error("餘量認領寄信失敗：", emailErr);
         }
       }
 
-      alert("餘量認領已送出！庫存已先為您保留，請等待管理員審核確認。");
+      alert(`餘量認領已送出！您的訂單編號為 [${newOrderId}]，庫存已先為您保留，請等待管理員審核確認。`);
       loadSurplusProducts(activeSurplusGroup);
     } catch (err) {
       alert("認領失敗：" + err.message);
