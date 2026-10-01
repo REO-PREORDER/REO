@@ -785,7 +785,7 @@ async function exportBuyerOrdersCSV() {
     alert("匯出訂單失敗：" + err.message);
   }
 }
-// 🗑️ 改進版的刪除團務函數（加上錯誤攔截）
+// 🗑️ 改進版的刪除團務函數（帶有詳細錯誤診斷）
 async function deleteCurrentGroup() {
   const selectEl = document.getElementById('editGroupSelect');
   if (!selectEl) {
@@ -805,22 +805,22 @@ async function deleteCurrentGroup() {
 
   try {
     // 1. 刪除該團務的訂單
-    const { error: orderErr } = await db.from('orders').delete().eq('團務名稱', groupName);
-    if (orderErr) throw new Error("刪除訂單失敗: " + orderErr.message);
+    const { error: orderError } = await db.from('orders').delete().eq('團務名稱', groupName);
+    if (orderError) throw new Error("刪除訂單失敗: " + orderError.message);
 
     // 2. 刪除該團務的商品
-    const { error: prodErr } = await db.from('products').delete().eq('團務名稱', groupName);
-    if (prodErr) throw new Error("刪除商品失敗: " + prodErr.message);
+    const { error: prodError } = await db.from('products').delete().eq('團務名稱', groupName);
+    if (prodError) throw new Error("刪除商品失敗: " + prodError.message);
 
     // 3. 刪除團務本身
-    const { error: groupErr } = await db.from('groups').delete().eq('團務名稱', groupName);
-    if (groupErr) throw new Error("刪除團務失敗: " + groupErr.message);
+    const { error: groupError } = await db.from('groups').delete().eq('團務名稱', groupName);
+    if (groupError) throw new Error("刪除團務失敗: " + groupError.message);
 
     alert("🎉 團務及其附屬商品與訂單已成功刪除！");
     location.reload(); // 重新整理頁面
   } catch (err) {
-    console.error(err);
-    alert("❌ " + err.message);
+    console.error("刪除發生錯誤：", err);
+    alert("❌ 刪除失敗，錯誤原因：" + err.message);
   }
 }
 window.deleteCurrentGroup = deleteCurrentGroup;
