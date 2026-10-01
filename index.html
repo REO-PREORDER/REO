@@ -2482,7 +2482,7 @@ function updateFilterGroupOptions(orders) {
                         paymentMethod: paymentMethod, 
                         status: "已變更",                            
                         changeReason: changeReason,
-                       orderId: newOrderId
+                       orderId: orderId
                     });
                 } catch (emailErr) {
                     console.error("【寄信失敗完整物件】", emailErr);
