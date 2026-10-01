@@ -295,20 +295,7 @@
 <script>
   let currentGroupMode = "create"; // 'create' 或 'edit'
 let allGroupsData = []; // 暫存所有團務原始資料
-const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
-  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  let orderQuantities = {};
-  let currentProducts = [];
-  let currentCategories = [];
-  let activeCategory = "全部";
-  let selectedGroupName = "";
-  let activeSurplusGroup = "";
-  let currentSurplusProducts = [];
-  let groupsData = [];
-
-  window.addEventListener('DOMContentLoaded', () => { loadGroupList(); });
 // 1. 切換新增 / 編輯模式
 function switchGroupTab(mode) {
   currentGroupMode = mode;
@@ -649,6 +636,21 @@ async function deleteProduct(prodId) {
   }
 }
 window.deleteProduct = deleteProduct;
+  
+  const SUPABASE_URL = 'https://kpvlemwmgehusbievyqj.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo';
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let orderQuantities = {};
+  let currentProducts = [];
+  let currentCategories = [];
+  let activeCategory = "全部";
+  let selectedGroupName = "";
+  let activeSurplusGroup = "";
+  let currentSurplusProducts = [];
+  let groupsData = [];
+
+  window.addEventListener('DOMContentLoaded', () => { loadGroupList(); });
 
 // 發送 Email 通知 Worker（自動防呆：若漏掉 subject 會自動補上預設主旨）
 async function sendPreOrderEmail(emailData) {
@@ -1307,22 +1309,17 @@ function closeLightbox() {
 
     try {
       
-      // 1. 寫入 Supabase orders 表格（加上 .select() 抓回自動產生的 id）
-      const { data: insertedData, error } = await db.from('orders').insert([{
+      // 1. 寫入 Supabase orders 表格
+      const { error } = await db.from('orders').insert([{
         "團務名稱": selectedGroupName, "買家名稱": lineName, "手機號碼": phone,
         "Email": email, "訂單內容": selectedItems, "總金額": totalPrice, "處理狀態": "待確認"
-      }]).select(); // 👈 關鍵：必須加上 .select() 才能拿到資料庫產生的流水號 id
-      
+      }]);
       if (error) throw error;
 
-      // 取得剛才產生的專屬訂單編號
-      const rawId = insertedData[0].id;
-      const displayOrderId = `#REO-${rawId}`; // 包裝成好看的格式，例如 #REO-15
-
-      // 2.【發送 Email 通知信】把訂單編號帶進去
+      // 2.【補上關鍵寄信邏輯】發送 Email 通知信
       if (typeof sendPreOrderEmail === 'function') {
         try {
-          let paymentMethod = "賣貨便貨到付款(不含運費38)";
+          let paymentMethod = "預購填單";
           const currentGroupObj = groupsData.find(g => g["團務名稱"] === selectedGroupName);
           if (currentGroupObj && currentGroupObj["付款方式"]) {
             paymentMethod = currentGroupObj["付款方式"];
@@ -1338,19 +1335,16 @@ function closeLightbox() {
             totalPrice: totalPrice,
             paymentMethod: paymentMethod,
             status: "待確認",
-            changeReason: "無",
-            orderId: displayOrderId // 👈 把編號傳給寄信函數
+            changeReason: "無"
           });
         } catch (emailErr) {
           console.error("預購寄信失敗：", emailErr);
         }
       }
 
-      // 3. 顯示成功訊息（把專屬編號顯示給客人看）
+      // 3. 顯示成功訊息
       statusMsg.style.color = "#10b981";
-      statusMsg.innerText = `✓ 預購登記成功！您的訂單編號為：${displayOrderId}。已寄送明細至您的 Email，請將此編號回報至 LINE 記事本！`;
-      
-      // 清空表單
+      statusMsg.innerText = "✓ 預購登記成功！已寄送明細至您的 Email。如未收到請至「查詢記錄」頁面查詢";
       document.getElementById('lineName').value = "";
       document.getElementById('phone').value = "";
       document.getElementById('email').value = "";
@@ -1358,8 +1352,13 @@ function closeLightbox() {
       orderQuantities = {};
       updateCartSummary();
       checkCanSubmit();
-      
-// 查詢個人訂單記錄
+    } catch (err) {
+      statusMsg.style.color = "#f87171";
+      statusMsg.innerText = "送出失敗：" + err.message;
+      document.getElementById('submitBtn').disabled = false;
+    }
+  }
+  // 查詢個人訂單記錄
   async function queryOrder() {
     let searchKey = document.getElementById('searchKey').value.trim();
     let searchResult = document.getElementById('searchResult');
@@ -1383,9 +1382,6 @@ function closeLightbox() {
 
       let html = "";
       orders.forEach(order => {
-        // 💡 取得專屬訂單編號
-        const displayOrderId = `#REO-${order.id}`;
-
         let groupName = order["團務名稱"] || "";
         let remark = order["備註"] || "";
         let rawDate = order["created_at"] || order["填單時間"] || order["下單時間"] || "";
@@ -1438,12 +1434,11 @@ function closeLightbox() {
 
         html += `
           <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff; text-align: left;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #27272a; padding-bottom: 6px;">
-              <span style="color: #60a5fa; font-weight: bold; font-size: 14px;">訂單編號：${displayOrderId}</span>
-              <span style="font-size: 12px; color: #a1a1aa;">${formattedDate}</span>
-            </div>
             <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px;">
               團務名稱：${cleanTitle} ${typeBadge}
+            </div>
+            <div style="font-size: 12px; color: #a1a1aa; margin-bottom: 8px;">
+              下單時間：${formattedDate}
             </div>
             <div style="font-size: 13px; color: #aaa; margin-bottom: 6px;">預購/認領項目：</div>
             <div style="background: #09090b; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
@@ -1639,8 +1634,7 @@ function closeLightbox() {
             totalPrice: totalPrice,
             paymentMethod: paymentMethod,
             status: "待確認",
-            changeReason: "無",
-            orderId: `#REO-${orderId}`
+            changeReason: "無"
           });
         } catch (emailErr) {
           console.error("餘量認領寄信失敗：", emailErr);
@@ -1989,8 +1983,7 @@ window.submitBatchProducts = submitBatchProducts;
           totalPrice: order["總金額"],
           paymentMethod: currentPaymentMethod, // 帶入正確從 groups 查到的付款方式
           status: newStatus,
-          changeReason: changeReason,
-          orderId: `#REO-${orderId}`
+          changeReason: changeReason
         });
       } catch (mailErr) {
         console.error("狀態變更寄信失敗：", mailErr);
@@ -2334,8 +2327,7 @@ function updateFilterGroupOptions(orders) {
                         totalPrice: newTotal,              
                         paymentMethod: paymentMethod, 
                         status: "已變更",                            
-                        changeReason: changeReason,   
-                      orderId: `#REO-${orderId}`
+                        changeReason: changeReason                    
                     });
                 } catch (emailErr) {
                     console.error("【寄信失敗完整物件】", emailErr);
@@ -2376,7 +2368,6 @@ window.addEventListener('load', async () => {
     } catch (e) {
         console.error("強制載入失敗原因：", e);
     }
-  }
 });
   // ==========================================
 // 當網頁載入完成時，自動填入上次記住的聯絡資訊
