@@ -211,8 +211,8 @@
     
     <!-- 切換頁籤 -->
     <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-      <button id="tabCreateGroupBtn" onclick="switchGroupTab('create')" style="background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">➕ 新增團務</button>
-      <button id="tabEditGroupBtn" onclick="switchGroupTab('edit')" style="background: #444; color: #ccc; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">✏️ 編輯既有團務</button>
+      <button id="tabCreateGroupBtn" onclick="switchAdminGroupTab('create')" style="background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">➕ 新增團務</button>
+      <button id="tabEditGroupBtn" onclick="switchAdminGroupTab('edit')" style="background: #444; color: #ccc; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">✏️ 編輯既有團務</button>
     </div>
 
     <!-- 編輯模式專用：選擇團務下拉選單 -->
@@ -322,7 +322,7 @@
 let allGroupsData = []; // 暫存所有團務原始資料
 
 // 1. 切換新增 / 編輯模式
-function switchGroupTab(mode) {
+function switchAdminGroupTab(mode) {
   currentGroupMode = mode;
   let btnCreate = document.getElementById('tabCreateGroupBtn');
   let btnEdit = document.getElementById('tabEditGroupBtn');
