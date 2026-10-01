@@ -1356,7 +1356,12 @@ function closeLightbox() {
       orderQuantities = {};
       updateCartSummary();
       checkCanSubmit();
+    } catch (err) { // <--- 這裡一定要有這個 catch 來對應上面的 try
+      statusMsg.style.color = "#f87171";
+      statusMsg.innerText = "送出失敗：" + err.message;
+      document.getElementById('submitBtn').disabled = false;
     }
+  } // <--- 這裡結束 submitOrder 函式
   // 查詢個人訂單記錄
   async function queryOrder() {
     let searchKey = document.getElementById('searchKey').value.trim();
