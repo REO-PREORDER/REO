@@ -507,6 +507,27 @@ function switchGroupTab(tab) {
   // 重新渲染清單
   renderGroupsList();
 }
+// 點擊圖片放大檢視的燈箱函式
+function openImageModal(imgUrl, event) {
+  if (event) event.stopPropagation(); // 阻止事件冒泡，避免點圖片同時觸發卡片點擊
+  
+  let modalBg = document.createElement('div');
+  modalBg.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 2000; cursor: pointer;";
+  
+  let imgBox = document.createElement('img');
+  imgBox.src = imgUrl;
+  imgBox.style.cssText = "max-width: 90%; max-height: 90%; border-radius: 8px; object-fit: contain; box-shadow: 0 4px 20px rgba(0,0,0,0.5);";
+  
+  modalBg.appendChild(imgBox);
+  
+  // 點擊任意地方關閉燈箱
+  modalBg.onclick = () => {
+    document.body.removeChild(modalBg);
+  };
+  
+  document.body.appendChild(modalBg);
+}
+window.openImageModal = openImageModal;
 
 // 2. 負責過濾, 排序並顯示團務 (一排兩個、直立式大圖卡片)
 function renderGroupsList() {
@@ -569,7 +590,7 @@ function renderGroupsList() {
         <!-- 上方：大張封面圖 -->
         <div>
           ${img ? 
-            `<img src="${img}" style="width: 100%; height: 140px; object-fit: cover; display: block;">` : 
+            `<img src="${img}" onclick="openImageModal('${img}', event)" style="width: 100%; height: 140px; object-fit: cover; display: block; cursor: zoom-in;" title="點擊放大圖片">` : 
             `<div style="width: 100%; height: 140px; background: #333; display: flex; align-items: center; justify-content: center; font-size: 32px;">🛒</div>`
           }
           
