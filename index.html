@@ -559,7 +559,7 @@ function renderGroupsList() {
     html += `
       <div onclick="selectGroup('${gName.replace(/'/g, "\\'")}', ${isExpired})" class="card" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; ${cardStyle}; padding:12px; border-radius:8px; margin-bottom:10px; border:1px solid #333;">
         <div style="display: flex; align-items: center; gap: 10px;">
-          ${img ? `<img src="${img}" style="width: 50px; height: 50px; object-fit: contain; border-radius: 4px;">` : '<div style="width:50px;height:50px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;">🛒</div>'}
+          ${img ? `<img src="${img}" style="width: 80px; height: 80px; object-fit: contain; border-radius: 6px;">` : '<div style="width:80px;height:80px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;">🛒</div>'}
           <div>
             <div style="font-weight: bold; color: #fff; font-size: 14px;">${gName}</div>
             <div style="font-size: 12px; margin-top: 4px;">${statusBadge} <span style="color: #aaa;">截單：${deadline}</span></div>
