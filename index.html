@@ -590,7 +590,7 @@ function renderGroupsList() {
         <!-- 上方：大張封面圖 -->
         <div>
           ${img ? 
-            `<img src="${img}" onclick="openImageModal('${img}', event)" style="width: 100%; height: 140px; object-fit: cover; display: block; cursor: zoom-in;" title="點擊放大圖片">` : 
+            `<img src="${img}" onclick="openImageModal('${img}', event)" style="width: 100%; height: 140px; object-fit: contain; display: block; cursor: zoom-in;" title="點擊放大圖片">` : 
             `<div style="width: 100%; height: 140px; background: #333; display: flex; align-items: center; justify-content: center; font-size: 32px;">🛒</div>`
           }
           
