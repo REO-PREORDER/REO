@@ -1439,7 +1439,8 @@ function closeLightbox() {
     let phone = document.getElementById('phone').value.trim();
     let email = document.getElementById('email').value.trim();
     let statusMsg = document.getElementById('statusMsg');
-
+    let remark = document.getElementById('orderRemark') ? document.getElementById('orderRemark').value.trim() : "";
+    
     if (!lineName || !phone || !email) { alert("請完整填寫暱稱、手機與 Email！"); return; }
 
     let selectedItems = [], totalPrice = 0;
@@ -1476,7 +1477,7 @@ function closeLightbox() {
       // 1. 寫入 Supabase orders 表格並回傳剛生成的資料（包含自動產生的 id）
       const { data: insertedOrders, error } = await db.from('orders').insert([{
         "團務名稱": selectedGroupName, "買家名稱": lineName, "手機號碼": phone,
-        "Email": email, "訂單內容": selectedItems, "總金額": totalPrice, "處理狀態": "待確認"
+        "Email": email, "訂單內容": selectedItems, "總金額": totalPrice, "買家備註": remark,"處理狀態": "待確認"
       }]).select();
       
       if (error) throw error;
@@ -1511,21 +1512,27 @@ function closeLightbox() {
         }
       }
       // 3. 顯示成功訊息（包含訂單編號讓買家知道）
-      statusMsg.style.color = "#10b981";
-      statusMsg.innerText = `✓ 預購登記成功！您的訂單編號為 [${newOrderId}]，已寄送明細至您的 Email，請記得至團務記事本回報訂單編號。`;
-      document.getElementById('lineName').value = "";
-      document.getElementById('phone').value = "";
-      document.getElementById('email').value = "";
-      document.getElementById('agreeTerms').checked = false;
-      orderQuantities = {};
-      updateCartSummary();
-      checkCanSubmit();
-    } catch (err) { // <--- 這裡一定要有這個 catch 來對應上面的 try
-      statusMsg.style.color = "#f87171";
-      statusMsg.innerText = "送出失敗：" + err.message;
-      document.getElementById('submitBtn').disabled = false;
-    }
-  } // <--- 這裡結束 submitOrder 函式
+     statusMsg.style.color = "#10b981";
+     statusMsg.innerText = `✓ 預購登記成功！您的訂單編號為 [${newOrderId}]，已寄送明細至您的 Email，請記得至團務記事本回報訂單編號。`;
+     
+     document.getElementById('lineName').value = "";
+     document.getElementById('phone').value = "";
+     document.getElementById('email').value = "";
+     
+     // 💡 把這行加上來：清空買家備註輸入框
+     let remarkInput = document.getElementById('orderRemark');
+     if (remarkInput) remarkInput.value = "";
+
+     document.getElementById('agreeTerms').checked = false;
+     orderQuantities = {};
+     updateCartSummary();
+     checkCanSubmit();
+   } catch (err) { // <--- 這裡一定要有這個 catch 來對應上面的 try
+     statusMsg.style.color = "#f87171";
+     statusMsg.innerText = "送出失敗：" + err.message;
+     document.getElementById('submitBtn').disabled = false;
+   }
+ } // <--- 這裡結束 submitOrder 函式 // <--- 這裡結束 submitOrder 函式
 // 全域變數：暫存目前查詢到的客戶訂單
 let currentCustomerOrders = [];
 
@@ -1620,7 +1627,8 @@ function renderCustomerOrders() {
   filtered.forEach(order => {
     let orderId = order["id"] || "無編號";
     let groupName = order["團務名稱"] || "";
-    let remark = order["備註"] || "";
+    let buyerRemark = order["買家備註"] || "";
+    let adminRemark = order["備註"] || "";
     let rawDate = order["created_at"] || order["填單時間"] || order["下單時間"] || "";
     let formattedDate = rawDate ? new Date(rawDate).toLocaleString('zh-TW', { hour12: false }) : "無紀錄";
 
@@ -1672,9 +1680,17 @@ function renderCustomerOrders() {
         </div>`;
     });
 
-    let remarkHtml = remark 
+    // 買家自己寫的備註 HTML
+    let buyerRemarkHtml = buyerRemark 
       ? `<div style="margin-top: 8px; font-size: 12px; color: #a1a1aa; border-top: 1px dashed #3f3f46; padding-top: 6px;">
-          <strong style="color: #cbd5e1;">備註說明：</strong>${remark}
+          <strong style="color: #cbd5e1;">買家備註：</strong>${buyerRemark}
+         </div>`
+      : "";
+
+    // 管理員變更/取消原因的 HTML
+    let adminRemarkHtml = adminRemark 
+      ? `<div style="margin-top: 8px; font-size: 12px; color: #f59e0b; border-top: 1px dashed #3f3f46; padding-top: 6px;">
+          <strong style="color: #fbbf24;">管理員備註（變更/取消原因）：</strong>${adminRemark}
          </div>`
       : "";
 
