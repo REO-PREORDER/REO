@@ -1631,6 +1631,7 @@ function renderCustomerOrders() {
     let rawDate = order["created_at"] || order["填單時間"] || order["下單時間"] || "";
     let formattedDate = rawDate ? new Date(rawDate).toLocaleString('zh-TW', { hour12: false }) : "無紀錄";
 
+    // 判斷是否為餘量認領（用管理員備註或團務名稱判斷）
     let isSurplus = groupName.includes("餘量認領") || adminRemark.includes("餘量認領");
 
     let typeBadge = isSurplus 
@@ -1679,17 +1680,14 @@ function renderCustomerOrders() {
         </div>`;
     });
 
-    // 💡 獨立分開的「買家備註」區塊
-    let buyerRemarkHtml = buyerRemark 
-      ? `<div style="margin-top: 8px; font-size: 12px; color: #a1a1aa; border-top: 1px dashed #3f3f46; padding-top: 6px;">
-          <strong style="color: #cbd5e1;">買家備註：</strong>${buyerRemark}
-         </div>`
-      : "";
+    // 💡 結合買家備註與管理員備註（若同一行顯示可以用 flex / 間距處理）
+    let notesArr = [];
+    if (buyerRemark) notesArr.push(`<span style="color: #cbd5e1;"><strong>買家備註：</strong>${buyerRemark}</span>`);
+    if (adminRemark) notesArr.push(`<span style="color: #fbbf24;"><strong>管理員備註：</strong>${adminRemark}</span>`);
 
-    // 💡 獨立分開的「管理員備註」區塊
-    let adminRemarkHtml = adminRemark 
-      ? `<div style="margin-top: 8px; font-size: 12px; color: #f59e0b; border-top: 1px dashed #3f3f46; padding-top: 6px;">
-          <strong style="color: #fbbf24;">管理員備註（變更/取消原因）：</strong>${adminRemark}
+    let combinedRemarkHtml = notesArr.length > 0 
+      ? `<div style="margin-top: 8px; font-size: 12px; color: #a1a1aa; border-top: 1px dashed #3f3f46; padding-top: 6px; display: flex; gap: 12px; flex-wrap: wrap;">
+          ${notesArr.join(" | ")}
          </div>`
       : "";
 
@@ -1712,8 +1710,7 @@ function renderCustomerOrders() {
         <div style="font-size: 13px; font-weight: bold;">
           處理狀態：<span style="color: ${statusColor};">${statusText}</span>
         </div>
-        ${buyerRemarkHtml}
-        ${adminRemarkHtml}
+        ${combinedRemarkHtml}
       </div>
     `;
   });
