@@ -311,7 +311,7 @@
     </div>
   </div>
   </div>
-  
+
   <hr style="border: 0; border-top: 1px dashed #444; margin: 20px 0;">
 
   <!-- 📤 匯出訂單區塊 -->
@@ -326,6 +326,7 @@
 <button onclick="exportProductSummaryCSV()" style="background: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">📊 匯出採購總數表</button>
     </div>
   </div>
+
 </div>
    
 <!-- 燈箱圖片檢視 -->
@@ -336,35 +337,6 @@
 <script>
   let currentGroupMode = "create"; // 'create' 或 'edit'
 let allGroupsData = []; // 暫存所有團務原始資料
-
-// 💡 請確保這段函式有完整貼在你的程式碼中
-function switchAdminTab(tabName) {
-  const tabs = ['groups', 'orders', 'export'];
-
-  tabs.forEach(t => {
-    let contentEl = document.getElementById('tab-' + t);
-    let btnEl = document.getElementById('btn-' + t);
-    
-    if (t === tabName) {
-      if (contentEl) contentEl.style.display = 'block';
-      if (btnEl) {
-        btnEl.style.background = '#2563eb';
-        btnEl.style.color = '#fff';
-      }
-    } else {
-      if (contentEl) contentEl.style.display = 'none';
-      if (btnEl) {
-        btnEl.style.background = '#27272a';
-        btnEl.style.color = '#a1a1aa';
-      }
-    }
-  });
-
-  // 如果切換到訂單紀錄，自動渲染表格
-  if (tabName === 'orders' && typeof renderOrdersTable === 'function' && typeof allOrders !== 'undefined') {
-    renderOrdersTable(allOrders);
-  }
-}
 
 // 1. 切換新增 / 編輯模式
 function switchAdminGroupTab(mode) {
@@ -552,8 +524,6 @@ function switchGroupTab(tab) {
   // 重新渲染清單
   renderGroupsList();
 }
-
-
 // 點擊圖片放大檢視的燈箱函式
 function openImageModal(imgUrl, event) {
   if (event) event.stopPropagation(); // 阻止事件冒泡，避免點圖片同時觸發卡片點擊
@@ -746,6 +716,28 @@ async function loadProductsForEdit(groupId) {
 }
 window.loadProductsForEdit = loadProductsForEdit;
 
+// 💡 切換後台分頁（含自動載入資料）
+function switchAdminTab(tabName) {
+  const tabs = ['groups', 'orders', 'export'];
+
+  tabs.forEach(t => {
+    let contentEl = document.getElementById('tab-' + t);
+    let btnEl = document.getElementById('btn-' + t);
+    
+    if (t === tabName) {
+      if (contentEl) contentEl.style.display = 'block';
+      if (btnEl) {
+        btnEl.style.background = '#2563eb';
+        btnEl.style.color = '#fff';
+      }
+    } else {
+      if (contentEl) contentEl.style.display = 'none';
+      if (btnEl) {
+        btnEl.style.background = '#27272a';
+        btnEl.style.color = '#a1a1aa';
+      }
+    }
+  });
 
   // 💡 當切換到「所有訂單紀錄」時，自動重新載入/渲染表格資料
   if (tabName === 'orders') {
