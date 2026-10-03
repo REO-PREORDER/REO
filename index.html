@@ -715,34 +715,37 @@ async function loadProductsForEdit(groupId) {
 }
 window.loadProductsForEdit = loadProductsForEdit;
 
-// 💡 切換後台分頁
+// 💡 切換後台分頁（含自動載入資料）
 function switchAdminTab(tabName) {
-  // 1. 定義所有分頁的 ID
   const tabs = ['groups', 'orders', 'export'];
 
-  // 2. 迴圈切換內容顯示與隱藏
   tabs.forEach(t => {
     let contentEl = document.getElementById('tab-' + t);
     let btnEl = document.getElementById('btn-' + t);
     
     if (t === tabName) {
-      // 顯示選中的分頁
       if (contentEl) contentEl.style.display = 'block';
-      // 高亮選中的按鈕 (藍色)
       if (btnEl) {
         btnEl.style.background = '#2563eb';
         btnEl.style.color = '#fff';
       }
     } else {
-      // 隱藏未選中的分頁
       if (contentEl) contentEl.style.display = 'none';
-      // 還原未選中的按鈕顏色 (深灰)
       if (btnEl) {
         btnEl.style.background = '#27272a';
         btnEl.style.color = '#a1a1aa';
       }
     }
   });
+
+  // 💡 當切換到「所有訂單紀錄」時，自動重新載入/渲染表格資料
+  if (tabName === 'orders') {
+    if (typeof loadAllOrders === 'function') {
+      loadAllOrders(); // 假設你原本用這個函式從資料庫抓全部訂單
+    } else if (typeof renderOrdersTable === 'function' && typeof allOrders !== 'undefined') {
+      renderOrdersTable(allOrders);
+    }
+  }
 }
 
 // ➕ 新增商品至當前選取的團務
