@@ -1522,122 +1522,179 @@ function closeLightbox() {
       document.getElementById('submitBtn').disabled = false;
     }
   } // <--- 這裡結束 submitOrder 函式
-  // 查詢個人訂單記錄
-  async function queryOrder() {
-    let searchKey = document.getElementById('searchKey').value.trim();
-    let searchResult = document.getElementById('searchResult');
-    if (!searchKey) { alert("請輸入手機號碼或 Email！"); return; }
+// 全域變數：暫存目前查詢到的客戶訂單
+let currentCustomerOrders = [];
 
-    searchResult.innerHTML = "查詢中...";
+// 1. 查詢個人訂單記錄
+async function queryOrder() {
+  let searchKey = document.getElementById('searchKey').value.trim();
+  let searchResult = document.getElementById('searchResult');
+  if (!searchKey) { alert("請輸入手機號碼或 Email！"); return; }
 
-    try {
-      const { data: orders, error } = await db
-        .from('orders')
-        .select('*')
-        .or(`手機號碼.eq.${searchKey},Email.eq.${searchKey}`)
-        .order('created_at', { ascending: false });
+  searchResult.innerHTML = "查詢中...";
 
-      if (error) throw error;
+  try {
+    const { data: orders, error } = await db
+      .from('orders')
+      .select('*')
+      .or(`手機號碼.eq.${searchKey},Email.eq.${searchKey}`)
+      .order('created_at', { ascending: false });
 
-      if (!orders || orders.length === 0) {
-        searchResult.innerHTML = "<p style='color:#aaa; text-align:center;'>查無相關預購紀錄。</p>";
-        return;
-      }
+    if (error) throw error;
 
-      let html = "";
-      orders.forEach(order => {
-        let orderId = order["id"] || "無編號"; // 取得訂單編號
-        let groupName = order["團務名稱"] || "";
-        let remark = order["備註"] || "";
-        let rawDate = order["created_at"] || order["填單時間"] || order["下單時間"] || "";
-        let formattedDate = rawDate ? new Date(rawDate).toLocaleString('zh-TW', { hour12: false }) : "無紀錄";
-
-        let isSurplus = groupName.includes("餘量認領") || remark.includes("餘量認領");
-
-        let typeBadge = isSurplus 
-          ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">餘量登記</span>`
-          : `<span style="background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">預購填單</span>`;
-
-        let cleanTitle = groupName.replace(" (餘量認領)", "").replace(" (餘量認領)", "");
-
-        let statusColor = "#3b82f6";
-        let statusText = order["處理狀態"] || "待處理";
-
-        if (statusText === "已成立") statusColor = "#10b981";
-        if (statusText === "已變更") statusColor = "#f59e0b";
-        if (statusText === "已取消") statusColor = "#ef4444";
-
-        let itemsHtml = "";
-        let items = order["訂單內容"] || [];
-        items.forEach(item => {
-          let imgUrl = item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "";
-          let category = item.category || item["分類"] || item["商品分類"] || "";
-          
-          let imgTag = "";
-          if (imgUrl) {
-            // 自動支援用換行、逗號或空格分隔的多張圖片網址
-            let urlList = String(imgUrl).split(/[\r\n,，\s]+/).filter(u => u.trim() !== "");
-            
-            if (urlList.length > 1) {
-              // 如果有多張圖片，自動橫向排列顯示小圖
-              imgTag = `<div style="display: flex; gap: 4px; flex-wrap: wrap; margin-right: 10px;">` + 
-                urlList.map(url => `<img src="${formatImageUrl(url.trim())}" style="width:40px; height:40px; object-fit:contain; border-radius:4px;">`).join("") + 
-                `</div>`;
-            } else {
-              // 只有一張圖時維持原本的顯示方式
-              imgTag = `<img src="${formatImageUrl(urlList[0].trim())}" style="width:45px; height:45px; object-fit:contain; border-radius:6px; margin-right:10px;">`;
-            }
-          } else {
-            imgTag = `<div style="width:45px; height:45px; background:#27272a; border-radius:6px; margin-right:10px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#a1a1aa;">無圖</div>`;
-          }
-          let categoryBadge = category 
-            ? `<span style="background:#3f3f46; color:#e4e4e7; font-size:10px; padding:1px 5px; border-radius:3px; margin-right:6px;">${category}</span>`
-            : "";
-
-          itemsHtml += `
-            <div style="margin-bottom: 8px; font-size: 13px; color: #e4e4e7; display: flex; align-items: center;">
-              ${imgTag}
-              <div>
-                <div>${categoryBadge}<strong style="color:#fff;">${item.name || item["商品名稱"]}</strong></div>
-                <div style="font-size:12px; color:#a1a1aa; margin-top:2px;">數量: ${item.qty || item["數量"]} | 單價: $${item.price || item["單價"] || 0}</div>
-              </div>
-            </div>`;
-        });
-
-        let remarkHtml = remark 
-          ? `<div style="margin-top: 8px; font-size: 12px; color: #a1a1aa; border-top: 1px dashed #3f3f46; padding-top: 6px;">
-              <strong style="color: #cbd5e1;">備註說明：</strong>${remark}
-             </div>`
-          : "";
-
-        html += `
-          <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff; text-align: left;">
-            <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-              <span>團務名稱：${cleanTitle} ${typeBadge}</span>
-              <span style="font-size: 12px; color: #38bdf8; background: #0369a133; padding: 2px 6px; border-radius: 4px;">訂單編號: #${orderId}</span>
-            </div>
-            <div style="font-size: 12px; color: #a1a1aa; margin-bottom: 8px;">
-              下單時間：${formattedDate}
-            </div>
-            <div style="font-size: 13px; color: #aaa; margin-bottom: 6px;">預購/認領項目：</div>
-            <div style="background: #09090b; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
-              ${itemsHtml}
-            </div>
-            <div style="font-size: 13px; font-weight: bold; margin-bottom: 4px;">
-              金額總計：<span style="color: #60a5fa;">$${order["總金額"]}</span>
-            </div>
-            <div style="font-size: 13px; font-weight: bold;">
-              處理狀態：<span style="color: ${statusColor};">${statusText}</span>
-            </div>
-            ${remarkHtml}
-          </div>
-        `;
-      });
-      searchResult.innerHTML = html;
-    } catch (err) {
-      searchResult.innerHTML = `<p style="color:#f87171;">查詢失敗：${err.message}</p>`;
+    if (!orders || orders.length === 0) {
+      searchResult.innerHTML = "<p style='color:#aaa; text-align:center;'>查無相關預購紀錄。</p>";
+      return;
     }
+
+    // 將查詢到的訂單存入全域變數，並進行渲染與產生月份選單
+    currentCustomerOrders = orders;
+    renderCustomerOrders();
+
+  } catch (err) {
+    searchResult.innerHTML = `<p style="color:#f87171;">查詢失敗：${err.message}</p>`;
   }
+}
+
+// 2. 渲染與過濾客戶訂單（含自動抓取月份下拉選單）
+function renderCustomerOrders() {
+  let searchResult = document.getElementById('searchResult');
+  if (!searchResult) return;
+
+  // 自動從所有訂單的「團務名稱」中解析出出現過的月份
+  let monthSet = new Set();
+  currentCustomerOrders.getItem?.() // 確保相容
+  currentCustomerOrders.forEach(order => {
+    let gName = order["團務名稱"] || "";
+    let match = gName.match(/(\d{1,2})\s*月/);
+    if (match) {
+      monthSet.add(match[1] + "月"); // 例如 "1月", "12月"
+    }
+  });
+
+  // 將月份排序
+  let sortedMonths = Array.from(monthSet).sort((a, b) => parseInt(a) - parseInt(b));
+
+  // 取得目前下拉選單選中的月份（若尚未建立則預設空字串）
+  let existingSelect = document.getElementById('customerMonthFilter');
+  let selectedMonth = existingSelect ? existingSelect.value : "";
+
+  // 根據選中的月份過濾訂單
+  let filtered = currentCustomerOrders.filter(order => {
+    if (!selectedMonth) return true;
+    let gName = order["團務名稱"] || "";
+    return gName.includes(selectedMonth);
+  });
+
+  // 建立月份篩選器的 HTML
+  let monthOptions = '<option value="">所有預購月份</option>';
+  sortedMonths.forEach(m => {
+    monthOptions += `<option value="${m}" ${selectedMonth === m ? 'selected' : ''}>${m}預購</option>`;
+  });
+
+  let filterBarHtml = `
+    <div style="background: #18181b; border: 1px solid #27272a; padding: 10px; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-size: 13px; color: #a1a1aa;">篩選預購月份：</span>
+      <select id="customerMonthFilter" onchange="renderCustomerOrders()" style="background: #27272a; color: #fff; border: 1px solid #3f3f46; padding: 6px 10px; border-radius: 6px; font-size: 13px; cursor: pointer;">
+        ${monthOptions}
+      </select>
+    </div>
+  `;
+
+  if (filtered.length === 0) {
+    searchResult.innerHTML = filterBarHtml + "<p style='color:#aaa; text-align:center; padding: 20px;'>沒有符合該預購月份的訂單紀錄。</p>";
+    return;
+  }
+
+  // 組裝訂單卡片清單
+  let html = filterBarHtml;
+  filtered.forEach(order => {
+    let orderId = order["id"] || "無編號";
+    let groupName = order["團務名稱"] || "";
+    let remark = order["備註"] || "";
+    let rawDate = order["created_at"] || order["填單時間"] || order["下單時間"] || "";
+    let formattedDate = rawDate ? new Date(rawDate).toLocaleString('zh-TW', { hour12: false }) : "無紀錄";
+
+    let isSurplus = groupName.includes("餘量認領") || remark.includes("餘量認領");
+
+    let typeBadge = isSurplus 
+      ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">餘量登記</span>`
+      : `<span style="background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">預購填單</span>`;
+
+    let cleanTitle = groupName.replace(" (餘量認領)", "").replace(" (餘量認領)", "");
+
+    let statusColor = "#3b82f6";
+    let statusText = order["處理狀態"] || "待處理";
+
+    if (statusText === "已成立") statusColor = "#10b981";
+    if (statusText === "已變更") statusColor = "#f59e0b";
+    if (statusText === "已取消") statusColor = "#ef4444";
+
+    let itemsHtml = "";
+    let items = order["訂單內容"] || [];
+    items.forEach(item => {
+      let imgUrl = item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "";
+      let category = item.category || item["分類"] || item["商品分類"] || "";
+      
+      let imgTag = "";
+      if (imgUrl) {
+        let urlList = String(imgUrl).split(/[\r\n,，\s]+/).filter(u => u.trim() !== "");
+        if (urlList.length > 1) {
+          imgTag = `<div style="display: flex; gap: 4px; flex-wrap: wrap; margin-right: 10px;">` + 
+            urlList.map(url => `<img src="${formatImageUrl(url.trim())}" style="width:40px; height:40px; object-fit:contain; border-radius:4px;">`).join("") + 
+            `</div>`;
+        } else {
+          imgTag = `<img src="${formatImageUrl(urlList[0].trim())}" style="width:45px; height:45px; object-fit:contain; border-radius:6px; margin-right:10px;">`;
+        }
+      } else {
+        imgTag = `<div style="width:45px; height:45px; background:#27272a; border-radius:6px; margin-right:10px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#a1a1aa;">無圖</div>`;
+      }
+      let categoryBadge = category 
+        ? `<span style="background:#3f3f46; color:#e4e4e7; font-size:10px; padding:1px 5px; border-radius:3px; margin-right:6px;">${category}</span>`
+        : "";
+
+      itemsHtml += `
+        <div style="margin-bottom: 8px; font-size: 13px; color: #e4e4e7; display: flex; align-items: center;">
+          ${imgTag}
+          <div>
+            <div>${categoryBadge}<strong style="color:#fff;">${item.name || item["商品名稱"]}</strong></div>
+            <div style="font-size:12px; color:#a1a1aa; margin-top:2px;">數量: ${item.qty || item["數量"]} | 單價: $${item.price || item["單價"] || 0}</div>
+          </div>
+        </div>`;
+    });
+
+    let remarkHtml = remark 
+      ? `<div style="margin-top: 8px; font-size: 12px; color: #a1a1aa; border-top: 1px dashed #3f3f46; padding-top: 6px;">
+          <strong style="color: #cbd5e1;">備註說明：</strong>${remark}
+         </div>`
+      : "";
+
+    html += `
+      <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff; text-align: left;">
+        <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+          <span>團務名稱：${cleanTitle} ${typeBadge}</span>
+          <span style="font-size: 12px; color: #38bdf8; background: #0369a133; padding: 2px 6px; border-radius: 4px;">訂單編號: #${orderId}</span>
+        </div>
+        <div style="font-size: 12px; color: #a1a1aa; margin-bottom: 8px;">
+          下單時間：${formattedDate}
+        </div>
+        <div style="font-size: 13px; color: #aaa; margin-bottom: 6px;">預購/認領項目：</div>
+        <div style="background: #09090b; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
+          ${itemsHtml}
+        </div>
+        <div style="font-size: 13px; font-weight: bold; margin-bottom: 4px;">
+          金額總計：<span style="color: #60a5fa;">$${order["總金額"]}</span>
+        </div>
+        <div style="font-size: 13px; font-weight: bold;">
+          處理狀態：<span style="color: ${statusColor};">${statusText}</span>
+        </div>
+        ${remarkHtml}
+      </div>
+    `;
+  });
+
+  searchResult.innerHTML = html;
+}
   // 載入餘量團務
   async function loadSurplusGroups() {
     let container = document.getElementById('surplusGroupList');
