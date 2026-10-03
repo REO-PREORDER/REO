@@ -1574,7 +1574,6 @@ function renderCustomerOrders() {
 
   // 自動從所有訂單的「團務名稱」中解析出出現過的月份
   let monthSet = new Set();
-  currentCustomerOrders.getItem?.() // 確保相容
   currentCustomerOrders.forEach(order => {
     let gName = order["團務名稱"] || "";
     let match = gName.match(/(\d{1,2})\s*月/);
@@ -1632,7 +1631,7 @@ function renderCustomerOrders() {
     let rawDate = order["created_at"] || order["填單時間"] || order["下單時間"] || "";
     let formattedDate = rawDate ? new Date(rawDate).toLocaleString('zh-TW', { hour12: false }) : "無紀錄";
 
-    let isSurplus = groupName.includes("餘量認領") || remark.includes("餘量認領");
+    let isSurplus = groupName.includes("餘量認領") || adminRemark.includes("餘量認領");
 
     let typeBadge = isSurplus 
       ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">餘量登記</span>`
@@ -1680,14 +1679,14 @@ function renderCustomerOrders() {
         </div>`;
     });
 
-    // 買家自己寫的備註 HTML
+    // 💡 獨立分開的「買家備註」區塊
     let buyerRemarkHtml = buyerRemark 
       ? `<div style="margin-top: 8px; font-size: 12px; color: #a1a1aa; border-top: 1px dashed #3f3f46; padding-top: 6px;">
           <strong style="color: #cbd5e1;">買家備註：</strong>${buyerRemark}
          </div>`
       : "";
 
-    // 管理員變更/取消原因的 HTML
+    // 💡 獨立分開的「管理員備註」區塊
     let adminRemarkHtml = adminRemark 
       ? `<div style="margin-top: 8px; font-size: 12px; color: #f59e0b; border-top: 1px dashed #3f3f46; padding-top: 6px;">
           <strong style="color: #fbbf24;">管理員備註（變更/取消原因）：</strong>${adminRemark}
@@ -1713,7 +1712,8 @@ function renderCustomerOrders() {
         <div style="font-size: 13px; font-weight: bold;">
           處理狀態：<span style="color: ${statusColor};">${statusText}</span>
         </div>
-        ${remarkHtml}${buyerRemarkHtml}${adminRemarkHtml}
+        ${buyerRemarkHtml}
+        ${adminRemarkHtml}
       </div>
     `;
   });
