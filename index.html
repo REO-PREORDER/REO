@@ -209,7 +209,15 @@
 <div id="adminDashboard" style="display: none; margin: 15px auto 0 auto; max-width: 1350px; text-align: left; padding: 0 15px;">
   <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
 
+<!-- 💡 分頁切換按鈕列 -->
+  <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
+    <button onclick="switchAdminTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理工具</button>
+    <button onclick="switchAdminTab('orders')" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
+    <button onclick="switchAdminTab('export')" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
+  </div>
+
   <!-- 📦 團務管理工具（新增 / 編輯 / 刪除 / 商品管理） -->
+  <div id="tab-groups" class="admin-tab-content">
   <h4 style="color: #3b82f6; margin-bottom: 10px; text-align: center;">📦 團務管理工具</h4>
   <div style="background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
     
@@ -269,6 +277,7 @@
   <hr style="border: 0; border-top: 1px dashed #444; margin: 20px 0;">
 
   <!-- 📋 所有訂單紀錄區塊 -->
+  <div id="tab-orders" class="admin-tab-content" style="display: none;">
   <h4 style="color: #10b981; margin-bottom: 10px; text-align: center;">📋 所有訂單紀錄</h4>
   <div style="background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
     <div style="display: flex; gap: 10px; margin-bottom: 10px;">
@@ -305,6 +314,7 @@
   <hr style="border: 0; border-top: 1px dashed #444; margin: 20px 0;">
 
   <!-- 📤 匯出訂單區塊 -->
+  <div id="tab-orders" class="admin-tab-content" style="display: none;">
   <h4 style="color: #f59e0b; margin-bottom: 10px; text-align: center;">📤 匯出訂單資料</h4>
   <div style="background: #252525; padding: 15px; border-radius: 8px;">
     <label style="font-size: 12px; color: #ccc;">選擇要匯出的團務：</label>
@@ -704,6 +714,36 @@ async function loadProductsForEdit(groupId) {
   }
 }
 window.loadProductsForEdit = loadProductsForEdit;
+
+// 💡 切換後台分頁
+function switchAdminTab(tabName) {
+  // 1. 定義所有分頁的 ID
+  const tabs = ['groups', 'orders', 'export'];
+
+  // 2. 迴圈切換內容顯示與隱藏
+  tabs.forEach(t => {
+    let contentEl = document.getElementById('tab-' + t);
+    let btnEl = document.getElementById('btn-' + t);
+    
+    if (t === tabName) {
+      // 顯示選中的分頁
+      if (contentEl) contentEl.style.display = 'block';
+      // 高亮選中的按鈕 (藍色)
+      if (btnEl) {
+        btnEl.style.background = '#2563eb';
+        btnEl.style.color = '#fff';
+      }
+    } else {
+      // 隱藏未選中的分頁
+      if (contentEl) contentEl.style.display = 'none';
+      // 還原未選中的按鈕顏色 (深灰)
+      if (btnEl) {
+        btnEl.style.background = '#27272a';
+        btnEl.style.color = '#a1a1aa';
+      }
+    }
+  });
+}
 
 // ➕ 新增商品至當前選取的團務
 async function addProductToCurrentGroup() {
