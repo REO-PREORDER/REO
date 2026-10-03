@@ -1584,9 +1584,11 @@ function renderCustomerOrders() {
     if (!selectedMonth) return true;
     let gName = order["團務名稱"] || "";
     
-    // 💡 使用正規表達式確保抓到的是獨立的月份（前後不能接其他數字，避免 1月 誤判 11月、12月）
-    let regex = new RegExp(selectedMonth.replace('月', '') + '月(?!\\d)', 'g');
-    return regex.test(gName);
+    // 把團務名稱裡所有類似 "數字月" 的詞全部找出來（例如 ["11月"] 或 ["1月"]）
+    let matches = gName.match(/\d+月/g) || [];
+    
+    // 檢查裡面有沒有「剛好等於」所選月份的項目
+    return matches.includes(selectedMonth);
   });
 
   // 建立月份篩選器的 HTML
