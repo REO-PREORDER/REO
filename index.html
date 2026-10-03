@@ -286,10 +286,12 @@
             <th style="padding: 8px;">時間</th>
             <th style="padding: 8px;">買家姓名</th>
             <th style="padding: 8px;">團務名稱</th>
-            <!-- 💡 在這裡插入商品明細表頭 -->
             <th style="padding: 8px;">商品明細</th> 
             <th style="padding: 8px;">總金額</th>
             <th style="padding: 8px;">訂單狀態</th>
+            <!-- 💡 新增兩個備註欄位標題 -->
+            <th style="padding: 8px; color: #cbd5e1;">買家備註</th>
+            <th style="padding: 8px; color: #fbbf24;">管理員備註</th>
             <th style="padding: 8px;">操作</th>
           </tr>
         </thead>
@@ -2397,7 +2399,8 @@ function renderOrdersTable(orders) {
   if (!tbody) return;
 
   if (!orders || orders.length === 0) {
-    tbody.innerHTML = "<tr><td colspan='8' style='text-align:center; padding:15px; color:#888;'>目前沒有任何訂單紀錄</td></tr>";
+    // 💡 欄位總數變為 10 欄，故 colspan 改為 10
+    tbody.innerHTML = "<tr><td colspan='10' style='text-align:center; padding:15px; color:#888;'>目前沒有任何訂單紀錄</td></tr>";
     return;
   }
 
@@ -2405,6 +2408,10 @@ function renderOrdersTable(orders) {
   orders.forEach(o => {
     let orderId = o.id || ""; // 取得訂單編號
     let timeStr = o.created_at ? new Date(o.created_at).toLocaleString() : "未知時間";
+    
+    // 💡 抓取買家備註與管理員備註
+    let buyerRemark = o["買家備註"] || "-";
+    let adminRemark = o["備註"] || "-";
     
     // 狀態顏色
     let statusColor = "#10b981"; // 預設綠色
@@ -2433,6 +2440,10 @@ function renderOrdersTable(orders) {
         <td style="padding: 8px; color: #ddd; line-height: 1.4; font-size: 11px;">${detailsText}</td>
         <td style="padding: 8px; color: #f87171; font-weight: bold;">$${o["總金額"] || 0}</td>
         <td style="padding: 8px; font-weight: bold; color: ${statusColor};">${o["處理狀態"] || '待確認'}</td>
+        <!-- 💡 新增：買家備註欄位 -->
+        <td style="padding: 8px; color: #cbd5e1; font-size: 11px; max-width: 150px; word-break: break-all;">${buyerRemark}</td>
+        <!-- 💡 新增：管理員備註欄位 -->
+        <td style="padding: 8px; color: #fbbf24; font-size: 11px; max-width: 150px; word-break: break-all;">${adminRemark}</td>
         <td style="padding: 8px; display: flex; gap: 4px; flex-wrap: wrap;">
           <button onclick="updateOrderStatus('${o.id}', '已成立')" style="background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✓ 成立</button>
           <button onclick='openModifyModal(${JSON.stringify(o)})' style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏ 變更</button>
