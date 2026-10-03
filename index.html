@@ -177,7 +177,11 @@
           <span id="cartTotalPrice" style="color: #f87171;">$0</span>
         </div>
       </div>
-
+<!-- 💡 把備註欄位放在確認送出按鈕的上方 -->
+<div style="margin: 15px 0;">
+  <label style="font-size: 13px; color: #aaa; display: block; margin-bottom: 4px;">備註說明（選填）：</label>
+  <textarea id="orderRemark" placeholder="如有特殊需求或注意事項請在此留言..." style="width: 100%; height: 60px; background: #242424; color: #fff; border: 1px solid #333; border-radius: 6px; padding: 8px; font-size: 13px; resize: none;"></textarea>
+</div>
       <!-- 送出按鈕 -->
       <div style="margin-top: 20px;">
         <button id="submitBtn" class="primary-btn" onclick="submitOrder()" disabled>確認送出預購</button>
