@@ -525,47 +525,7 @@ function switchGroupTab(tab) {
   renderGroupsList();
 }
 
-// 💡 全新強效版的切換後台分頁函式
-function switchAdminTab(tabName) {
-  console.log("正在切換分頁到:", tabName); // F12 主控台會印出這行，用來確認有沒有被執行
 
-  const tabs = ['groups', 'orders', 'export'];
-
-  tabs.forEach(t => {
-    let contentEl = document.getElementById('tab-' + t);
-    let btnEl = document.getElementById('btn-' + t);
-    
-    if (t === tabName) {
-      if (contentEl) {
-        contentEl.style.display = 'block'; // 強制顯示
-        console.log('已顯示區塊: tab-' + t);
-      } else {
-        console.warn('找不到區塊: tab-' + t);
-      }
-      
-      if (btnEl) {
-        btnEl.style.background = '#2563eb';
-        btnEl.style.color = '#fff';
-      }
-    } else {
-      if (contentEl) {
-        contentEl.style.display = 'none'; // 強制隱藏
-      }
-      if (btnEl) {
-        btnEl.style.background = '#27272a';
-        btnEl.style.color = '#a1a1aa';
-      }
-    }
-  });
-
-  // 如果切換到訂單紀錄，自動觸發渲染
-  if (tabName === 'orders' && typeof renderOrdersTable === 'function' && typeof allOrders !== 'undefined') {
-    renderOrdersTable(allOrders);
-  }
-}
-
-// 確保全域可以呼叫
-window.switchAdminTab = switchAdminTab;
 // 點擊圖片放大檢視的燈箱函式
 function openImageModal(imgUrl, event) {
   if (event) event.stopPropagation(); // 阻止事件冒泡，避免點圖片同時觸發卡片點擊
@@ -916,6 +876,47 @@ async function sendPreOrderEmail(emailData) {
 }
 window.sendPreOrderEmail = sendPreOrderEmail;
 
+// 💡 全新強效版的切換後台分頁函式
+function switchAdminTab(tabName) {
+  console.log("正在切換分頁到:", tabName); // F12 主控台會印出這行，用來確認有沒有被執行
+
+  const tabs = ['groups', 'orders', 'export'];
+
+  tabs.forEach(t => {
+    let contentEl = document.getElementById('tab-' + t);
+    let btnEl = document.getElementById('btn-' + t);
+    
+    if (t === tabName) {
+      if (contentEl) {
+        contentEl.style.display = 'block'; // 強制顯示
+        console.log('已顯示區塊: tab-' + t);
+      } else {
+        console.warn('找不到區塊: tab-' + t);
+      }
+      
+      if (btnEl) {
+        btnEl.style.background = '#2563eb';
+        btnEl.style.color = '#fff';
+      }
+    } else {
+      if (contentEl) {
+        contentEl.style.display = 'none'; // 強制隱藏
+      }
+      if (btnEl) {
+        btnEl.style.background = '#27272a';
+        btnEl.style.color = '#a1a1aa';
+      }
+    }
+  });
+
+  // 如果切換到訂單紀錄，自動觸發渲染
+  if (tabName === 'orders' && typeof renderOrdersTable === 'function' && typeof allOrders !== 'undefined') {
+    renderOrdersTable(allOrders);
+  }
+}
+
+// 確保全域可以呼叫
+window.switchAdminTab = switchAdminTab;
   // 輔助函式：觸發瀏覽器下載 CSV 檔案（包含 UTF-8 BOM 防止 Excel 簡體/繁體亂碼）
 function downloadCSV(filename, csvContent) {
   const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
