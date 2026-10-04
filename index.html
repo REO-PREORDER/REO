@@ -2421,25 +2421,32 @@ function switchOrderRecordTab(status) {
 }
 window.switchOrderRecordTab = switchOrderRecordTab;
 
-// 📦 載入所有訂單紀錄（已修正 colspan 為 10 並加上防呆）
+// 📦 載入所有訂單紀錄（已強化資料結構相容性）
 async function loadAllOrders() {
   const tbody = document.getElementById('allOrdersTbody');
   if (!tbody) return;
   
-  // 💡 將 colspan 修正為 10，完美對應你的 10 欄表格
   tbody.innerHTML = "<tr><td colspan='10' style='text-align:center; padding:15px; color:#888;'>載入訂單中...</td></tr>";
 
   try {
-    const { data, error } = await db
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const res = await db.from('orders').select('*').order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (res.error) throw res.error;
 
-    window.allOrdersData = data || [];
-    
-    // 💡 安全防呆：確認函式存在才呼叫，避免報錯中斷
+    // 💡 智慧相容：不管資料是被包在 res.data 還是直接回傳陣列，都能正確抓到！
+    let ordersData = [];
+    if (Array.isArray(res)) {
+      ordersData = res;
+    } else if (res && Array.isArray(res.data)) {
+      ordersData = res.data;
+    } else if (res && res.success && Array.isArray(res.data)) {
+      ordersData = res.data;
+    }
+
+    window.allOrdersData = ordersData;
+    console.log("成功解析的訂單資料陣列：", window.allOrdersData);
+
+    // 呼叫渲染表格
     if (typeof renderOrdersTable === 'function') {
       renderOrdersTable(window.allOrdersData);
     } else {
