@@ -218,35 +218,11 @@
 
 <!-- 💡 分頁切換按鈕列 -->
 <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
-  <button onclick="switchAdminTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理工具</button>
+  <button onclick="forceSwitchTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理工具</button>
   
-  <!-- 📋 強制展開所有訂單分頁並載入資料 -->
-  <button onclick="
-    document.querySelectorAll('.admin-tab-content').forEach(el => el.style.setProperty('display', 'none', 'important'));
-    let targetOrders = document.getElementById('tab-orders');
-    if(targetOrders) {
-      targetOrders.style.setProperty('display', 'block', 'important');
-      targetOrders.style.setProperty('visibility', 'visible', 'important');
-      targetOrders.style.setProperty('opacity', '1', 'important');
-    }
-    if(typeof loadAllOrders === 'function') {
-      loadAllOrders();
-    }
-  " id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
+  <button onclick="forceSwitchTab('orders')" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
   
-  <!-- 📊 強制展開匯出分頁並更新下拉選單 -->
-  <button onclick="
-    document.querySelectorAll('.admin-tab-content').forEach(el => el.style.setProperty('display', 'none', 'important'));
-    let targetExport = document.getElementById('tab-export');
-    if(targetExport) {
-      targetExport.style.setProperty('display', 'block', 'important');
-      targetExport.style.setProperty('visibility', 'visible', 'important');
-      targetExport.style.setProperty('opacity', '1', 'important');
-    }
-    if(typeof updateExportGroupOptions === 'function') {
-      updateExportGroupOptions();
-    }
-  " id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
+  <button onclick="forceSwitchTab('export')" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
 </div>
     
     <!-- 切換頁籤 -->
@@ -357,6 +333,39 @@
 </div>
 
 <script>
+  function forceSwitchTab(tabName) {
+  // 1. 強制把所有 admin-tab-content 隱藏
+  document.querySelectorAll('.admin-tab-content').forEach(el => {
+    el.style.setProperty('display', 'none', 'important');
+  });
+
+  // 2. 強制把目標分頁顯示出來
+  let target = document.getElementById('tab-' + tabName);
+  if (target) {
+    target.style.setProperty('display', 'block', 'important');
+    target.style.setProperty('visibility', 'visible', 'important');
+    target.style.setProperty('opacity', '1', 'important');
+  }
+
+  // 3. 切換按鈕的顏色外觀
+  ['groups', 'orders', 'export'].forEach(t => {
+    let btn = document.getElementById('btn-' + t);
+    if (btn) {
+      btn.style.background = (t === tabName) ? '#2563eb' : '#27272a';
+      btn.style.color = (t === tabName) ? '#fff' : '#a1a1aa';
+    }
+  });
+
+  // 4. 觸發對應的資料載入
+  if (tabName === 'orders' && typeof loadAllOrders === 'function') {
+    loadAllOrders();
+  }
+  if (tabName === 'export' && typeof updateExportGroupOptions === 'function') {
+    updateExportGroupOptions();
+  }
+}
+window.forceSwitchTab = forceSwitchTab;
+  
   let currentGroupMode = "create"; // 'create' 或 'edit'
 let allGroupsData = []; // 暫存所有團務原始資料
 
