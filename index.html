@@ -2408,12 +2408,13 @@ function switchOrderRecordTab(status) {
 }
 window.switchOrderRecordTab = switchOrderRecordTab;
 
-// 📦 載入所有訂單紀錄（對應表格結構 #allOrdersTbody）
+// 📦 載入所有訂單紀錄（已修正 colspan 為 10 並加上防呆）
 async function loadAllOrders() {
   const tbody = document.getElementById('allOrdersTbody');
   if (!tbody) return;
   
-  tbody.innerHTML = "<tr><td colspan='6' style='text-align:center; padding:15px; color:#888;'>載入訂單中...</td></tr>";
+  // 💡 將 colspan 修正為 10，完美對應你的 10 欄表格
+  tbody.innerHTML = "<tr><td colspan='10' style='text-align:center; padding:15px; color:#888;'>載入訂單中...</td></tr>";
 
   try {
     const { data, error } = await db
@@ -2424,14 +2425,21 @@ async function loadAllOrders() {
     if (error) throw error;
 
     window.allOrdersData = data || [];
-    renderOrdersTable(window.allOrdersData);
     
-    // 更新篩選下拉選單
-    updateFilterGroupOptions(window.allOrdersData);
+    // 💡 安全防呆：確認函式存在才呼叫，避免報錯中斷
+    if (typeof renderOrdersTable === 'function') {
+      renderOrdersTable(window.allOrdersData);
+    } else {
+      console.warn("renderOrdersTable 函式尚未定義！");
+    }
+    
+    if (typeof updateFilterGroupOptions === 'function') {
+      updateFilterGroupOptions(window.allOrdersData);
+    }
 
   } catch (err) {
     console.error("載入訂單失敗：", err);
-    tbody.innerHTML = `<tr><td colspan='6' style='text-align:center; padding:15px; color:#f87171;'>載入失敗：${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan='10' style='text-align:center; padding:15px; color:#f87171;'>載入失敗：${err.message}</td></tr>`;
   }
 }
 window.loadAllOrders = loadAllOrders;
