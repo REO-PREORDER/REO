@@ -723,7 +723,7 @@ async function loadProductsForEdit(groupId) {
 }
 window.loadProductsForEdit = loadProductsForEdit;
 
-// 💡 最安全、純粹的分頁切換函式（排除所有載入報錯的干擾）
+// 💡 修正後的分頁切換函式：切換過去時，順便載入對應的資料
 function switchAdminTab(tabName) {
   const tabs = ['groups', 'orders', 'export'];
 
@@ -732,7 +732,6 @@ function switchAdminTab(tabName) {
     let btnEl = document.getElementById('btn-' + t);
     
     if (contentEl) {
-      // 直接強制作業：要顯示的設為 block，其他的設為 none
       contentEl.style.display = (t === tabName) ? 'block' : 'none';
     }
     
@@ -742,7 +741,19 @@ function switchAdminTab(tabName) {
     }
   });
 
-  // 暫時把 loadAllOrders 拿掉，單純看畫面切不切得過去
+  // 🎯 關鍵：當切換到「所有訂單」分頁時，自動觸發載入訂單！
+  if (tabName === 'orders') {
+    if (typeof loadAllOrders === 'function') {
+      loadAllOrders();
+    }
+  }
+
+  // 🎯 關鍵：當切換到「匯出」分頁時，自動更新匯出的下拉選單選項
+  if (tabName === 'export') {
+    if (typeof updateExportGroupOptions === 'function') {
+      updateExportGroupOptions();
+    }
+  }
 }
 window.switchAdminTab = switchAdminTab;
 
