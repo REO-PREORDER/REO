@@ -287,38 +287,33 @@
 
   <hr style="border: 0; border-top: 1px dashed #444; margin: 20px 0;">
 
-  <!-- 📋 所有訂單紀錄區塊 -->
-<div id="tab-orders" class="admin-tab-content" style="display: none !important; min-height: 200px; background: #1e1e1e;">
-  <h4 style="color: #10b981; margin-bottom: 10px; text-align: center;">📋 所有訂單紀錄</h4>
-  <div style="background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-      <input type="text" id="searchOrderInput" placeholder="搜尋姓名/訂單編號" oninput="filterOrders()" style="flex: 2; padding: 6px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-      <select id="filterGroupSelect" onchange="filterOrders()" style="flex: 1; padding: 6px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-        <option value="">所有團務</option>
-      </select>
-    </div>
-    <!-- 訂單列表表格容器 -->
-    <div id="allOrdersTableContainer" style="overflow-x: auto; min-height: 200px; max-height: 400px; background: #252525;">    
-      <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #ccc;">
-        <thead>
-          <tr style="background: #333; text-align: left;">
-            <th style="padding: 8px;">訂單編號</th>
-            <th style="padding: 8px;">時間</th>
-            <th style="padding: 8px;">買家姓名</th>
-            <th style="padding: 8px;">團務名稱</th>
-            <th style="padding: 8px;">商品明細</th> 
-            <th style="padding: 8px;">總金額</th>
-            <th style="padding: 8px;">訂單狀態</th>
-            <th style="padding: 8px; color: #cbd5e1;">買家備註</th>
-            <th style="padding: 8px; color: #fbbf24;">管理員備註</th>
-            <th style="padding: 8px;">操作</th>
-          </tr>
-        </thead>
-        <tbody id="allOrdersTbody">
-          <!-- JS 動態帶入訂單 -->
-        </tbody>
-      </table>
-    </div>
+<!-- 📋 所有訂單紀錄區塊 -->
+<div id="tab-orders" class="admin-tab-content" style="display: none; padding: 20px; background: #18181b; border-radius: 8px; margin-top: 10px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h3 style="color: #fff; margin: 0; font-size: 16px;">📋 所有訂單紀錄</h3>
+    <button onclick="loadAllOrders()" style="background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">🔄 重新整理資料</button>
+  </div>
+  
+  <div style="overflow-x: auto; max-height: 600px; background: #252525; border-radius: 6px; padding: 10px;">
+    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; color: #e4e4e7;">
+      <thead>
+        <tr style="border-bottom: 2px solid #3f3f46; color: #a1a1aa; background: #27272a;">
+          <th style="padding: 10px;">訂單編號</th>
+          <th style="padding: 10px;">時間</th>
+          <th style="padding: 10px;">買家姓名</th>
+          <th style="padding: 10px;">團務名稱</th>
+          <th style="padding: 10px;">商品明細</th>
+          <th style="padding: 10px;">總金額</th>
+          <th style="padding: 10px;">訂單狀態</th>
+          <th style="padding: 10px; color: #cbd5e1;">買家備註</th>
+          <th style="padding: 10px; color: #fbbf24;">管理員備註</th>
+          <th style="padding: 10px;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="allOrdersTbody">
+        <!-- JS 動態帶入訂單 -->
+      </tbody>
+    </table>
   </div>
 </div>
 
