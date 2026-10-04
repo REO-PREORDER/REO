@@ -716,7 +716,7 @@ async function loadProductsForEdit(groupId) {
 }
 window.loadProductsForEdit = loadProductsForEdit;
 
-// 💡 切換後台分頁（含自動載入資料）
+// 💡 升級版分頁切換函式（強制覆蓋任何 CSS 的隱藏限制）
 function switchAdminTab(tabName) {
   const tabs = ['groups', 'orders', 'export'];
 
@@ -724,20 +724,35 @@ function switchAdminTab(tabName) {
     let contentEl = document.getElementById('tab-' + t);
     let btnEl = document.getElementById('btn-' + t);
     
-    if (t === tabName) {
-      if (contentEl) contentEl.style.display = 'block';
-      if (btnEl) {
+    if (contentEl) {
+      if (t === tabName) {
+        // 強制顯示，加入 important 權限
+        contentEl.style.setProperty('display', 'block', 'important');
+      } else {
+        // 強制隱藏
+        contentEl.style.setProperty('display', 'none', 'important');
+      }
+    }
+    
+    if (btnEl) {
+      if (t === tabName) {
         btnEl.style.background = '#2563eb';
         btnEl.style.color = '#fff';
-      }
-    } else {
-      if (contentEl) contentEl.style.display = 'none';
-      if (btnEl) {
+      } else {
         btnEl.style.background = '#27272a';
         btnEl.style.color = '#a1a1aa';
       }
     }
   });
+
+  // 當切換到「所有訂單紀錄」時，自動載入資料
+  if (tabName === 'orders') {
+    if (typeof loadAllOrders === 'function') {
+      loadAllOrders();
+    }
+  }
+}
+window.switchAdminTab = switchAdminTab;
 
   // 💡 當切換到「所有訂單紀錄」時，自動重新載入/渲染表格資料
   if (tabName === 'orders') {
