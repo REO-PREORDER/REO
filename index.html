@@ -87,7 +87,14 @@
     /* 燈箱 */
     #lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 999; }
     #lightbox img { max-width: 90%; max-height: 90%; border-radius: 8px; }
-  </style>
+   
+     .admin-tab-content {
+  display: none;
+}
+.admin-tab-content[style*="display: block"] {
+  display: block !important;
+}
+    </style>
 </head>
 <body>
 
