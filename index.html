@@ -216,12 +216,16 @@
 <div id="adminDashboard" style="display: none; margin: 15px auto 0 auto; max-width: 1350px; text-align: left; padding: 0 15px;">
   <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
 
-<!-- 💡 分頁切換按鈕列 -->
-  <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
-    <button onclick="switchAdminTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理工具</button>
-    <button onclick="switchAdminTab('orders')" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
-    <button onclick="switchAdminTab('export')" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
-  </div>
+<!-- 💡 分頁切換按鈕列（已補上資料載入與選項更新） -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
+  <button onclick="switchAdminTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理工具</button>
+  
+  <!-- 📋 點擊時同時切換分頁並載入所有訂單 -->
+  <button onclick="switchAdminTab('orders'); loadAllOrders();" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
+  
+  <!-- 📊 點擊時同時切換分頁並更新匯出下拉選單 -->
+  <button onclick="switchAdminTab('export'); if(typeof updateExportGroupOptions === 'function') updateExportGroupOptions();" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
+</div>
 
   <!-- 📦 團務管理工具（新增 / 編輯 / 刪除 / 商品管理） -->
 <div id="tab-groups" class="admin-tab-content" style="display: block;">
