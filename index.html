@@ -216,21 +216,38 @@
 <div id="adminDashboard" style="display: none; margin: 15px auto 0 auto; max-width: 1350px; text-align: left; padding: 0 15px;">
   <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
 
-<!-- 💡 分頁切換按鈕列（已補上資料載入與選項更新） -->
+<!-- 💡 分頁切換按鈕列 -->
 <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
   <button onclick="switchAdminTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理工具</button>
   
-  <!-- 📋 點擊時同時切換分頁並載入所有訂單 -->
-  <button onclick="switchAdminTab('orders'); loadAllOrders();" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
+  <!-- 📋 強制展開所有訂單分頁並載入資料 -->
+  <button onclick="
+    document.querySelectorAll('.admin-tab-content').forEach(el => el.style.setProperty('display', 'none', 'important'));
+    let targetOrders = document.getElementById('tab-orders');
+    if(targetOrders) {
+      targetOrders.style.setProperty('display', 'block', 'important');
+      targetOrders.style.setProperty('visibility', 'visible', 'important');
+      targetOrders.style.setProperty('opacity', '1', 'important');
+    }
+    if(typeof loadAllOrders === 'function') {
+      loadAllOrders();
+    }
+  " id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
   
-  <!-- 📊 點擊時同時切換分頁並更新匯出下拉選單 -->
-  <button onclick="switchAdminTab('export'); if(typeof updateExportGroupOptions === 'function') updateExportGroupOptions();" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
+  <!-- 📊 強制展開匯出分頁並更新下拉選單 -->
+  <button onclick="
+    document.querySelectorAll('.admin-tab-content').forEach(el => el.style.setProperty('display', 'none', 'important'));
+    let targetExport = document.getElementById('tab-export');
+    if(targetExport) {
+      targetExport.style.setProperty('display', 'block', 'important');
+      targetExport.style.setProperty('visibility', 'visible', 'important');
+      targetExport.style.setProperty('opacity', '1', 'important');
+    }
+    if(typeof updateExportGroupOptions === 'function') {
+      updateExportGroupOptions();
+    }
+  " id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
 </div>
-
-  <!-- 📦 團務管理工具（新增 / 編輯 / 刪除 / 商品管理） -->
-<div id="tab-groups" class="admin-tab-content" style="display: block;">
-  <h4 style="color: #3b82f6; margin-bottom: 10px; text-align: center;">📦 團務管理工具</h4>
-  <div style="background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
     
     <!-- 切換頁籤 -->
     <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
