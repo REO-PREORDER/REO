@@ -2464,32 +2464,37 @@ async function loadAllOrders() {
 }
 window.loadAllOrders = loadAllOrders;
 
-// 🎨 渲染訂單表格
+// 🎨 渲染訂單表格（已加強 DOM 可見性與防護）
 function renderOrdersTable(orders) {
+  // 💡 強制確保訂單分頁容器是顯示的，避免因為 display: none 導致渲染失敗
+  const tabOrders = document.getElementById('tab-orders');
+  if (tabOrders) {
+    tabOrders.style.display = 'block';
+  }
+
   const tbody = document.getElementById('allOrdersTbody');
-  if (!tbody) return;
+  if (!tbody) {
+    console.error("找不到 #allOrdersTbody 元素！");
+    return;
+  }
 
   if (!orders || orders.length === 0) {
-    // 💡 欄位總數變為 10 欄，故 colspan 改為 10
     tbody.innerHTML = "<tr><td colspan='10' style='text-align:center; padding:15px; color:#888;'>目前沒有任何訂單紀錄</td></tr>";
     return;
   }
 
   let html = "";
   orders.forEach(o => {
-    let orderId = o.id || ""; // 取得訂單編號
+    let orderId = o.id || ""; 
     let timeStr = o.created_at ? new Date(o.created_at).toLocaleString() : "未知時間";
     
-    // 💡 抓取買家備註與管理員備註
     let buyerRemark = o["買家備註"] || "-";
     let adminRemark = o["備註"] || "-";
     
-    // 狀態顏色
-    let statusColor = "#10b981"; // 預設綠色
+    let statusColor = "#10b981"; 
     if (o["處理狀態"] === "已變更") statusColor = "#f59e0b";
     if (o["處理狀態"] === "已取消") statusColor = "#ef4444";
 
-    // 處理商品明細的顯示格式
     let detailsText = "";
     let items = o["訂單內容"];
     if (typeof items === "string") {
@@ -2511,9 +2516,7 @@ function renderOrdersTable(orders) {
         <td style="padding: 8px; color: #ddd; line-height: 1.4; font-size: 11px;">${detailsText}</td>
         <td style="padding: 8px; color: #f87171; font-weight: bold;">$${o["總金額"] || 0}</td>
         <td style="padding: 8px; font-weight: bold; color: ${statusColor};">${o["處理狀態"] || '待確認'}</td>
-        <!-- 💡 新增：買家備註欄位 -->
         <td style="padding: 8px; color: #cbd5e1; font-size: 11px; max-width: 150px; word-break: break-all;">${buyerRemark}</td>
-        <!-- 💡 新增：管理員備註欄位 -->
         <td style="padding: 8px; color: #fbbf24; font-size: 11px; max-width: 150px; word-break: break-all;">${adminRemark}</td>
         <td style="padding: 8px; display: flex; gap: 4px; flex-wrap: wrap;">
           <button onclick="updateOrderStatus('${o.id}', '已成立')" style="background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✓ 成立</button>
@@ -2523,8 +2526,11 @@ function renderOrdersTable(orders) {
       </tr>
     `;
   });
+  
   tbody.innerHTML = html;
+  console.log("成功渲染訂單表格，共筆數：", orders.length);
 }
+window.renderOrdersTable = renderOrdersTable;
 
 // 🔍 搜尋與篩選訂單
 function filterOrders() {
