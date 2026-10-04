@@ -216,14 +216,17 @@
 <div id="adminDashboard" style="display: none; margin: 15px auto 0 auto; max-width: 1350px; text-align: left; padding: 0 15px;">
   <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
 
-<!-- 💡 分頁切換按鈕列 -->
-<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
-  <button onclick="forceSwitchTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理工具</button>
-  
-  <button onclick="forceSwitchTab('orders')" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
-  
-  <button onclick="forceSwitchTab('export')" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
-</div>
+  <!-- 💡 分頁切換按鈕列 -->
+  <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
+    <button onclick="forceSwitchTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理工具</button>
+    <button onclick="forceSwitchTab('orders')" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
+    <button onclick="forceSwitchTab('export')" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 📦 1. 團務管理工具分頁 (id="tab-groups") -->
+  <!-- ========================================== -->
+  <div id="tab-groups" class="admin-tab-content" style="display: block;">
     
     <!-- 切換頁籤 -->
     <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
@@ -232,7 +235,6 @@
     </div>
 
     <!-- 編輯模式專用：選擇團務下拉選單 -->
-    <div id="tab-groups" class="admin-tab-content" style="display: block;">
     <div id="editGroupSelectBox" style="display: none; margin-bottom: 12px; background: #1a1a1a; padding: 10px; border-radius: 6px; border: 1px solid #3b82f6;">
       <label style="font-size: 12px; color: #60a5fa; font-weight: bold;">請選擇要編輯的團務：</label>
       <select id="editGroupSelect" onchange="onSelectGroupToEdit(); loadProductsForEdit(this.value);" style="width: 100%; padding: 6px; margin-top: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;"></select>
@@ -264,12 +266,11 @@
     <!-- 🔘 動作按鈕區（送出 / 刪除團務） -->
     <div style="display: flex; gap: 10px; margin-top: 10px;">
       <button id="groupSubmitBtn" class="primary-btn" onclick="submitGroupForm()" style="background: #2563eb; flex: 2;">建立新團務</button>
-      <!-- 🗑️ 刪除團務按鈕 (預設隱藏，僅在『編輯模式』下顯示) -->
       <button id="groupDeleteBtn" onclick="deleteCurrentGroup()" style="display: none; background: #dc2626; color: white; border: none; border-radius: 6px; padding: 8px; cursor: pointer; font-size: 12px; font-weight: bold; flex: 1;">🗑️ 刪除團務(含商品)</button>
     </div>
     <p id="createGroupMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
 
-    <!-- 🛍️ 團務商品內容編輯區 (選擇編輯團務時自動顯示) -->
+    <!-- 🛍️ 團務商品內容編輯區 -->
     <div id="groupProductEditBox" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #555;">
       <h5 style="color: #f59e0b; margin-bottom: 10px;">🛍️ 編輯該團務商品內容</h5>
       <div id="productListContainer" style="display: flex; flex-direction: column; gap: 8px;">
@@ -277,9 +278,10 @@
       </div>
     </div>
 
-  </div>
+  </div> <!-- ⬅️ 這裡完美關閉 tab-groups 區塊！ -->
 
   <hr style="border: 0; border-top: 1px dashed #444; margin: 20px 0;">
+</div>
 
 <!-- 📋 所有訂單紀錄區塊 -->
 <div id="tab-orders" class="admin-tab-content" style="display: none; padding: 20px; background: #18181b; border-radius: 8px; margin-top: 10px;">
