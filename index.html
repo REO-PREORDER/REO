@@ -727,7 +727,6 @@ async function loadProductsForEdit(groupId) {
 }
 window.loadProductsForEdit = loadProductsForEdit;
 
-// 💡 修正後的分頁切換函式：切換過去時，順便載入對應的資料
 function switchAdminTab(tabName) {
   const tabs = ['groups', 'orders', 'export'];
 
@@ -736,7 +735,14 @@ function switchAdminTab(tabName) {
     let btnEl = document.getElementById('btn-' + t);
     
     if (contentEl) {
+      // 💡 強制讓選到的分頁顯示，其他的隱藏
       contentEl.style.display = (t === tabName) ? 'block' : 'none';
+      
+      // 🚨 如果是 orders 分頁，順便強制把內層所有的 div/table 顯示出來，防止被包覆隱藏
+      if (t === 'orders' && tabName === 'orders') {
+        contentEl.style.visibility = 'visible';
+        contentEl.style.opacity = '1';
+      }
     }
     
     if (btnEl) {
@@ -745,14 +751,12 @@ function switchAdminTab(tabName) {
     }
   });
 
-  // 🎯 關鍵：當切換到「所有訂單」分頁時，自動觸發載入訂單！
   if (tabName === 'orders') {
     if (typeof loadAllOrders === 'function') {
       loadAllOrders();
     }
   }
 
-  // 🎯 關鍵：當切換到「匯出」分頁時，自動更新匯出的下拉選單選項
   if (tabName === 'export') {
     if (typeof updateExportGroupOptions === 'function') {
       updateExportGroupOptions();
