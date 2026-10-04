@@ -716,7 +716,7 @@ async function loadProductsForEdit(groupId) {
 }
 window.loadProductsForEdit = loadProductsForEdit;
 
-// 💡 切換後台分頁（含自動載入資料）
+// 💡 最安全、純粹的分頁切換函式（排除所有載入報錯的干擾）
 function switchAdminTab(tabName) {
   const tabs = ['groups', 'orders', 'export'];
 
@@ -724,29 +724,20 @@ function switchAdminTab(tabName) {
     let contentEl = document.getElementById('tab-' + t);
     let btnEl = document.getElementById('btn-' + t);
     
-    if (t === tabName) {
-      if (contentEl) contentEl.style.display = 'block';
-      if (btnEl) {
-        btnEl.style.background = '#2563eb';
-        btnEl.style.color = '#fff';
-      }
-    } else {
-      if (contentEl) contentEl.style.display = 'none';
-      if (btnEl) {
-        btnEl.style.background = '#27272a';
-        btnEl.style.color = '#a1a1aa';
-      }
+    if (contentEl) {
+      // 直接強制作業：要顯示的設為 block，其他的設為 none
+      contentEl.style.display = (t === tabName) ? 'block' : 'none';
+    }
+    
+    if (btnEl) {
+      btnEl.style.background = (t === tabName) ? '#2563eb' : '#27272a';
+      btnEl.style.color = (t === tabName) ? '#fff' : '#a1a1aa';
     }
   });
-  // 💡 當切換到「所有訂單紀錄」時，自動重新載入/渲染表格資料
-  if (tabName === 'orders') {
-    if (typeof loadAllOrders === 'function') {
-      loadAllOrders(); // 假設你原本用這個函式從資料庫抓全部訂單
-    } else if (typeof renderOrdersTable === 'function' && typeof allOrders !== 'undefined') {
-      renderOrdersTable(allOrders);
-    }
-  }
+
+  // 暫時把 loadAllOrders 拿掉，單純看畫面切不切得過去
 }
+window.switchAdminTab = switchAdminTab;
 
 // ➕ 新增商品至當前選取的團務
 async function addProductToCurrentGroup() {
