@@ -84,19 +84,24 @@
     <button onclick="checkAdminPassword()">登入後台</button>
     <p id="adminLoginMsg" style="color: #ef4444; font-size: 12px; margin-top: 10px;"></p>
   </div>
+     <!-- 📊 獨立管理員後台主面板 (登入後顯示) -->
+  <div id="adminDashboard" class="admin-container" style="display: none;">
+    <h2>
       <span>🛠️ REO代購 - 管理員控制面板</span>
       <a href="index.html" class="back-btn">🏠 返回前台首頁</a>
     </h2>
 
-    <div id="adminDashboard" style="display: none; margin: 15px auto 0 auto; width: 98%; max-width: 100%; text-align: left; padding: 0 15px;"> 
-  <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
+    <!-- ✔️ 直接放內容與按鈕列即可，不要再包一層 id="adminDashboard" -->
+    <div style="margin: 15px auto 0 auto; width: 98%; max-width: 100%; text-align: left; padding: 0 15px;"> 
+      <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
 
-  <!-- 💡 分頁切換按鈕列 -->
-  <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
-    <button onclick="forceSwitchTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理工具</button>
-    <button onclick="forceSwitchTab('orders')" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
-    <button onclick="forceSwitchTab('export')" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
-  </div>
+      <!-- 💡 分頁切換按鈕列 -->
+      <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
+        <!-- 請注意：你上面的按鈕 onclick 呼叫的是 forceSwitchTab，但下方 JS 定義的是 switchAdminTab，記得一併確認按鈕 onclick 呼叫的函數名稱是否正確 -->
+        <button onclick="switchAdminTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理工具</button>
+        <button onclick="switchAdminTab('orders')" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
+        <button onclick="switchAdminTab('export')" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
+      </div>
 
   <!-- ========================================== -->
   <!-- 📦 1. 團務管理工具分頁 (id="tab-groups") -->
