@@ -214,7 +214,8 @@
 
 <!-- 管理員後台控制面板 (預設隱藏，所有後台工具皆包裹於此) -->
 <!-- 管理員後台控制面板 (已將寬度改為 100% 撐滿螢幕) -->
-<div id="adminDashboard" style="display: none; margin: 15px auto 0 auto; width: 98%; max-width: 100%; text-align: left; padding: 0 15px;">  <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
+<div id="adminDashboard" style="display: none; margin: 15px auto 0 auto; width: 98%; max-width: 100%; text-align: left; padding: 0 15px;"> 
+  <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
 
   <!-- 💡 分頁切換按鈕列 -->
   <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
@@ -302,28 +303,28 @@
       </select>
     </div>
 
-    <!-- 📋 訂單列表表格容器 (寬度放大，商品明細自動換行) -->
-    <div id="allOrdersTableContainer" style="overflow-x: auto; min-height: 300px; max-height: 600px; background: #1a1a1a; border-radius: 6px; border: 1px solid #333;">    
-      <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb;">
-        <thead>
-          <tr style="background: #2d2d2d; text-align: left; border-bottom: 2px solid #444;">
-            <th style="padding: 10px 12px; color: #9ca3af; width: 80px;">訂單編號</th>
-            <th style="padding: 10px 12px; color: #9ca3af; width: 130px;">時間</th>
-            <th style="padding: 10px 12px; color: #9ca3af; width: 90px;">買家姓名</th>
-            <th style="padding: 10px 12px; color: #9ca3af; width: 180px;">團務名稱</th>
-            <th style="padding: 10px 12px; color: #9ca3af; min-width: 300px;">商品明細</th> 
-            <th style="padding: 10px 12px; color: #9ca3af; width: 80px;">總金額</th>
-            <th style="padding: 10px 12px; color: #9ca3af; width: 80px;">訂單狀態</th>
-            <th style="padding: 10px 12px; color: #9ca3af; width: 120px;">買家備註</th>
-            <th style="padding: 10px 12px; color: #fbbf24; width: 120px;">管理員備註</th>
-            <th style="padding: 10px 12px; color: #9ca3af; text-align: center; width: 100px;">操作</th>
-          </tr>
-        </thead>
-        <tbody id="allOrdersTbody">
-          <!-- JS 動態帶入訂單 -->
-        </tbody>
-      </table>
-    </div>
+    <!-- 📋 訂單列表表格容器 (取消高度限制，不需要滑動) -->
+<div id="allOrdersTableContainer" style="width: 100%; background: #1a1a1a; border-radius: 6px; border: 1px solid #333; margin-bottom: 20px;">    
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb;">
+    <thead>
+      <tr style="background: #2d2d2d; text-align: left; border-bottom: 2px solid #444;">
+        <th style="padding: 10px 12px; color: #9ca3af; width: 80px;">訂單編號</th>
+        <th style="padding: 10px 12px; color: #9ca3af; width: 130px;">時間</th>
+        <th style="padding: 10px 12px; color: #9ca3af; width: 90px;">買家姓名</th>
+        <th style="padding: 10px 12px; color: #9ca3af; width: 180px;">團務名稱</th>
+        <th style="padding: 10px 12px; color: #9ca3af; min-width: 300px;">商品明細</th> 
+        <th style="padding: 10px 12px; color: #9ca3af; width: 80px;">總金額</th>
+        <th style="padding: 10px 12px; color: #9ca3af; width: 80px;">訂單狀態</th>
+        <th style="padding: 10px 12px; color: #9ca3af; width: 120px;">買家備註</th>
+        <th style="padding: 10px 12px; color: #fbbf24; width: 120px;">管理員備註</th>
+        <th style="padding: 10px 12px; color: #9ca3af; text-align: center; width: 100px;">操作</th>
+      </tr>
+    </thead>
+    <tbody id="allOrdersTbody">
+      <!-- JS 動態帶入訂單 -->
+    </tbody>
+  </table>
+</div>
   </div>
 </div>
   <hr style="border: 0; border-top: 1px dashed #444; margin: 20px 0;">
