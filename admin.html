@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REO代購 - 管理員後台</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #e5e7eb;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    .admin-container {
+      max-width: 98%;
+      margin: 0 auto;
+    }
+    h2 {
+      color: #3b82f6;
+      border-bottom: 2px solid #333;
+      padding-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .back-btn {
+      background: #374151;
+      color: #fff;
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .back-btn:hover { background: #4b5563; }
+    
+    /* 登入區塊 */
+    #adminLoginBox {
+      max-width: 400px;
+      margin: 100px auto;
+      background: #1e1e1e;
+      padding: 30px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      text-align: center;
+    }
+    #adminLoginBox input {
+      width: 100%;
+      padding: 10px;
+      margin: 15px 0;
+      background: #2d2d2d;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    #adminLoginBox button {
+      width: 100%;
+      padding: 10px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #adminLoginBox button:hover { background: #1d4ed8; }
+
+    /* 分頁內容與表格樣式 */
+    .admin-tab-content { display: none; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #333; text-align: left; }
+    th { background: #2d2d2d; color: #9ca3af; }
+  </style>
+</head>
+<body>
+
+  <!-- 🔒 管理員登入畫面 (預設顯示) -->
+  <div id="adminLoginBox">
+    <h3>🔐 管理員登入</h3>
+    <p style="font-size: 12px; color: #9ca3af;">請輸入管理員密碼以進入後台</p>
+    <input type="password" id="adminPasswordInput" placeholder="請輸入密碼">
+    <button onclick="checkAdminPassword()">登入後台</button>
+    <p id="adminLoginMsg" style="color: #ef4444; font-size: 12px; margin-top: 10px;"></p>
+  </div>
+
+  <!-- 📊 獨立管理員後台主面板 (登入後顯示) -->
+  <div id="adminDashboard" class="admin-container" style="display: none;">
+    <h2>
+      <span>🛠️ REO代購 - 管理員控制面板</span>
+      <a href="index.html" class="back-btn">🏠 返回前台首頁</a>
+    </h2>
+
+    <!-- 💡 主分頁切換按鈕列 -->
+    <div style="display: flex; gap: 8px; margin: 20px 0; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
+      <button onclick="forceSwitchTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold;">⚙️ 團務管理工具</button>
+      <button onclick="forceSwitchTab('orders')" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold;">📋 所有訂單紀錄</button>
+      <button onclick="forceSwitchTab('export')" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold;">📊 匯出訂單資料</button>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- 📦 分頁 1：團務管理工具 -->
+    <!-- ========================================================== -->
+    <div id="tab-groups" class="admin-tab-content" style="display: block; background: #1e1e1e; padding: 20px; border-radius: 8px;">
+      <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
+        <button id="tabCreateGroupBtn" onclick="switchAdminGroupTab('create')" style="background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">➕ 新增團務</button>
+        <button id="tabEditGroupBtn" onclick="switchAdminGroupTab('edit')" style="background: #444; color: #ccc; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">✏️ 編輯既有團務</button>
+      </div>
+
+      <div id="editGroupSelectBox" style="display: none; margin-bottom: 12px; background: #1a1a1a; padding: 10px; border-radius: 6px; border: 1px solid #3b82f6;">
+        <label style="font-size: 12px; color: #60a5fa; font-weight: bold;">請選擇要編輯的團務：</label>
+        <select id="editGroupSelect" onchange="onSelectGroupToEdit(); loadProductsForEdit(this.value);" style="width: 100%; padding: 6px; margin-top: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;"></select>
+      </div>
+
+      <input type="hidden" id="editingGroupId" value="">
+      <label style="font-size: 12px; color: #ccc;">團務名稱 *</label>
+      <input type="text" id="newGroupName" placeholder="例如：銀魂- 萬代 閃徽 - 1月預購" style="width:100%; padding:8px; margin:4px 0 12px 0; background:#2d2d2d; color:#fff; border:1px solid #444; border-radius:4px;">
+
+      <label style="font-size: 12px; color: #ccc;">團務圖片網址</label>
+      <input type="text" id="newGroupImg" placeholder="https://..." style="width:100%; padding:8px; margin:4px 0 12px 0; background:#2d2d2d; color:#fff; border:1px solid #444; border-radius:4px;">
+
+      <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+        <div style="flex: 1;">
+          <label style="font-size: 12px; color: #ccc;">截單時間</label>
+          <input type="text" id="newGroupDeadline" placeholder="例如：10/7 18:00" style="width:100%; padding:8px; margin-top:4px; background:#2d2d2d; color:#fff; border:1px solid #444; border-radius:4px;">
+        </div>
+        <div style="flex: 1;">
+          <label style="font-size: 12px; color: #ccc;">付款方式</label>
+          <input type="text" id="newGroupPayment" value="賣貨便貨到付款(不含運費38)" style="width:100%; padding:8px; margin-top:4px; background:#2d2d2d; color:#fff; border:1px solid #444; border-radius:4px;">
+        </div>
+      </div>
+
+      <label style="font-size: 12px; color: #ccc;">團務備註</label>
+      <textarea id="newGroupRemark" rows="3" style="width:100%; padding:8px; margin:4px 0 12px 0; background:#2d2d2d; color:#fff; border:1px solid #444; border-radius:4px;"></textarea>
+
+      <div style="display: flex; gap: 10px;">
+        <button onclick="submitGroupForm()" style="background: #2563eb; color:#fff; border:none; padding:10px; border-radius:6px; cursor:pointer; flex: 2; font-weight:bold;">建立新團務</button>
+        <button id="groupDeleteBtn" onclick="deleteCurrentGroup()" style="display: none; background: #dc2626; color: white; border: none; border-radius: 6px; padding: 10px; cursor: pointer; font-weight: bold; flex: 1;">🗑️ 刪除團務(含商品)</button>
+      </div>
+      <p id="createGroupMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
+
+      <div id="groupProductEditBox" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #555;">
+        <h5 style="color: #f59e0b; margin-bottom: 10px;">🛍️️ 編輯該團務商品內容</h5>
+        <div id="productListContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+    </div>
+
+
+    <!-- ========================================================== -->
+    <!-- 📋 分頁 2：所有訂單紀錄 (寬螢幕完全展開，不用滑動) -->
+    <!-- ========================================================== -->
+    <div id="tab-orders" class="admin-tab-content" style="display: none; background: #1e1e1e; padding: 20px; border-radius: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h4 style="color: #10b981; margin: 0;">📋 所有訂單紀錄</h4>
+        <button onclick="if(typeof loadAllOrders === 'function') loadAllOrders();" style="background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;">🔄 重新整理資料</button>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <input type="text" id="searchOrderInput" placeholder="🔍 搜尋買家姓名 / 訂單編號" oninput="filterOrders()" style="flex: 2; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px;">
+        <select id="filterGroupSelect" onchange="filterOrders()" style="flex: 1.5; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px;">
+          <option value="">📂 所有團務（不限）</option>
+        </select>
+      </div>
+
+      <div style="width: 100%; background: #1a1a1a; border-radius: 6px; border: 1px solid #333;">    
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 80px;">訂單編號</th>
+              <th style="width: 130px;">時間</th>
+              <th style="width: 100px;">買家姓名</th>
+              <th style="width: 180px;">團務名稱</th>
+              <th style="min-width: 350px;">商品明細</th> 
+              <th style="width: 80px;">總金額</th>
+              <th style="width: 80px;">訂單狀態</th>
+              <th style="width: 120px;">買家備註</th>
+              <th style="width: 120px; color: #fbbf24;">管理員備註</th>
+              <th style="text-align: center; width: 110px;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="allOrdersTbody">
+            <!-- JS 動態帶入訂單 -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+    <!-- ========================================================== -->
+    <!-- 📊 分頁 3：匯出訂單資料 -->
+    <!-- ========================================================== -->
+    <div id="tab-export" class="admin-tab-content" style="display: none; background: #1e1e1e; padding: 20px; border-radius: 8px;">
+      <h4 style="color: #f59e0b; margin-top: 0;">📊 匯出訂單資料</h4>
+      <label style="font-size: 12px; color: #ccc;">選擇要匯出的團務：</label>
+      <select id="exportGroupSelect" style="width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 15px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;"></select>
+      <div style="display: flex; gap: 10px;">
+        <button onclick="exportGroupCSV()" style="background: #10b981; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">📥 匯出 CSV (Excel)</button>
+        <button onclick="exportGroupSummary()" style="background: #2563eb; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">📊 匯出採購總數表</button>
+      </div>
+    </div>
+
+  </div>
+  <script>
+    // 分頁切換函式
+    function forceSwitchTab(tabName) {
+      document.getElementById('tab-groups').style.display = (tabName === 'groups') ? 'block' : 'none';
+      document.getElementById('tab-orders').style.display = (tabName === 'orders') ? 'block' : 'none';
+      document.getElementById('tab-export').style.display = (tabName === 'export') ? 'block' : 'none';
+      
+      document.getElementById('btn-groups').style.background = (tabName === 'groups') ? '#2563eb' : '#27272a';
+      document.getElementById('btn-groups').style.color = (tabName === 'groups') ? '#fff' : '#a1a1aa';
+      document.getElementById('btn-orders').style.background = (tabName === 'orders') ? '#2563eb' : '#27272a';
+      document.getElementById('btn-orders').style.color = (tabName === 'orders') ? '#fff' : '#a1a1aa';
+      document.getElementById('btn-export').style.background = (tabName === 'export') ? '#2563eb' : '#27272a';
+      document.getElementById('btn-export').style.color = (tabName === 'export') ? '#fff' : '#a1a1aa';
+
+      if (tabName === 'orders' && typeof loadAllOrders === 'function') loadAllOrders();
+    }
+
+    // 簡單的密碼驗證 (與您原本的相呼應)
+    function checkAdminPassword() {
+      const pass = document.getElementById('adminPasswordInput').value;
+      // 假設您原本的驗證機制，這裡可以直接串接或比對
+      if (pass === "841250" || typeof verifyAdminPass === "function" && verifyAdminPass(pass)) {
+        document.getElementById('adminLoginBox').style.display = 'none';
+        document.getElementById('adminDashboard').style.display = 'block';
+        if (typeof loadAllOrders === 'function') loadAllOrders();
+      } else {
+        // 如果原本是用全域變數或既有驗證，可以直接呼叫
+        document.getElementById('adminLoginMsg').innerText = "密碼錯誤或請檢查驗證邏輯";
+      }
+    }
+  </script>
+</body>
+</html>
