@@ -92,149 +92,141 @@
       <a href="index.html" class="back-btn">🏠 返回前台首頁</a>
     </h2>
 
-    <!-- 💡 主分頁切換按鈕列 -->
-    <div style="display: flex; gap: 8px; margin: 20px 0; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
-      <button onclick="forceSwitchTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold;">⚙️ 團務管理工具</button>
-      <button onclick="forceSwitchTab('orders')" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold;">📋 所有訂單紀錄</button>
-      <button onclick="forceSwitchTab('export')" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold;">📊 匯出訂單資料</button>
-    </div>
+    <div id="adminDashboard" style="display: none; margin: 15px auto 0 auto; width: 98%; max-width: 100%; text-align: left; padding: 0 15px;"> 
+  <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
 
-    <!-- ========================================================== -->
-    <!-- 📦 分頁 1：團務管理工具 -->
-    <!-- ========================================================== -->
-    <div id="tab-groups" class="admin-tab-content" style="display: block; background: #1e1e1e; padding: 20px; border-radius: 8px;">
-      <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-        <button id="tabCreateGroupBtn" onclick="switchAdminGroupTab('create')" style="background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">➕ 新增團務</button>
-        <button id="tabEditGroupBtn" onclick="switchAdminGroupTab('edit')" style="background: #444; color: #ccc; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">✏️ 編輯既有團務</button>
-      </div>
-
-      <div id="editGroupSelectBox" style="display: none; margin-bottom: 12px; background: #1a1a1a; padding: 10px; border-radius: 6px; border: 1px solid #3b82f6;">
-        <label style="font-size: 12px; color: #60a5fa; font-weight: bold;">請選擇要編輯的團務：</label>
-        <select id="editGroupSelect" onchange="onSelectGroupToEdit(); loadProductsForEdit(this.value);" style="width: 100%; padding: 6px; margin-top: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;"></select>
-      </div>
-
-      <input type="hidden" id="editingGroupId" value="">
-      <label style="font-size: 12px; color: #ccc;">團務名稱 *</label>
-      <input type="text" id="newGroupName" placeholder="例如：銀魂- 萬代 閃徽 - 1月預購" style="width:100%; padding:8px; margin:4px 0 12px 0; background:#2d2d2d; color:#fff; border:1px solid #444; border-radius:4px;">
-
-      <label style="font-size: 12px; color: #ccc;">團務圖片網址</label>
-      <input type="text" id="newGroupImg" placeholder="https://..." style="width:100%; padding:8px; margin:4px 0 12px 0; background:#2d2d2d; color:#fff; border:1px solid #444; border-radius:4px;">
-
-      <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-        <div style="flex: 1;">
-          <label style="font-size: 12px; color: #ccc;">截單時間</label>
-          <input type="text" id="newGroupDeadline" placeholder="例如：10/7 18:00" style="width:100%; padding:8px; margin-top:4px; background:#2d2d2d; color:#fff; border:1px solid #444; border-radius:4px;">
-        </div>
-        <div style="flex: 1;">
-          <label style="font-size: 12px; color: #ccc;">付款方式</label>
-          <input type="text" id="newGroupPayment" value="賣貨便貨到付款(不含運費38)" style="width:100%; padding:8px; margin-top:4px; background:#2d2d2d; color:#fff; border:1px solid #444; border-radius:4px;">
-        </div>
-      </div>
-
-      <label style="font-size: 12px; color: #ccc;">團務備註</label>
-      <textarea id="newGroupRemark" rows="3" style="width:100%; padding:8px; margin:4px 0 12px 0; background:#2d2d2d; color:#fff; border:1px solid #444; border-radius:4px;"></textarea>
-
-      <div style="display: flex; gap: 10px;">
-        <button onclick="submitGroupForm()" style="background: #2563eb; color:#fff; border:none; padding:10px; border-radius:6px; cursor:pointer; flex: 2; font-weight:bold;">建立新團務</button>
-        <button id="groupDeleteBtn" onclick="deleteCurrentGroup()" style="display: none; background: #dc2626; color: white; border: none; border-radius: 6px; padding: 10px; cursor: pointer; font-weight: bold; flex: 1;">🗑️ 刪除團務(含商品)</button>
-      </div>
-      <p id="createGroupMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
-
-      <div id="groupProductEditBox" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #555;">
-        <h5 style="color: #f59e0b; margin-bottom: 10px;">🛍️️ 編輯該團務商品內容</h5>
-        <div id="productListContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
-      </div>
-    </div>
-
-
-    <!-- ========================================================== -->
-    <!-- 📋 分頁 2：所有訂單紀錄 (寬螢幕完全展開，不用滑動) -->
-    <!-- ========================================================== -->
-    <div id="tab-orders" class="admin-tab-content" style="display: none; background: #1e1e1e; padding: 20px; border-radius: 8px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h4 style="color: #10b981; margin: 0;">📋 所有訂單紀錄</h4>
-        <button onclick="if(typeof loadAllOrders === 'function') loadAllOrders();" style="background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;">🔄 重新整理資料</button>
-      </div>
-
-      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <input type="text" id="searchOrderInput" placeholder="🔍 搜尋買家姓名 / 訂單編號" oninput="filterOrders()" style="flex: 2; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px;">
-        <select id="filterGroupSelect" onchange="filterOrders()" style="flex: 1.5; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px;">
-          <option value="">📂 所有團務（不限）</option>
-        </select>
-      </div>
-
-      <div style="width: 100%; background: #1a1a1a; border-radius: 6px; border: 1px solid #333;">    
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 80px;">訂單編號</th>
-              <th style="width: 130px;">時間</th>
-              <th style="width: 100px;">買家姓名</th>
-              <th style="width: 180px;">團務名稱</th>
-              <th style="min-width: 350px;">商品明細</th> 
-              <th style="width: 80px;">總金額</th>
-              <th style="width: 80px;">訂單狀態</th>
-              <th style="width: 120px;">買家備註</th>
-              <th style="width: 120px; color: #fbbf24;">管理員備註</th>
-              <th style="text-align: center; width: 110px;">操作</th>
-            </tr>
-          </thead>
-          <tbody id="allOrdersTbody">
-            <!-- JS 動態帶入訂單 -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-
-    <!-- ========================================================== -->
-    <!-- 📊 分頁 3：匯出訂單資料 -->
-    <!-- ========================================================== -->
-    <div id="tab-export" class="admin-tab-content" style="display: none; background: #1e1e1e; padding: 20px; border-radius: 8px;">
-      <h4 style="color: #f59e0b; margin-top: 0;">📊 匯出訂單資料</h4>
-      <label style="font-size: 12px; color: #ccc;">選擇要匯出的團務：</label>
-      <select id="exportGroupSelect" style="width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 15px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;"></select>
-      <div style="display: flex; gap: 10px;">
-        <button onclick="exportGroupCSV()" style="background: #10b981; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">📥 匯出 CSV (Excel)</button>
-        <button onclick="exportGroupSummary()" style="background: #2563eb; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">📊 匯出採購總數表</button>
-      </div>
-    </div>
-
+  <!-- 💡 分頁切換按鈕列 -->
+  <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
+    <button onclick="forceSwitchTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理工具</button>
+    <button onclick="forceSwitchTab('orders')" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
+    <button onclick="forceSwitchTab('export')" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
   </div>
+
+  <!-- ========================================== -->
+  <!-- 📦 1. 團務管理工具分頁 (id="tab-groups") -->
+  <!-- ========================================== -->
+  <div id="tab-groups" class="admin-tab-content" style="display: block;">
+    
+    <!-- 切換頁籤 -->
+    <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
+      <button id="tabCreateGroupBtn" onclick="switchAdminGroupTab('create')" style="background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">➕ 新增團務</button>
+      <button id="tabEditGroupBtn" onclick="switchAdminGroupTab('edit')" style="background: #444; color: #ccc; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">✏️ 編輯既有團務</button>
+    </div>
+
+    <!-- 編輯模式專用：選擇團務下拉選單 -->
+    <div id="editGroupSelectBox" style="display: none; margin-bottom: 12px; background: #1a1a1a; padding: 10px; border-radius: 6px; border: 1px solid #3b82f6;">
+      <label style="font-size: 12px; color: #60a5fa; font-weight: bold;">請選擇要編輯的團務：</label>
+      <select id="editGroupSelect" onchange="onSelectGroupToEdit(); loadProductsForEdit(this.value);" style="width: 100%; padding: 6px; margin-top: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;"></select>
+    </div>
+
+    <!-- 表單區域 -->
+    <input type="hidden" id="editingGroupId" value="">
+    
+    <label style="font-size: 12px; color: #ccc;">團務名稱 *</label>
+    <input type="text" id="newGroupName" placeholder="例如：銀魂- 萬代 閃徽 - 1月預購" style="margin-top: 4px;">
+
+    <label style="font-size: 12px; color: #ccc;">團務圖片網址 (可貼 Google Drive 連結或一般圖片網址)</label>
+    <input type="text" id="newGroupImg" placeholder="https://..." style="margin-top: 4px;">
+
+    <div style="display: flex; gap: 10px;">
+      <div style="flex: 1;">
+        <label style="font-size: 12px; color: #ccc;">截單時間</label>
+        <input type="text" id="newGroupDeadline" placeholder="例如：10/7 18:00" style="margin-top: 4px;">
+      </div>
+      <div style="flex: 1;">
+        <label style="font-size: 12px; color: #ccc;">付款方式</label>
+        <input type="text" id="newGroupPayment" placeholder="例如：賣貨便貨到付款(不含運費38)" value="賣貨便貨到付款(不含運費38)" style="margin-top: 4px;">
+      </div>
+    </div>
+
+    <label style="font-size: 12px; color: #ccc;">團務備註 (代購須知下方顯示的特有備註)</label>
+    <textarea id="newGroupRemark" rows="3" placeholder="例如：⚠️ 可能砍單..." style="margin-top: 4px;"></textarea>
+
+    <!-- 🔘 動作按鈕區（送出 / 刪除團務） -->
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button id="groupSubmitBtn" class="primary-btn" onclick="submitGroupForm()" style="background: #2563eb; flex: 2;">建立新團務</button>
+      <button id="groupDeleteBtn" onclick="deleteCurrentGroup()" style="display: none; background: #dc2626; color: white; border: none; border-radius: 6px; padding: 8px; cursor: pointer; font-size: 12px; font-weight: bold; flex: 1;">🗑️ 刪除團務(含商品)</button>
+    </div>
+    <p id="createGroupMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
+
+    <!-- 🛍️ 團務商品內容編輯區 -->
+    <div id="groupProductEditBox" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #555;">
+      <h5 style="color: #f59e0b; margin-bottom: 10px;">🛍️ 編輯該團務商品內容</h5>
+      <div id="productListContainer" style="display: flex; flex-direction: column; gap: 8px;">
+        <!-- 動態帶入商品項目清單 -->
+      </div>
+    </div>
+
+  </div> <!-- ⬅️ 這裡完美關閉 tab-groups 區塊！ -->
+
+  <hr style="border: 0; border-top: 1px dashed #444; margin: 20px 0;">
+</div>
+
+<!-- 📋 所有訂單紀錄區塊 (寬螢幕與自動換行優化版) -->
+<div id="tab-orders" class="admin-tab-content" style="display: none; min-height: 200px; background: #1e1e1e;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h4 style="color: #10b981; margin: 0;">📋 所有訂單紀錄</h4>
+    <button onclick="if(typeof loadAllOrders === 'function') loadAllOrders();" style="background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold;">🔄 重新整理資料</button>
+  </div>
+
+  <div style="background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+    
+    <!-- 🔍 搜尋與團務篩選列 -->
+    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+      <input type="text" id="searchOrderInput" placeholder="🔍 搜尋買家姓名 / 訂單編號" oninput="filterOrders()" style="flex: 2; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 13px;">
+      
+      <!-- 📌 選擇團務篩選下拉選單 -->
+      <select id="filterGroupSelect" onchange="filterOrders()" style="flex: 1.5; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 13px;">
+        <option value="">📂 所有團務（不限）</option>
+      </select>
+    </div>
+
+    <!-- 📋 訂單列表表格容器 (取消高度限制，不需要滑動) -->
+<div id="allOrdersTableContainer" style="width: 100%; background: #1a1a1a; border-radius: 6px; border: 1px solid #333; margin-bottom: 20px;">    
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb;">
+    <thead>
+      <tr style="background: #2d2d2d; text-align: left; border-bottom: 2px solid #444;">
+        <th style="padding: 10px 12px; color: #9ca3af; width: 80px;">訂單編號</th>
+        <th style="padding: 10px 12px; color: #9ca3af; width: 130px;">時間</th>
+        <th style="padding: 10px 12px; color: #9ca3af; width: 90px;">買家姓名</th>
+        <th style="padding: 10px 12px; color: #9ca3af; width: 180px;">團務名稱</th>
+        <th style="padding: 10px 12px; color: #9ca3af; min-width: 300px;">商品明細</th> 
+        <th style="padding: 10px 12px; color: #9ca3af; width: 80px;">總金額</th>
+        <th style="padding: 10px 12px; color: #9ca3af; width: 80px;">訂單狀態</th>
+        <th style="padding: 10px 12px; color: #9ca3af; width: 120px;">買家備註</th>
+        <th style="padding: 10px 12px; color: #fbbf24; width: 120px;">管理員備註</th>
+        <th style="padding: 10px 12px; color: #9ca3af; text-align: center; width: 100px;">操作</th>
+      </tr>
+    </thead>
+    <tbody id="allOrdersTbody">
+      <!-- JS 動態帶入訂單 -->
+    </tbody>
+  </table>
+</div>
+  </div>
+</div>
+  <hr style="border: 0; border-top: 1px dashed #444; margin: 20px 0;">
+
+  <!-- 📤 匯出訂單區塊 -->
+  <div id="tab-export" class="admin-tab-content" style="display: none;">
+  <h4 style="color: #f59e0b; margin-bottom: 10px; text-align: center;">📤 匯出訂單資料</h4>
+  <div style="background: #252525; padding: 15px; border-radius: 8px;">
+    <label style="font-size: 12px; color: #ccc;">選擇要匯出的團務：</label>
+    <select id="exportGroupSelect" style="width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;"></select>
+    
+    <div style="display: flex; gap: 10px;">
+      <button onclick="exportBuyerOrdersCSV()" style="background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">📥 匯出 CSV (Excel)</button>
+<button onclick="exportProductSummaryCSV()" style="background: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">📊 匯出採購總數表</button>
+    </div>
+  </div>
+
+</div>
+   
+<!-- 燈箱圖片檢視 -->
+<div id="lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="放大圖片">
+</div>
   <script>
-   function forceSwitchTab(tabName) {
-  // 1. 強制把所有 admin-tab-content 隱藏
-  document.querySelectorAll('.admin-tab-content').forEach(el => {
-    el.style.setProperty('display', 'none', 'important');
-  });
-
-  // 2. 強制把目標分頁顯示出來
-  let target = document.getElementById('tab-' + tabName);
-  if (target) {
-    target.style.setProperty('display', 'block', 'important');
-    target.style.setProperty('visibility', 'visible', 'important');
-    target.style.setProperty('opacity', '1', 'important');
-  }
-
-  // 3. 切換按鈕的顏色外觀
-  ['groups', 'orders', 'export'].forEach(t => {
-    let btn = document.getElementById('btn-' + t);
-    if (btn) {
-      btn.style.background = (t === tabName) ? '#2563eb' : '#27272a';
-      btn.style.color = (t === tabName) ? '#fff' : '#a1a1aa';
-    }
-  });
-
-  // 4. 觸發對應的資料載入
-  if (tabName === 'orders' && typeof loadAllOrders === 'function') {
-    loadAllOrders();
-  }
-  if (tabName === 'export' && typeof updateExportGroupOptions === 'function') {
-    updateExportGroupOptions();
-  }
-}
-window.forceSwitchTab = forceSwitchTab;
-  
   let currentGroupMode = "create"; // 'create' 或 'edit'
 let allGroupsData = []; // 暫存所有團務原始資料
 
