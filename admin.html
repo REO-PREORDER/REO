@@ -1512,10 +1512,11 @@ function filterOrders() {
   if (!window.allOrdersData) return;
 
   let filtered = window.allOrdersData.filter(o => {
-    let orderIdStr = o.id ? String(o.id).toLowerCase() : ""; 
+   let orderIdStr = o.id ? String(o.id).trim() : ""; 
     
+    // 💡 確保將輸入的關鍵字與訂單編號都轉成乾淨的字串來做「完全吻合」的精準比對
     let matchKeyword = !keyword || 
-      orderIdStr === keyword |
+      orderIdStr === keyword.trim() ||
       (o["買家名稱"] && o["買家名稱"].toLowerCase().includes(keyword)) ||
       (o["手機號碼"] && o["手機號碼"].toLowerCase().includes(keyword)) ||
       (o["Email"] && o["Email"].toLowerCase().includes(keyword));
