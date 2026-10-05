@@ -792,9 +792,11 @@ async function exportBuyerOrdersCSV() {
       return;
     }
 
-    // 比對訂單 (排除已取消，並進行團名乾淨比對)
+    // 比對訂單 (排除「已取消」與「待確認」，保留「已成立」、「已變更」以及其他有效狀態)
     const validOrders = allOrders.filter(ord => {
-      if (ord.status === '已取消') return false;
+      // 💡 明確排除已取消與待確認
+      if (ord.status === '已取消' || ord.status === '待確認') return false;
+      
       if (selectedGroup === "ALL") return true;
 
       // 取得資料庫中的團名 (優先讀取「團務名稱」)
@@ -1039,74 +1041,7 @@ window.addEventListener('hashchange', checkAdminHash);
         document.getElementById('adminLoginMsg').innerText = "密碼錯誤或請檢查驗證邏輯";
       }
     }
-     // 統計數據
-  async function loadOrderStats() {
-    let selectElem = document.getElementById('adminStatsGroup');
-    let groupName = selectElem ? selectElem.value : '';
-    let resultDiv = document.getElementById('orderStatsResult');
-    if (!resultDiv) return;
-
-    if (!groupName) {
-      resultDiv.innerHTML = "請選擇團務以查看統計";
-      return;
-    }
-
-    resultDiv.innerHTML = "正在計算統計資料...";
-
-    try {
-      const { data: orders, error } = await db
-        .from('orders')
-        .select('訂單內容')
-        .eq('團務名稱', groupName)
-        .in('處理狀態', ['已成立', '已變更']);
-
-      if (error) throw error;
-
-      if (!orders || orders.length === 0) {
-        resultDiv.innerHTML = "<p style='color:#aaa;'>該團務目前沒有已成立或已變更的訂單。</p>";
-        return;
-      }
-
-      let itemCounts = {};
-      orders.forEach(order => {
-        let items = order["訂單內容"] || [];
-        items.forEach(item => {
-          let name = item.name;
-          let qty = parseInt(item.qty) || 0;
-          itemCounts[name] = (itemCounts[name] || 0) + qty;
-        });
-      });
-
-      let html = `<table style="width:100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; color: #fff;">
-        <thead>
-          <tr style="background: #18181b; text-align: left; border-bottom: 1px solid #444;">
-            <th style="padding: 6px 8px;">商品名稱</th>
-            <th style="padding: 6px 8px; text-align: right; width: 100px;">已喊總數</th>
-          </tr>
-        </thead>
-        <tbody>`;
-
-      let entries = Object.entries(itemCounts);
-      if (entries.length === 0) {
-        resultDiv.innerHTML = "<p style='color:#aaa;'>無下單商品統計。</p>";
-        return;
-      }
-
-      entries.forEach(([name, count]) => {
-        html += `<tr style="border-bottom: 1px solid #333;">
-          <td style="padding: 6px 8px;">${name}</td>
-          <td style="padding: 6px 8px; text-align: right; font-weight: bold; color: #f59e0b;">${count} 個</td>
-        </tr>`;
-      });
-
-      html += `</tbody></table>`;
-      resultDiv.innerHTML = html;
-
-    } catch (err) {
-      resultDiv.innerHTML = `<p style="color:#f87171;">統計載入失敗：${err.message}</p>`;
-    }
-  }
-
+   
   async function submitBatchProducts() {
   try {
     // 1. 改用正確的下拉選單 id: editGroupSelect
