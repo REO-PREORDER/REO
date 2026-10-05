@@ -1505,21 +1505,27 @@ window.renderOrdersTable = renderOrdersTable;
 
 // 🔍 搜尋與篩選訂單
 function filterOrders() {
-  const keyword = document.getElementById('searchOrderInput').value.toLowerCase();
+  const keyword = document.getElementById('searchOrderInput').value.trim().toLowerCase();
   const selectedGroup = document.getElementById('filterGroupSelect').value;
   const selectedStatus = document.getElementById('filterStatusSelect') ? document.getElementById('filterStatusSelect').value : ""; // 💡 取得選中的狀態
 
   if (!window.allOrdersData) return;
 
   let filtered = window.allOrdersData.filter(o => {
-   let orderIdStr = o.id ? String(o.id).trim() : ""; 
+    let orderIdStr = o.id ? String(o.id).trim() : ""; 
     
-    // 💡 確保將輸入的關鍵字與訂單編號都轉成乾淨的字串來做「完全吻合」的精準比對
-    let matchKeyword = !keyword || 
-      orderIdStr === keyword.trim() ||
+    // 1. 先獨立檢查：如果輸入了關鍵字，是否剛好等於訂單編號
+    let matchId = keyword && (orderIdStr === keyword);
+
+    // 2. 檢查其他文字欄位是否包含關鍵字
+    let matchOther = keyword && (
       (o["買家名稱"] && o["買家名稱"].toLowerCase().includes(keyword)) ||
       (o["手機號碼"] && o["手機號碼"].toLowerCase().includes(keyword)) ||
-      (o["Email"] && o["Email"].toLowerCase().includes(keyword));
+      (o["Email"] && o["Email"].toLowerCase().includes(keyword))
+    );
+
+    // 3. 綜合判定：如果沒有輸入關鍵字，或者「剛好符合編號」或「其他欄位包含關鍵字」
+    let matchKeyword = !keyword || matchId || matchOther;
 
     let matchGroup = !selectedGroup || o["團務名稱"] === selectedGroup;
 
