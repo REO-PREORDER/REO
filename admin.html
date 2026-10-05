@@ -267,7 +267,9 @@ let allGroupsData = []; // 暫存所有團務原始資料
     btnCreate.style.background = "#444";
     btnCreate.style.color = "#ccc";
     selectBox.style.display = "block";
+    if (submitBtn) {
     submitBtn.innerText = "💾 儲存修改內容";
+}
     submitBtn.style.background = "#10b981";
     if (deleteBtn) deleteBtn.style.display = "block";
     if (productEditBox) productEditBox.style.display = "block";
