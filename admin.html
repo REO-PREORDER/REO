@@ -792,18 +792,22 @@ async function exportBuyerOrdersCSV() {
       return;
     }
 
-    // 比對訂單 (排除「已取消」與「待確認」，保留「已成立」、「已變更」以及其他有效狀態)
+    // 🔍 這裡先印出所有撈出來的訂單狀態，讓你打開 F12 主控台看得清清楚楚
+    console.log("資料庫撈出的所有訂單狀態：", allOrders.map(o => ({ id: o.id, 狀態: o.status, 團名: o['團務名稱'] })));
+
+    // 比對訂單 (嚴格排除已取消與待確認，其他全部保留)
     const validOrders = allOrders.filter(ord => {
-      // 💡 明確排除已取消與待確認
-      if (ord.status === '已取消' || ord.status === '待確認') return false;
+      const rawStatus = String(ord.status || '').trim();
+      
+      // 如果狀態包含取消或待確認，直接排除
+      if (rawStatus === '已取消' || rawStatus === '待確認' || rawStatus === 'pending') return false;
       
       if (selectedGroup === "ALL") return true;
 
-      // 取得資料庫中的團名 (優先讀取「團務名稱」)
+      // 取得資料庫中的團名
       const gName = String(ord['團務名稱'] || ord.group_name || ord['團名'] || '').replace(/\r?\n|\r/g, '').trim();
       return gName === selectedGroup;
     });
-
     if (validOrders.length === 0) {
       alert(`在「${selectedGroup}」團務下找不到有效的訂單紀錄！`);
       return;
