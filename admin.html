@@ -235,10 +235,9 @@
 </div>
 
 <!-- 📋 所有訂單紀錄區塊 (寬螢幕與自動換行優化版) -->
-<div id="tab-orders" class="admin-tab-content" style="display: none; min-height: 200px; background: #1e1e1e; margin-top: 10px; padding-top: 10px;">
-  <div style="margin-bottom: 15px; overflow: hidden; padding: 0 5px;">
-    <h4 style="color: #10b981; margin: 0; float: left; line-height: 24px;">📋 所有訂單紀錄</h4>
-    <button onclick="if(typeof loadAllOrders === 'function') loadAllOrders();" style="background: #2563eb; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; float: right;">🔄 重新整理</button>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h4 style="color: #10b981; margin: 0; white-space: nowrap;">📋 所有訂單紀錄</h4>
+    <button onclick="if(typeof loadAllOrders === 'function') loadAllOrders();" style="background: #2563eb; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; width: 95px; flex-shrink: 0;">🔄 重新整理</button>
   </div>
   <div style="background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
     
