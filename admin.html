@@ -207,7 +207,7 @@
       </div>
       <div style="flex: 1;">
         <label style="font-size: 12px; color: #ccc;">付款方式</label>
-        <input type="text" id="newGroupPayment" placeholder="例如：賣貨便貨到付款(不含運費38)" value="賣貨便貨到付款(不含運費38)" style="margin-top: 4px;">
+        <input type="text" id="newGroupPayment" placeholder="例如：賣貨便貨到付款(不含運費)" value="賣貨便貨到付款(不含運費)" style="margin-top: 4px;">
       </div>
     </div>
 
@@ -381,7 +381,7 @@ function onSelectGroupToEdit() {
     document.getElementById('newGroupName').value = group["團務名稱"] || "";
     document.getElementById('newGroupImg').value = group["圖片"] || "";
     document.getElementById('newGroupDeadline').value = group["截單時間"] || "";
-    document.getElementById('newGroupPayment').value = group["付款方式"] || "賣貨便貨到付款(不含運費38)";
+    document.getElementById('newGroupPayment').value = group["付款方式"] || "賣貨便貨到付款(不含運費)";
     document.getElementById('newGroupRemark').value = group["團務備註"] || "";
   }
   const editBox = document.getElementById('groupProductEditBox');
@@ -399,7 +399,7 @@ function clearGroupForm() {
   document.getElementById('newGroupName').value = "";
   document.getElementById('newGroupImg').value = "";
   document.getElementById('newGroupDeadline').value = "";
-  document.getElementById('newGroupPayment').value = "賣貨便貨到付款(不含運費38)";
+  document.getElementById('newGroupPayment').value = "賣貨便貨到付款(不含運費)";
   document.getElementById('newGroupRemark').value = "";
 }
 
@@ -408,7 +408,7 @@ async function submitGroupForm() {
   let gName = document.getElementById('newGroupName')?.value.trim();
   let gImg = document.getElementById('newGroupImg')?.value.trim();
   let gDeadline = document.getElementById('newGroupDeadline')?.value.trim() || "未定";
-  let gPayment = document.getElementById('newGroupPayment')?.value.trim() || "賣貨便貨到付款(不含運費38)";
+  let gPayment = document.getElementById('newGroupPayment')?.value.trim() || "賣貨便貨到付款(不含運費)";
   let gRemark = document.getElementById('newGroupRemark')?.value.trim() || "";
   let msgElem = document.getElementById('createGroupMsg');
   let editingId = document.getElementById('editingGroupId')?.value;
