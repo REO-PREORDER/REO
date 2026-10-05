@@ -201,7 +201,42 @@
 
   </div>
   <script>
+   function forceSwitchTab(tabName) {
+  // 1. 強制把所有 admin-tab-content 隱藏
+  document.querySelectorAll('.admin-tab-content').forEach(el => {
+    el.style.setProperty('display', 'none', 'important');
+  });
+
+  // 2. 強制把目標分頁顯示出來
+  let target = document.getElementById('tab-' + tabName);
+  if (target) {
+    target.style.setProperty('display', 'block', 'important');
+    target.style.setProperty('visibility', 'visible', 'important');
+    target.style.setProperty('opacity', '1', 'important');
+  }
+
+  // 3. 切換按鈕的顏色外觀
+  ['groups', 'orders', 'export'].forEach(t => {
+    let btn = document.getElementById('btn-' + t);
+    if (btn) {
+      btn.style.background = (t === tabName) ? '#2563eb' : '#27272a';
+      btn.style.color = (t === tabName) ? '#fff' : '#a1a1aa';
+    }
+  });
+
+  // 4. 觸發對應的資料載入
+  if (tabName === 'orders' && typeof loadAllOrders === 'function') {
+    loadAllOrders();
+  }
+  if (tabName === 'export' && typeof updateExportGroupOptions === 'function') {
+    updateExportGroupOptions();
+  }
+}
+window.forceSwitchTab = forceSwitchTab;
   
+  let currentGroupMode = "create"; // 'create' 或 'edit'
+let allGroupsData = []; // 暫存所有團務原始資料
+
    function switchAdminGroupTab(mode) {
   currentGroupMode = mode;
   let btnCreate = document.getElementById('tabCreateGroupBtn');
