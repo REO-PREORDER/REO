@@ -243,20 +243,25 @@
 
   <div style="background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
     
-    <!-- 🔍 搜尋與團務篩選列 -->
-    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-      <input type="text" id="searchOrderInput" placeholder="🔍 搜尋買家姓名 / 訂單編號" oninput="filterOrders()" style="flex: 2; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 13px;">
-      
-      <!-- 📌 新增：選擇訂單狀態篩選下拉選單 -->
-      <select id="filterStatusSelect" onchange="filterOrders()" style="flex: 1; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 13px;">
-        <option value="">📋 所有狀態（不限）</option>
-        <option value="待確認">待確認</option>
-        <option value="已成立">已成立</option>
-        <option value="已變更">已變更</option>
-        <option value="已取消">已取消</option>
-      </select>
-    </div>
+   <!-- 🔍 搜尋與篩選列（必須全部包在同一個 flex 容器內才會並排顯示） -->
+<div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap;">
+  <!-- 1. 搜尋框 -->
+  <input type="text" id="searchOrderInput" placeholder="🔍 搜尋買家姓名 / 訂單編號" oninput="filterOrders()" style="flex: 2; min-width: 180px; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 13px;">
+  
+  <!-- 2. 團務下拉選單 -->
+  <select id="filterGroupSelect" onchange="filterOrders()" style="flex: 1.5; min-width: 150px; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 13px;">
+    <option value="">📂 所有團務（不限）</option>
+  </select>
 
+  <!-- 3. 狀態下拉選單 -->
+  <select id="filterStatusSelect" onchange="filterOrders()" style="flex: 1; min-width: 120px; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 13px;">
+    <option value="">📋 所有狀態</option>
+    <option value="待確認">待確認</option>
+    <option value="已成立">已成立</option>
+    <option value="已變更">已變更</option>
+    <option value="已取消">已取消</option>
+  </select>
+</div>
     <!-- 📋 訂單列表表格容器 (取消高度限制，不需要滑動) -->
 <div id="allOrdersTableContainer" style="width: 100%; background: #1a1a1a; border-radius: 6px; border: 1px solid #333; margin-bottom: 20px;">    
   <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb;">
