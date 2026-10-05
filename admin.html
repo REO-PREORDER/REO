@@ -247,9 +247,13 @@
     <div style="display: flex; gap: 10px; margin-bottom: 15px;">
       <input type="text" id="searchOrderInput" placeholder="🔍 搜尋買家姓名 / 訂單編號" oninput="filterOrders()" style="flex: 2; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 13px;">
       
-      <!-- 📌 選擇團務篩選下拉選單 -->
-      <select id="filterGroupSelect" onchange="filterOrders()" style="flex: 1.5; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 13px;">
-        <option value="">📂 所有團務（不限）</option>
+      <!-- 📌 新增：選擇訂單狀態篩選下拉選單 -->
+      <select id="filterStatusSelect" onchange="filterOrders()" style="flex: 1; padding: 8px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 13px;">
+        <option value="">📋 所有狀態（不限）</option>
+        <option value="待確認">待確認</option>
+        <option value="已成立">已成立</option>
+        <option value="已變更">已變更</option>
+        <option value="已取消">已取消</option>
       </select>
     </div>
 
@@ -1498,27 +1502,32 @@ window.renderOrdersTable = renderOrdersTable;
 function filterOrders() {
   const keyword = document.getElementById('searchOrderInput').value.toLowerCase();
   const selectedGroup = document.getElementById('filterGroupSelect').value;
+  const selectedStatus = document.getElementById('filterStatusSelect') ? document.getElementById('filterStatusSelect').value : ""; // 💡 取得選中的狀態
 
   if (!window.allOrdersData) return;
 
   let filtered = window.allOrdersData.filter(o => {
-    let orderIdStr = o.id ? String(o.id).toLowerCase() : ""; // 取得訂單編號並轉成字串
+    let orderIdStr = o.id ? String(o.id).toLowerCase() : ""; 
     
     let matchKeyword = !keyword || 
-      orderIdStr.includes(keyword) || // 👈 支援用訂單編號搜尋（不分大小寫，也可以輸入部分編號）
+      orderIdStr.includes(keyword) || 
       (o["買家名稱"] && o["買家名稱"].toLowerCase().includes(keyword)) ||
       (o["手機號碼"] && o["手機號碼"].toLowerCase().includes(keyword)) ||
       (o["Email"] && o["Email"].toLowerCase().includes(keyword));
 
     let matchGroup = !selectedGroup || o["團務名稱"] === selectedGroup;
 
-    return matchKeyword && matchGroup;
+    // 💡 檢查訂單狀態是否符合（若沒選代表全部，若有選則必須完全相符，沒填狀態的預設視為「待確認」）
+    const currentStatus = String(o["處理狀態"] || '待確認').trim();
+    let matchStatus = !selectedStatus || currentStatus === selectedStatus;
+
+    return matchKeyword && matchGroup && matchStatus;
   });
 
   renderOrdersTable(filtered);
 }
 window.filterOrders = filterOrders;
-
+    
 // 📋 更新篩選團務的下拉選單
 function updateFilterGroupOptions(orders) {
   const select = document.getElementById('filterGroupSelect');
