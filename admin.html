@@ -1047,7 +1047,7 @@ window.addEventListener('hashchange', checkAdminHash);
     function checkAdminPassword() {
       const pass = document.getElementById('adminPasswordInput').value;
       // 假設您原本的驗證機制，這裡可以直接串接或比對
-      if (pass === "841250" || typeof verifyAdminPass === "function" && verifyAdminPass(pass)) {
+      if (pass === "qingyuan" || typeof verifyAdminPass === "function" && verifyAdminPass(pass)) {
         document.getElementById('adminLoginBox').style.display = 'none';
         document.getElementById('adminDashboard').style.display = 'block';
         if (typeof loadAllOrders === 'function') loadAllOrders();
