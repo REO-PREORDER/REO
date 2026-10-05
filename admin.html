@@ -797,7 +797,7 @@ async function exportBuyerOrdersCSV() {
 
     // 比對訂單 (嚴格排除已取消與待確認，其他全部保留)
     const validOrders = allOrders.filter(ord => {
-      const rawStatus = String(ord.status || '').trim();
+   const rawStatus = String(ord['處理狀態'] || '').trim();
       
       // 如果狀態包含取消或待確認，直接排除
       if (rawStatus === '已取消' || rawStatus === '待確認' || rawStatus === 'pending') return false;
@@ -822,7 +822,9 @@ async function exportBuyerOrdersCSV() {
       const phone = `"${ord['手機號碼'] || ord.phone || ord['電話'] || ''}"`;
       const email = `"${ord['Email'] || ord.email || ''}"`;
       const total = ord['總金額'] || ord.total_price || 0;
-      const status = `"${ord.status || '已成立'}"`;
+     const dbStatus = String(ord['處理狀態'] || '').trim();
+      const statusText = dbStatus === '' ? '待確認' : dbStatus;
+      const status = `"${statusText}"`;
 
       // 商品內容解析
       let itemsList = ord['訂單內容'] || ord.items || ord['商品列表'] || [];
