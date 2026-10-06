@@ -1006,7 +1006,7 @@ async function exportProductSummaryCSV() {
       if (adminDash) {
         adminDash.style.display = 'block';
         // 載入後台相關資料
-        if (typeof  === 'function') ();
+        if (typeof  === 'function') loadAllOrders(); 
         if (typeof loadAllOrders === 'function') loadAllOrders(); 
         if (typeof loadOrderStats === 'function') loadOrderStats();
         if (typeof loadExportGroupOptions === 'function') loadExportGroupOptions();
