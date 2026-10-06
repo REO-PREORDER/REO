@@ -1918,12 +1918,11 @@ function renderCustomerOrders() {
         groups.forEach(g => {
           let groupImgUrl = g["圖片"] || "";
           
-          let imgHtml = groupImgUrl 
+         let imgHtml = groupImgUrl 
             ? `<div style="width: 100%; background: #121212; border-radius: 4px; overflow: hidden; margin-bottom: 6px; display: flex; align-items: center; justify-content: center;">
-                 <img src="${formatImageUrl(groupImgUrl)}" alt="${g["團務名稱"]}" style="width: 100%; height: auto; display: block; object-fit: contain; cursor: zoom-in;" onclick="event.stopPropagation(); openLightbox('${formatImageUrl(groupImgUrl)}')" onerror="this.parentElement.style.display='none';">
+                 <img src="${formatImageUrl(groupImgUrl)}" alt="${g["團務名稱"]}" style="width: 100%; height: auto; display: block; object-fit: contain; cursor: pointer;" onclick="event.stopPropagation(); openLightbox('${formatImageUrl(groupImgUrl)}')" onerror="this.parentElement.style.display='none';">
                </div>`
             : "";
-
           // 點擊後直接執行合併後的選取與載入邏輯
           html += `<div onclick="selectGroupAndLoadSurplus('${g["團務名稱"]}')" style="background:#242424; border:1px solid #444; border-radius:8px; padding:8px; cursor:pointer; text-align:center; transition:0.2s;">
             ${imgHtml}
