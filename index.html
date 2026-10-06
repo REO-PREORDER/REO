@@ -2093,8 +2093,12 @@ try {
           const { data: groupData } = await db.from('groups').select('付款方式').eq('團務名稱', activeSurplusGroup).single();
           if (groupData && groupData["付款方式"]) paymentMethod = groupData["付款方式"];
 
-          let productDetailsText = selectedItems.map(i => `${i.name} x ${i.qty} ($${i.price} / 小計: ${i.price * i.qty})`).join("\n");
-
+          let productDetailsText = selectedItems.map(i => {
+            let matchedProd = currentSurplusProducts.find(p => p.id === i.id);
+            let cat = matchedProd && matchedProd["商品分類"] ? `[${matchedProd["商品分類"]}] ` : "";
+            return `${cat}${i.name} x ${i.qty} ($${i.price} / 小計: ${i.price * i.qty})`;
+          }).join("\n");
+          
           await sendPreOrderEmail({
             customerEmail: email,
             lineName: name,
