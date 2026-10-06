@@ -997,7 +997,7 @@ async function exportProductSummaryCSV() {
     }
     return url;
   }
-    // 🔐 管理員後台控制（支援 sessionStorage 保持登入狀態）
+// 🔐 管理員後台控制（支援 sessionStorage 保持登入狀態）
   function checkAdminHash() {
     const adminDash = document.getElementById('adminDashboard');
     
@@ -1025,7 +1025,6 @@ async function exportProductSummaryCSV() {
           adminDash.style.display = 'block';
           
           // 載入後台相關資料
-          if (typeof  === 'function') ();
           if (typeof loadAllOrders === 'function') loadAllOrders(); 
           if (typeof loadOrderStats === 'function') loadOrderStats();
           if (typeof loadExportGroupOptions === 'function') loadExportGroupOptions();
@@ -1041,7 +1040,7 @@ async function exportProductSummaryCSV() {
 // 監聽網址 Hash 變化與頁面載入
 window.addEventListener('DOMContentLoaded', checkAdminHash);
 window.addEventListener('hashchange', checkAdminHash);
-
+    
     // 簡單的密碼驗證 (與您原本的相呼應)
     function checkAdminPassword() {
       const pass = document.getElementById('adminPasswordInput').value;
