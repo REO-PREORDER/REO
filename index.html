@@ -1982,15 +1982,23 @@ function renderCustomerOrders() {
 
         currentSurplusProducts.forEach((p, index) => {
           let imgUrl = p["圖片"] || p["圖片網址"] || p["image"] || p["image_url"] || "";
+          let categoryName = p["分類"] || p["分類名稱"] || p["category"] || ""; // 取得分類名稱
 
+          // 🖼️ 商品圖片加上點擊放大功能
           let imgHtml = imgUrl 
-            ? `<img src="${formatImageUrl(imgUrl)}" alt="${p["商品名稱"]}" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\'width:45px;height:45px;background:#333;border-radius:6px;margin-right:10px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa;flex-shrink:0;\'>圖無效</div>';" style="width: 45px; height: 45px; object-fit: contain; border-radius: 6px; margin-right: 10px; flex-shrink: 0;">`
+            ? `<div style="width: 45px; height: 45px; background: #333; border-radius: 6px; margin-right: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer;" onclick="openLightbox('${formatImageUrl(imgUrl)}')">
+                 <img src="${formatImageUrl(imgUrl)}" alt="${p["商品名稱"]}" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\'font-size:9px;color:#aaa;\'>圖無效</div>';" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px;">
+               </div>`
             : `<div style="width: 45px; height: 45px; background: #333; border-radius: 6px; margin-right: 10px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #aaa; flex-shrink: 0;">無圖片</div>`;
+
+          // 🏷️ 如果有分類名稱就顯示出來
+          let categoryHtml = categoryName ? `<div style="color: #60a5fa; font-size: 11px; margin-bottom: 2px;">[${categoryName}]</div>` : "";
 
           html += `<div style="background:#242424; padding:8px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
             <div style="display: flex; align-items: center;">
               ${imgHtml}
               <div>
+                ${categoryHtml}
                 <div style="font-weight:bold; font-size:13px; color:#fff;">${p["商品名稱"]}</div>
                 <div style="color:#10b981; font-size:12px;">$${p["單價"]} | <span style="color:#f59e0b;">餘量：${p["餘量"]} 個</span></div>
               </div>
@@ -2011,7 +2019,7 @@ function renderCustomerOrders() {
     } catch (err) { 
       productContainer.innerHTML = "<p style='color:#f87171; margin-top:10px;'>載入餘量商品失敗。</p>"; 
     }
-  }
+    
  // 提交餘量認領
   async function submitSurplusClaim() {
     let name = document.getElementById('surplus_name')?.value.trim();
