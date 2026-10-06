@@ -1865,17 +1865,27 @@ function renderCustomerOrders() {
     }
   }
 
-  // 載入餘量商品
+ // 載入餘量商品
   async function loadSurplusProducts(groupName) {
     activeSurplusGroup = groupName;
     let container = document.getElementById('surplusProductList');
     container.innerHTML = "載入餘量商品中...";
     try {
+      // 1. 取得該團務的圖片資料（欄位名稱為「圖片」）
+      const { data: groupData } = await db.from('groups').select('圖片, 團務名稱').eq('團務名稱', groupName).single();
+      let groupImgUrl = groupData ? (groupData["圖片"] || "") : "";
+
       const { data: products, error } = await db.from('products').select('*').eq('團務名稱', groupName).gt('餘量', 0);
       if (error) throw error;
       currentSurplusProducts = products || [];
 
-      let html = `<h4 style="color:#fff; margin: 10px 0;">${groupName} 餘量</h4>`;
+      // 2. 組合團務圖片的 HTML
+      let groupImgHtml = groupImgUrl 
+        ? `<div style="text-align: center; margin-bottom: 12px;"><img src="${formatImageUrl(groupImgUrl)}" alt="${groupName}" style="max-width: 100%; max-height: 220px; object-fit: contain; border-radius: 8px; border: 1px solid #333;" onerror="this.style.display='none';"></div>`
+        : "";
+
+      let html = `${groupImgHtml}<h4 style="color:#fff; margin: 10px 0; text-align: center;">${groupName} 餘量</h4>`;
+
       if (currentSurplusProducts.length > 0) {
         // 💡 讀取瀏覽器中記住的買家資料
         let savedName = localStorage.getItem('reo_buyer_lineName') || '';
@@ -1920,7 +1930,6 @@ function renderCustomerOrders() {
       container.innerHTML = "<p style='color:#f87171;'>載入餘量商品失敗。</p>"; 
     }
   }
-
  // 提交餘量認領
   async function submitSurplusClaim() {
     let name = document.getElementById('surplus_name')?.value.trim();
