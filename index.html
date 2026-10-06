@@ -1822,7 +1822,7 @@ function renderCustomerOrders() {
 
   searchResult.innerHTML = html;
 }
-  // 載入餘量團務
+ // 載入餘量團務
   async function loadSurplusGroups() {
     let container = document.getElementById('surplusGroupList');
     container.innerHTML = "載入餘量團務中...";
@@ -1851,10 +1851,25 @@ function renderCustomerOrders() {
       if (groupErr) throw groupErr;
 
       if (groups && groups.length > 0) {
-        let html = "<p style='color:#aaa; font-size:13px; margin-bottom:8px;'>請選擇要查看餘量的團務：</p>";
+        let html = "<p style='color:#aaa; font-size:13px; margin-bottom:12px;'>請選擇要查看餘量的團務：</p>";
+        
         groups.forEach(g => {
-          html += `<button onclick="loadSurplusProducts('${g["團務名稱"]}')" style="display:block; width:100%; margin-bottom:6px; padding:10px; background:#242424; color:white; border:1px solid #444; border-radius:6px; text-align:left; cursor:pointer;">${g["團務名稱"]}</button>`;
+          let groupImgUrl = g["圖片"] || "";
+          
+          // 🖼️ 組合圖片預覽（如果有圖片的話）
+          let imgHtml = groupImgUrl 
+            ? `<div style="width: 100%; height: 140px; background: #121212; border-radius: 6px; overflow: hidden; margin-bottom: 8px;">
+                 <img src="${formatImageUrl(groupImgUrl)}" alt="${g["團務名稱"]}" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.parentElement.style.display='none';">
+               </div>`
+            : "";
+
+          // 🎴 每一團包裝成一個點擊卡片
+          html += `<div onclick="loadSurplusProducts('${g["團務名稱"]}')" style="background:#242424; border:1px solid #444; border-radius:8px; padding:12px; margin-bottom:10px; cursor:pointer; transition:0.2s;">
+            ${imgHtml}
+            <div style="font-weight: bold; color: #fff; font-size: 14px; text-align: center;">${g["團務名稱"]}</div>
+          </div>`;
         });
+
         container.innerHTML = html;
         document.getElementById('surplusProductList').innerHTML = "";
       } else {
