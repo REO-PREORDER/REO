@@ -914,9 +914,9 @@ window.deleteCurrentGroup = deleteCurrentGroup;
 async function exportProductSummaryCSV() {
   const selectEl = document.getElementById('exportGroupSelect');
   const selectedGroup = selectEl ? selectEl.value.replace(/\r?\n|\r/g, '').trim() : "ALL";
-  
-  // 🔍 點選匯出時，先在 F12 Console 印出你目前選中的是哪一個團
-  console.log("目前選中的匯出團務:", JSON.stringify(selectedGroup));
+
+  // 🔍 點下去時印出你選了什麼
+  console.log("【除錯】目前下拉選單選中的團務:", JSON.stringify(selectedGroup));
 
   try {
     const { data: allOrders, error } = await db.from('orders').select('*');
@@ -932,13 +932,14 @@ async function exportProductSummaryCSV() {
       const rawStatus = String(ord.status || ord['處理狀態'] || '').trim();
       if (rawStatus === '已取消' || rawStatus === '待確認' || rawStatus === '') return;
 
+      // 抓出訂單上的團務名稱
       const groupName = String(ord['團務名稱'] || ord.group_name || ord['團名'] || '未分類團務').replace(/\r?\n|\r/g, '').trim();
       
-      // 🔍 檢查每一筆訂單抓到的團名是什麼
-      // console.log("訂單團名:", JSON.stringify(groupName), "比對結果:", groupName === selectedGroup);
+      // 🔍 每一筆訂單比對時印出來看
+      console.log(`【除錯】訂單ID: ${ord.id} | 讀到的團名: ${JSON.stringify(groupName)} | 是否符合選擇: ${groupName === selectedGroup}`);
 
       if (selectedGroup !== "ALL" && groupName !== selectedGroup) return;
-      
+
       validCount++;
 
       let itemsList = ord['訂單內容'] || ord.items || ord['商品列表'] || [];
@@ -952,7 +953,6 @@ async function exportProductSummaryCSV() {
           const pPrice = Number(item.price || item['單價'] || 0);
           const pQty = Number(item.qty || item['數量'] || 1);
 
-          // Key 改為僅以 團名 + 商品名稱 組合
           const key = `${groupName}__${pName}`;
 
           if (!summaryMap[key]) {
@@ -973,7 +973,6 @@ async function exportProductSummaryCSV() {
       return a.name.localeCompare(b.name);
     });
 
-    // 表頭移除「商品分類」
     let csv = "團務名稱,商品名稱,單價,總預購數量,預估總金額\n";
 
     sortedSummary.forEach(item => {
@@ -981,7 +980,6 @@ async function exportProductSummaryCSV() {
       const pName = `"${item.name.replace(/"/g, '""')}"`;
       const totalPrice = item.price * item.totalQty;
 
-      // 資料列移除商品分類
       csv += `${gName},${pName},${item.price},${item.totalQty},${totalPrice}\n`;
     });
 
