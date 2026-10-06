@@ -778,7 +778,10 @@ async function loadExportGroupOptions() {
 
     let html = `<option value="ALL">-- 匯出全部團務資料 --</option>`;
     (groups || []).forEach(g => {
-      html += `<option value="${g["團務名稱"]}">${g["團務名稱"]}</option>`;
+      const gName = g["團務名稱"] || '';
+      // 確保團名中的雙引號不會破壞 HTML 結構
+      const safeName = gName.replace(/"/g, '&quot;');
+      html += `<option value="${safeName}">${gName}</option>`;
     });
     selectElem.innerHTML = html;
   } catch (err) {
