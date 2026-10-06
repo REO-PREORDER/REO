@@ -926,13 +926,11 @@ async function exportProductSummaryCSV() {
       // 取得訂單狀態（兼容 status 或 處理狀態）
       const rawStatus = String(ord.status || ord['處理狀態'] || '').trim();
       
-      // 只要不是已取消，其他狀態（包含待確認、空白、已成立等）全部都納入計算
-      if (rawStatus === '已取消') return;
+      // ❌ 排除「已取消」以及「待確認」（包含空白未處理的狀態）
+      if (rawStatus === '已取消' || rawStatus === '待確認' || rawStatus === '') return;
 
       const groupName = String(ord['團務名稱'] || ord.group_name || ord['團名'] || '未分類團務').replace(/\r?\n|\r/g, '').trim();
       
-      if (selectedGroup !== "ALL" && groupName !== selectedGroup) return;
-
       validCount++;
 
       let itemsList = ord['訂單內容'] || ord.items || ord['商品列表'] || [];
