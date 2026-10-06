@@ -2048,6 +2048,7 @@ try {
         selectedItems.push({
           id: p.id,
           name: p["商品名稱"],
+          category: p["商品分類"] || "", // 👈 記錄分類名稱
           price: price,
           qty: qty
         });
