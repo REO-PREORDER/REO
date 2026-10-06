@@ -2430,7 +2430,10 @@ window.submitBatchProducts = submitBatchProducts;
     if (typeof sendPreOrderEmail === 'function' && order["Email"]) {
       try {
         let items = order["訂單內容"] || [];
-        let productDetailsText = items.map(i => `${i.name} x ${i.qty || 1} ($${i.price || 0})`).join("\n");
+        let productDetailsText = selectedItems.map(i => {
+            let cat = i.category ? `[${i.category}] ` : "";
+            return `${cat}${i.name} x ${i.qty} ($${i.price} / 小計: ${i.price * i.qty})`;
+          }).join("\n");
 
         // 修正：從資料庫的 order 物件中抓取付款方式，若無則預設為一般匯款
        // 修正：從資料庫的 groups 表格查詢該團的付款方式
