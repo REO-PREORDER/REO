@@ -1982,7 +1982,7 @@ try {
 
         currentSurplusProducts.forEach((p, index) => {
           let imgUrl = p["圖片"] || p["圖片網址"] || p["image"] || p["image_url"] || "";
-          let categoryName = p["分類"] || p["分類名稱"] || p["category"] || ""; // 取得分類名稱
+          let categoryName = p["商品分類"] || p["分類名稱"] || p["category"] || ""; // 取得分類名稱
 
           // 🖼️ 商品圖片加上點擊放大功能
           let imgHtml = imgUrl 
