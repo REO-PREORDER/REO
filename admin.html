@@ -911,6 +911,9 @@ window.deleteCurrentGroup = deleteCurrentGroup;
 async function exportProductSummaryCSV() {
   const selectEl = document.getElementById('exportGroupSelect');
   const selectedGroup = selectEl ? selectEl.value.replace(/\r?\n|\r/g, '').trim() : "ALL";
+  
+  // 🔍 點選匯出時，先在 F12 Console 印出你目前選中的是哪一個團
+  console.log("目前選中的匯出團務:", JSON.stringify(selectedGroup));
 
   try {
     const { data: allOrders, error } = await db.from('orders').select('*');
@@ -923,13 +926,15 @@ async function exportProductSummaryCSV() {
     let validCount = 0;
 
     allOrders.forEach(ord => {
-      // 取得訂單狀態（兼容 status 或 處理狀態）
       const rawStatus = String(ord.status || ord['處理狀態'] || '').trim();
-      
-      // ❌ 排除「已取消」以及「待確認」（包含空白未處理的狀態）
       if (rawStatus === '已取消' || rawStatus === '待確認' || rawStatus === '') return;
 
       const groupName = String(ord['團務名稱'] || ord.group_name || ord['團名'] || '未分類團務').replace(/\r?\n|\r/g, '').trim();
+      
+      // 🔍 檢查每一筆訂單抓到的團名是什麼
+      // console.log("訂單團名:", JSON.stringify(groupName), "比對結果:", groupName === selectedGroup);
+
+      if (selectedGroup !== "ALL" && groupName !== selectedGroup) return;
       
       validCount++;
 
