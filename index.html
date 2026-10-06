@@ -1978,10 +1978,11 @@ function renderCustomerOrders() {
         currentSurplusProducts.forEach((p, index) => {
           let imgUrl = p["圖片"] || p["圖片網址"] || p["image"] || p["image_url"] || "";
 
-          let imgHtml = imgUrl 
-            ? `<img src="${formatImageUrl(imgUrl)}" alt="${p["商品名稱"]}" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\'width:45px;height:45px;background:#333;border-radius:6px;margin-right:10px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa;flex-shrink:0;\'>圖無效</div>';" style="width: 45px; height: 45px; object-fit: contain; border-radius: 6px; margin-right: 10px; flex-shrink: 0;">`
-            : `<div style="width: 45px; height: 45px; background: #333; border-radius: 6px; margin-right: 10px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #aaa; flex-shrink: 0;">無圖片</div>`;
-
+          let imgHtml = groupImgUrl 
+            ? `<div style="width: 100%; background: #121212; border-radius: 4px; overflow: hidden; margin-bottom: 6px; display: flex; align-items: center; justify-content: center;">
+                 <img src="${formatImageUrl(groupImgUrl)}" alt="${g["團務名稱"]}" style="width: 100%; height: auto; display: block; object-fit: contain;" onerror="this.parentElement.style.display='none';">
+               </div>`
+            : "";
           html += `<div style="background:#242424; padding:8px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
             <div style="display: flex; align-items: center;">
               ${imgHtml}
