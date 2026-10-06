@@ -923,7 +923,11 @@ async function exportProductSummaryCSV() {
     let validCount = 0;
 
     allOrders.forEach(ord => {
-      if (ord.status === '已取消') return;
+      // 取得訂單狀態（兼容 status 或 處理狀態）
+      const rawStatus = String(ord.status || ord['處理狀態'] || '').trim();
+      
+      // 只要不是已取消，其他狀態（包含待確認、空白、已成立等）全部都納入計算
+      if (rawStatus === '已取消') return;
 
       const groupName = String(ord['團務名稱'] || ord.group_name || ord['團名'] || '未分類團務').replace(/\r?\n|\r/g, '').trim();
       
