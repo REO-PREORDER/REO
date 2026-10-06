@@ -1173,7 +1173,7 @@ window.addEventListener('hashchange', checkAdminHash);
 }
 
 window.submitBatchProducts = submitBatchProducts;
- async function updateOrderStatus(orderId, newStatus,buyerEmail) {
+ async function updateOrderStatus(orderId, newStatus, buyerEmail) {
   try {
     // 1. 如果是改為「已取消」，先跳出輸入框讓管理員填寫原因
     let changeReason = "無";
@@ -1204,28 +1204,30 @@ window.submitBatchProducts = submitBatchProducts;
       let items = order["訂單內容"] || [];
       let cleanGroupName = groupName.replace(" (餘量認領)", "").replace(" (餘量認領)", "").trim();
       
-      console.log("清理後的團務名稱：", cleanGroupName); // 👈 檢查這裡印出來的是什麼
+      console.log("清理後的團務名稱：", cleanGroupName);
 
       for (let item of items) {
-        console.log("正在找尋商品：", item.name); // 👈 檢查尋找的商品名稱是什麼
+        let itemName = item.name || item["商品名稱"];
+        let itemQty = parseInt(item.qty || item["數量"]) || 0;
+        
+        console.log("正在找尋商品：", itemName);
         
         const { data: prodData, error: findErr } = await db
           .from('products')
           .select('*')
           .eq('團務名稱', cleanGroupName)
-          .eq('商品名稱', item.name)
+          .eq('商品名稱', itemName)
           .single();
 
         if (findErr) {
-          console.error("找不到對應商品錯誤：", findErr); // 👈 如果這裡報錯，就能知道為什麼找不到
+          console.error("找不到對應商品錯誤：", findErr);
         }
 
         if (prodData) {
           let currentSurplus = parseInt(prodData["餘量"]) || 0;
-          let restoreQty = parseInt(item.qty) || 0;
-          console.log(`原庫存: ${currentSurplus}, 欲加回: ${restoreQty}`); // 👈 檢查有沒有執行到這步
+          console.log(`原庫存: ${currentSurplus}, 欲加回: ${itemQty}`);
           
-          await db.from('products').update({ "餘量": currentSurplus + restoreQty }).eq('id', prodData.id);
+          await db.from('products').update({ "餘量": currentSurplus + itemQty }).eq('id', prodData.id);
         } else {
           console.warn("在資料庫中找不到對應的商品記錄！");
         }
@@ -1235,7 +1237,7 @@ window.submitBatchProducts = submitBatchProducts;
     // 4. 更新資料庫中的處理狀態與備註欄位
     let updatePayload = { "處理狀態": newStatus };
     if (newStatus === "已取消") {
-      updatePayload["備註"] = changeReason; // 同步寫入備註欄位，供買家查詢紀錄看到
+      updatePayload["備註"] = changeReason;
     }
 
     const { error: updateErr } = await db
@@ -1245,19 +1247,18 @@ window.submitBatchProducts = submitBatchProducts;
 
     if (updateErr) throw updateErr;
 
-   // 5. 發送 Email 通知信（帶入取消原因與正確的付款方式）
+    // 5. 發送 Email 通知信
     if (typeof sendPreOrderEmail === 'function' && order["Email"]) {
       try {
         let items = order["訂單內容"] || [];
-        let productDetailsText = items.map(i => `${i.name} x ${i.qty || 1} ($${i.price || 0})`).join("\n");
+        let productDetailsText = items.map(i => {
+          let cat = i.category ? `[${i.category}] ` : "";
+          return `${cat}${i.name || i["商品名稱"]} x ${i.qty || i["數量"] || 1} ($${i.price || i["單價"] || 0})`;
+        }).join("\n");
 
-        // 修正：從資料庫的 order 物件中抓取付款方式，若無則預設為一般匯款
-       // 修正：從資料庫的 groups 表格查詢該團的付款方式
         let currentPaymentMethod = "一般匯款";
         if (groupName) {
-          // 清理團務名稱（如果包含「 (餘量認領)」先移除以對應 groups 表格）
           let cleanGroupName = groupName.replace(" (餘量認領)", "").trim();
-          
           const { data: groupData, error: groupErr } = await db
             .from('groups')
             .select('付款方式')
@@ -1275,10 +1276,10 @@ window.submitBatchProducts = submitBatchProducts;
           groupName: groupName,
           productDetails: productDetailsText,
           totalPrice: order["總金額"],
-          paymentMethod: currentPaymentMethod, // 帶入正確從 groups 查到的付款方式
+          paymentMethod: currentPaymentMethod,
           status: newStatus,
           changeReason: changeReason,
-           orderId: orderId
+          orderId: orderId
         });
       } catch (mailErr) {
         console.error("狀態變更寄信失敗：", mailErr);
@@ -1295,7 +1296,7 @@ window.submitBatchProducts = submitBatchProducts;
   }
 }
 window.updateOrderStatus = updateOrderStatus;
-
+    
   async function loadPendingOrders() {
     let container = document.getElementById('pendingOrdersList');
     if (!container) return;
