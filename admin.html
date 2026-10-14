@@ -1979,7 +1979,7 @@ async function loadSplitBoardData() {
         boxes.push(newBox);
       }
     });
-
+let maxBoxCount = Math.max(boxes.length, 4);
     // 3. 組合表格 HTML
     let tableHtml = `
       <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb; white-space: nowrap;">
