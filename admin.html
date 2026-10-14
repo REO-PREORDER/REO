@@ -1934,57 +1934,51 @@ async function loadSplitBoardData() {
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
     // 2. 核心邏輯：將有效訂單依序放入「箱子 (Boxes)」中
-    // 每個 box 紀錄：{ [roleName]: [ {buyer, time, orderId}, ... ] }
-let boxes = [];
-    
-    // 💡 關鍵優化：先將所有有效訂單依照「品項數量多寡」由多到少排序（買越多的排越前面優先進駐箱子）
-    validOrders.sort((a, b) => b.items.length - a.items.length);
+    // 📦 箱子分配邏輯：一盒一個角色一個名額，複數自動拆開跨箱排隊
+    let boxes = [];
 
+    // 💡 關鍵：先把所有有效訂單展開成「單一品項單位」，讓每項都能夠獨立參與排隊
+    let individualItems = [];
     validOrders.forEach(ord => {
+      ord.items.forEach(roleName => {
+        individualItems.push({
+          buyer: ord.buyer,
+          time: ord.time,
+          role: roleName
+        });
+      });
+    });
+
+    // 依照下單時間先後順序來排入各個箱子
+    individualItems.forEach(item => {
       let placed = false;
-      
-      // 尋找一個箱子，其內部包含 ord.items 所有的角色名額都完全是空的
+
+      // 從第 1 個箱子開始找，看哪一個箱子該角色還是空的（還沒被佔用）
       for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
         let currentBox = boxes[bIndex];
-        
-        let canFitAll = true;
-        let orderItemCount = {};
-        ord.items.forEach(r => {
-          orderItemCount[r] = (orderItemCount[r] || 0) + 1;
-        });
 
-        for (let r in orderItemCount) {
-          let existingCount = currentBox[r] ? currentBox[r].length : 0;
-          if (existingCount + orderItemCount[r] > 1) { // 假設每盒每個角色限 1 個
-            canFitAll = false;
-            break;
-          }
+        // 檢查這一盒的這個角色是不是空的（還沒有人認領）
+        if (!currentBox[item.role]) {
+          currentBox[item.role] = [];
         }
 
-        // 如果這一盒夠大且所有需要品項都空著，整張訂單一起塞進這一盒
-        if (canFitAll) {
-          ord.items.forEach(r => {
-            if (!currentBox[r]) currentBox[r] = [];
-            currentBox[r].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId });
-          });
+        if (currentBox[item.role].length === 0) {
+          // 夠空！放進這一盒
+          currentBox[item.role].push({ buyer: item.buyer, time: item.time });
           placed = true;
           break;
         }
       }
 
-      // 如果找不到任何一盒可以完整容納，就開新的一盒
+      // 如果前面的箱子該角色都滿了，就開新的一盒
       if (!placed) {
         let newBox = {};
         roles.forEach(r => { newBox[r] = []; });
-        ord.items.forEach(r => {
-          if (!newBox[r]) newBox[r] = [];
-          newBox[r].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId });
-        });
+        
+        newBox[item.role].push({ buyer: item.buyer, time: item.time });
         boxes.push(newBox);
       }
     });
-
-    let maxBoxCount = Math.max(boxes.length, 4);
 
     // 3. 組合表格 HTML
     let tableHtml = `
@@ -2006,7 +2000,7 @@ let boxes = [];
         let boxData = boxes[b] ? boxes[b][role] : null;
         let entry = (boxData && boxData.length > 0) ? boxData[0] : null;
 
-        let cellContent = entry ? `<div style="font-weight: bold; color: #fff;">${entry.buyer}</div><div style="font-size: 11px; color: #888;">#${entry.orderId} (${entry.time})</div>` : `<span style="color: #555; font-style: italic;">(尚無)</span>`;
+        let cellContent = entry ? `<div style="font-weight: bold; color: #fff;">${entry.buyer}</div><div style="font-size: 11px; color: #888;">(${entry.time})</div>` : `<span style="color: #555; font-style: italic;">(尚無)</span>`;
         let cellBg = entry ? "#1e293b" : "transparent";
         tableHtml += `<td style="padding: 8px 10px; border-right: 1px solid #333; background: ${cellBg}; text-align: center; vertical-align: middle;">${cellContent}</td>`;
       }
