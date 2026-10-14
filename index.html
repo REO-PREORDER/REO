@@ -1244,20 +1244,31 @@ async function exportProductSummaryCSV() {
   }
 
   async function selectGroup(groupName, isExpired) {
-    if (isExpired) { alert("此團務已結單，無法再進行預購！"); return; }
-    selectedGroupName = groupName;
-    document.getElementById('groupListView').style.display = 'none';
-    document.getElementById('productOrderView').style.display = 'block';
-    document.getElementById('activeGroupTitle').innerText = groupName;
-
-    let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
-    let remarkText = (currentGroupObj && currentGroupObj["團務備註"]) ? currentGroupObj["團務備註"] : "本團務無特殊備註事項。";
-    document.getElementById('activeGroupRemark').innerText = remarkText;
-
-    orderQuantities = {};
-    activeCategory = "全部";
-    await loadProducts(groupName);
+  if (isExpired) { 
+    alert("此團務已結單，無法再進行預購！"); 
+    return; 
   }
+  selectedGroupName = groupName;
+
+  // 🛡️ 加上防呆機制：確保抓得到元素才去改動它的 style，抓不到也不會報錯
+  let groupListView = document.getElementById('groupListView');
+  let productOrderView = document.getElementById('productOrderView');
+  let activeGroupTitle = document.getElementById('activeGroupTitle');
+  let activeGroupRemark = document.getElementById('activeGroupRemark');
+
+  if (groupListView) groupListView.style.display = 'none';
+  if (productOrderView) productOrderView.style.display = 'block';
+  if (activeGroupTitle) activeGroupTitle.innerText = groupName;
+
+  let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
+  let remarkText = (currentGroupObj && currentGroupObj["團務備註"]) ? currentGroupObj["團務備註"] : "本團務無特殊備註事項。";
+  if (activeGroupRemark) activeGroupRemark.innerText = remarkText;
+
+  orderQuantities = {};
+  activeCategory = "全部";
+  await loadProducts(groupName);
+}
+window.selectGroup = selectGroup;
 
   async function loadProducts(groupName) {
     const gridContainer = document.getElementById('productGridContainer');
