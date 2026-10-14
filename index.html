@@ -656,9 +656,9 @@ function renderGroupsList() {
     let paymentMethod = g["付款方式"] || "未設定";
     let cardStyle = isExpired ? 'opacity: 0.5; background: #181818;' : 'background: #242424;';
 
-    html += `
-      <div onclick="('${gName.replace(/'/g, "\\'")}', ${isExpired})" class="card" style="cursor: pointer; ${cardStyle}; border-radius: 8px; overflow: hidden; border: 1px solid #333; display: flex; flex-direction: column; justify-content: space-between;">
-        
+   html += `
+  <div onclick="selectGroup('${gName.replace(/'/g, "\\'")}', ${isExpired})" class="card" style="cursor: pointer; ${cardStyle}; border-radius: 8px; overflow: hidden; border: 1px solid #333; display: flex; flex-direction: column; justify-content: space-between;">
+  
         <!-- 上方：大張封面圖 -->
         <div>
           ${img ? 
