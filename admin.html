@@ -1820,7 +1820,7 @@ async function loadSplitGroupOptions() {
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
 
-// 📊 讀取並計算該拆團的方格看板數據（僅顯示「拆團款」）
+// 📊 讀取並計算該拆團的方格看板數據（整單對應一盒）
 async function loadSplitBoardData() {
   const selectEl = document.getElementById('splitGroupSelect');
   const container = document.getElementById('splitBoardTableContainer');
@@ -1853,8 +1853,9 @@ async function loadSplitBoardData() {
 
     let roleSet = new Set();
     let roleTotals = {};
-    let parsedOrders = [];
+    let validOrders = [];
 
+    // 1. 先蒐集所有出現過的角色款式，並統計總數
     orders.forEach(ord => {
       let rawStatus = String(ord['處理狀態'] || '').trim();
       if (rawStatus === '已取消') return;
@@ -1862,11 +1863,11 @@ async function loadSplitBoardData() {
       let items = ord['訂單內容'] || [];
       if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
 
+      let orderItemsParsed = [];
       items.forEach(item => {
         let pName = item.name || item['商品名稱'] || '';
-        
-        // 💡 關鍵過濾：如果商品名稱裡面沒有「[拆團款]」，就直接跳過不計算、不顯示！
-        if (!pName.includes('[拆團款]')) return;
+        let pCat = item.category || item['分類'] || item['商品分類'] || '';
+        if (pCat === '抱盒款' || pName.includes('[抱盒款]')) return; // 排除抱盒款
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
         let roleName = pName.replace('[拆團款]', '').replace('[抱盒款]', '').trim();
@@ -1877,25 +1878,28 @@ async function loadSplitBoardData() {
         roleTotals[roleName] += pQty;
 
         for (let i = 0; i < pQty; i++) {
-          parsedOrders.push({
-            buyer: ord['買家名稱'] || '未具名',
-            role: roleName,
-            time: new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            orderId: ord.id
-          });
+          orderItemsParsed.push(roleName);
         }
       });
+
+      if (orderItemsParsed.length > 0) {
+        validOrders.push({
+          buyer: ord['買家名稱'] || '未具名',
+          time: new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          orderId: ord.id,
+          items: orderItemsParsed
+        });
+      }
     });
 
-    let roles = Array.from(roleSet);
-
-    // 如果篩選後發現這個團完全沒有拆團款商品
-    if (roles.length === 0) {
-      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有包含「拆團款」的喊單紀錄。</p>`;
+    let roles = Array.from(roleSet).sort();
+    if (roles.length === 0 || validOrders.length === 0) {
+      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有包含拆團款的喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
       return;
     }
 
+    // 渲染上方統計摘要
     let statsHtml = `<div style="background: #27272a; padding: 8px 12px; border-radius: 6px;">📦 <b>拆團款總喊單統計：</b></div>`;
     roles.forEach(r => {
       let count = roleTotals[r] || 0;
@@ -1903,19 +1907,63 @@ async function loadSplitBoardData() {
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
-    let roleQueues = {};
-    roles.forEach(r => { roleQueues[r] = []; });
-    parsedOrders.forEach(po => {
-      if (!roleQueues[po.role]) roleQueues[po.role] = [];
-      roleQueues[po.role].push(po);
+    // 2. 核心邏輯：將有效訂單依序放入「箱子 (Boxes)」中
+    // 每個 box 紀錄：{ [roleName]: [ {buyer, time, orderId}, ... ] }
+    let boxes = [];
+    
+    validOrders.forEach(ord => {
+      let placed = false;
+      // 嘗試從現有的 box 找空間放入（同一筆訂單的所有角色必須全塞進同一個 box）
+      for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
+        let currentBox = boxes[bIndex];
+        let canFit = true;
+        
+        // 檢查該 box 是否已經被該筆訂單的某些角色佔用
+        for (let r of ord.items) {
+          if (!currentBox[r]) currentBox[r] = [];
+        }
+        
+        // 檢查該 box 內每個角色的數量是否會衝突（一盒通常一個角色只能有一個或依據需求，這裡假設同一筆訂單的角色如果該盒該角色已有其他人，就不能塞同一盒）
+        // 簡單判定：如果該 box 已經存在這個買家的品項，或者該角色在該 box 已經滿了，就換下一盒
+        let conflict = false;
+        let roleCountInBox = {};
+        ord.items.forEach(r => {
+          roleCountInBox[r] = (roleCountInBox[r] || 0) + 1;
+        });
+
+        for (let r in roleCountInBox) {
+          let existingCountForRole = currentBox[r].length;
+          // 假設每一盒每個角色只有 1 個名額，若超過代表這盒已經被佔滿或重複
+          if (existingCountForRole + roleCountInBox[r] > 1) { // 依實際每盒配率調整，若一盒每個角色各一個則限制為 1
+            conflict = true;
+            break;
+          }
+        }
+
+        if (!conflict) {
+          // 可以塞進這個 box！
+          ord.items.forEach(r => {
+            currentBox[r].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId });
+          });
+          placed = true;
+          break;
+        }
+      }
+
+      // 如果所有現有的 box 都塞不進去（會衝突），就開新的一盒 (New Box)
+      if (!placed) {
+        let newBox = {};
+        roles.forEach(r => { newBox[r] = []; });
+        ord.items.forEach(r => {
+          newBox[r].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId });
+        });
+        boxes.push(newBox);
+      }
     });
 
-    let maxBoxCount = 1;
-    roles.forEach(r => {
-      if (roleQueues[r] && roleQueues[r].length > maxBoxCount) maxBoxCount = roleQueues[r].length;
-    });
-    if (maxBoxCount < 4) maxBoxCount = 4;
+    let maxBoxCount = Math.max(boxes.length, 4);
 
+    // 3. 組合表格 HTML
     let tableHtml = `
       <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb; white-space: nowrap;">
         <thead>
@@ -1931,9 +1979,10 @@ async function loadSplitBoardData() {
       tableHtml += `<tr style="border-bottom: 1px solid #333;">`;
       tableHtml += `<td style="padding: 10px; border-right: 1px solid #444; font-weight: bold; background: #18181b; color: #f59e0b; text-align: center;">${role}</td>`;
 
-      let queue = roleQueues[role] || [];
       for (let b = 0; b < maxBoxCount; b++) {
-        let entry = queue[b];
+        let boxData = boxes[b] ? boxes[b][role] : null;
+        let entry = (boxData && boxData.length > 0) ? boxData[0] : null;
+
         let cellContent = entry ? `<div style="font-weight: bold; color: #fff;">${entry.buyer}</div><div style="font-size: 11px; color: #888;">#${entry.orderId} (${entry.time})</div>` : `<span style="color: #555; font-style: italic;">(尚無)</span>`;
         let cellBg = entry ? "#1e293b" : "transparent";
         tableHtml += `<td style="padding: 8px 10px; border-right: 1px solid #333; background: ${cellBg}; text-align: center; vertical-align: middle;">${cellContent}</td>`;
