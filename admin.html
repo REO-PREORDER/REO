@@ -1820,7 +1820,7 @@ async function loadSplitGroupOptions() {
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
 
-// 📊 讀取並計算該拆團的方格看板數據
+// 📊 讀取並計算該拆團的方格看板數據（僅顯示「拆團款」）
 async function loadSplitBoardData() {
   const selectEl = document.getElementById('splitGroupSelect');
   const container = document.getElementById('splitBoardTableContainer');
@@ -1864,6 +1864,10 @@ async function loadSplitBoardData() {
 
       items.forEach(item => {
         let pName = item.name || item['商品名稱'] || '';
+        
+        // 💡 關鍵過濾：如果商品名稱裡面沒有「[拆團款]」，就直接跳過不計算、不顯示！
+        if (!pName.includes('[拆團款]')) return;
+
         let pQty = parseInt(item.qty || item['數量'] || 1);
         let roleName = pName.replace('[拆團款]', '').replace('[抱盒款]', '').trim();
         if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
@@ -1885,7 +1889,14 @@ async function loadSplitBoardData() {
 
     let roles = Array.from(roleSet);
 
-    let statsHtml = `<div style="background: #27272a; padding: 8px 12px; border-radius: 6px;">📦 <b>總喊單統計：</b></div>`;
+    // 如果篩選後發現這個團完全沒有拆團款商品
+    if (roles.length === 0) {
+      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有包含「拆團款」的喊單紀錄。</p>`;
+      if (statsContainer) statsContainer.innerHTML = "";
+      return;
+    }
+
+    let statsHtml = `<div style="background: #27272a; padding: 8px 12px; border-radius: 6px;">📦 <b>拆團款總喊單統計：</b></div>`;
     roles.forEach(r => {
       let count = roleTotals[r] || 0;
       statsHtml += `<div style="background: #1e1e1e; padding: 8px 12px; border-radius: 6px; border: 1px solid #3f3f46;">🔹 ${r}: <span style="color: #38bdf8; font-weight: bold;">${count} 個</span></div>`;
@@ -1938,6 +1949,7 @@ async function loadSplitBoardData() {
   }
 }
 window.loadSplitBoardData = loadSplitBoardData;
+    
   </script>
 </body>
 </html>
