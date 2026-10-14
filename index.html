@@ -237,7 +237,7 @@
     <!-- 編輯模式專用：選擇團務下拉選單 -->
     <div id="editGroupSelectBox" style="display: none; margin-bottom: 12px; background: #1a1a1a; padding: 10px; border-radius: 6px; border: 1px solid #3b82f6;">
       <label style="font-size: 12px; color: #60a5fa; font-weight: bold;">請選擇要編輯的團務：</label>
-      <select id="editGroupSelect" onchange="onSelectGroupToEdit(); loadProductsForEdit(this.value);" style="width: 100%; padding: 6px; margin-top: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;"></select>
+      <select id="editGroupSelect" onchange="onToEdit(); loadProductsForEdit(this.value);" style="width: 100%; padding: 6px; margin-top: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;"></select>
     </div>
 
     <!-- 表單區域 -->
@@ -455,7 +455,7 @@ async function loadGroupSelectForEdit() {
 }
 
 // 3. 選擇團務時自動帶入表單欄位與商品清單
-function onSelectGroupToEdit() {
+function onToEdit() {
   let selectedId = document.getElementById('editGroupSelect').value;
   if (!selectedId) {
     clearGroupForm();
@@ -479,7 +479,7 @@ function onSelectGroupToEdit() {
     loadProductsForEdit(selectedId);
   }
 }
-window.onSelectGroupToEdit = onSelectGroupToEdit;
+window.onToEdit = onToEdit;
 
 // 4. 清空表單
 function clearGroupForm() {
@@ -657,7 +657,7 @@ function renderGroupsList() {
     let cardStyle = isExpired ? 'opacity: 0.5; background: #181818;' : 'background: #242424;';
 
     html += `
-      <div onclick="selectGroup('${gName.replace(/'/g, "\\'")}', ${isExpired})" class="card" style="cursor: pointer; ${cardStyle}; border-radius: 8px; overflow: hidden; border: 1px solid #333; display: flex; flex-direction: column; justify-content: space-between;">
+      <div onclick="('${gName.replace(/'/g, "\\'")}', ${isExpired})" class="card" style="cursor: pointer; ${cardStyle}; border-radius: 8px; overflow: hidden; border: 1px solid #333; display: flex; flex-direction: column; justify-content: space-between;">
         
         <!-- 上方：大張封面圖 -->
         <div>
@@ -1243,21 +1243,21 @@ async function exportProductSummaryCSV() {
     }
   }
 
- async function selectGroup(groupName, isExpired) {
+async function selectGroup(groupName, isExpired) {
   if (isExpired) { 
     alert("此團務已結單，無法再進行預購！"); 
     return; 
   }
   selectedGroupName = groupName;
 
-  // 💡 關鍵：請確保這裡有抓到左側列表的 ID，並把它設為 'none' 隱藏
-  let groupListView = document.getElementById('groupListView'); // ← 請確認這個 ID 是否對應左側列表容器
+  // 💡 修正：直接把首頁的外層主容器 (.container) 隱藏起來，這樣左側列表就會完全消失
+  let mainContainer = document.querySelector('.container');
   let productOrderView = document.getElementById('productOrderView');
   let activeGroupTitle = document.getElementById('activeGroupTitle');
   let activeGroupRemark = document.getElementById('activeGroupRemark');
 
-  if (groupListView) groupListView.style.display = 'none'; // 隱藏左側卡片列表
-  if (productOrderView) productOrderView.style.display = 'block'; // 顯示右側填單區
+  if (mainContainer) mainContainer.style.display = 'none'; // 隱藏首頁列表與導覽列
+  if (productOrderView) productOrderView.style.display = 'block'; // 顯示右側填單與商品頁
   if (activeGroupTitle) activeGroupTitle.innerText = groupName;
 
   let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
@@ -1269,7 +1269,6 @@ async function exportProductSummaryCSV() {
   await loadProducts(groupName);
 }
 window.selectGroup = selectGroup;
-
 
   async function loadProducts(groupName) {
     const gridContainer = document.getElementById('productGridContainer');
@@ -1391,10 +1390,15 @@ function renderProductGrid() {
   checkCanSubmit();
 }
   function backToGroupList() {
-    document.getElementById('productOrderView').style.display = 'none';
-    document.getElementById('groupListView').style.display = 'block';
-    selectedGroupName = "";
-  }
+  // 💡 修正：點擊返回時，把商品填單頁關閉，並把首頁主容器顯示回來
+  let productOrderView = document.getElementById('productOrderView');
+  let mainContainer = document.querySelector('.container');
+
+  if (productOrderView) productOrderView.style.display = 'none';
+  if (mainContainer) mainContainer.style.display = 'block';
+  selectedGroupName = "";
+}
+window.backToGroupList = backToGroupList;
 
 let currentLightboxImages = [];
 let currentLightboxIndex = 0;
