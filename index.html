@@ -1250,14 +1250,14 @@ async function exportProductSummaryCSV() {
   }
   selectedGroupName = groupName;
 
-  // 🛡️ 完整防呆：檢查元素是否存在，避免抓到 null 導致 style 報錯
-  let groupListView = document.getElementById('groupListView');
+  // 💡 關鍵：請確保這裡有抓到左側列表的 ID，並把它設為 'none' 隱藏
+  let groupListView = document.getElementById('groupListView'); // ← 請確認這個 ID 是否對應左側列表容器
   let productOrderView = document.getElementById('productOrderView');
   let activeGroupTitle = document.getElementById('activeGroupTitle');
   let activeGroupRemark = document.getElementById('activeGroupRemark');
 
-  if (groupListView) groupListView.style.display = 'none';
-  if (productOrderView) productOrderView.style.display = 'block';
+  if (groupListView) groupListView.style.display = 'none'; // 隱藏左側卡片列表
+  if (productOrderView) productOrderView.style.display = 'block'; // 顯示右側填單區
   if (activeGroupTitle) activeGroupTitle.innerText = groupName;
 
   let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
