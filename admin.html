@@ -594,14 +594,14 @@ async function loadProductsForEdit(groupId) {
 window.loadProductsForEdit = loadProductsForEdit;
 
 function switchAdminTab(tabName) {
-  const tabs = ['groups', 'orders', 'export'];
+  // 💡 在這裡把 'splitBoard' 補進來！
+  const tabs = ['groups', 'orders', 'splitBoard', 'export'];
 
   tabs.forEach(t => {
     let contentEl = document.getElementById('tab-' + t);
     let btnEl = document.getElementById('btn-' + t);
     
     if (contentEl) {
-      // 💡 使用 setProperty 配合 'important' 確保能夠強制覆蓋樣式
       if (t === tabName) {
         contentEl.style.setProperty('display', 'block', 'important');
       } else {
@@ -615,16 +615,17 @@ function switchAdminTab(tabName) {
     }
   });
 
-  if (tabName === 'orders') {
-    if (typeof loadAllOrders === 'function') {
-      loadAllOrders();
-    }
+  if (tabName === 'orders' && typeof loadAllOrders === 'function') {
+    loadAllOrders();
   }
 
-  if (tabName === 'export') {
-    if (typeof loadExportGroupOptions === 'function') {
-      loadExportGroupOptions();
-    }
+  // 💡 同時補上這一行：當切換到 splitBoard 時，自動去載入下拉選單選項
+  if (tabName === 'splitBoard' && typeof loadSplitGroupOptions === 'function') {
+    loadSplitGroupOptions();
+  }
+
+  if (tabName === 'export' && typeof loadExportGroupOptions === 'function') {
+    loadExportGroupOptions();
   }
 }
 window.switchAdminTab = switchAdminTab;
