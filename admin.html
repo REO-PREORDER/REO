@@ -1892,7 +1892,9 @@ async function loadSplitBoardData() {
       }
     });
 
-    let roles = Array.from(roleSet).sort();
+    let roles = dbRoleOrder.length > 0 
+  ? dbRoleOrder.filter(r => roleSet.has(r)) 
+  : Array.from(roleSet).sort();
     if (roles.length === 0 || validOrders.length === 0) {
       container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有包含拆團款的喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
