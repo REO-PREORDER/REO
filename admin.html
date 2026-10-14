@@ -1909,40 +1909,36 @@ async function loadSplitBoardData() {
 
     // 2. 核心邏輯：將有效訂單依序放入「箱子 (Boxes)」中
     // 每個 box 紀錄：{ [roleName]: [ {buyer, time, orderId}, ... ] }
-    let boxes = [];
+let boxes = [];
     
+    // 💡 關鍵優化：先將所有有效訂單依照「品項數量多寡」由多到少排序（買越多的排越前面優先進駐箱子）
+    validOrders.sort((a, b) => b.items.length - a.items.length);
+
     validOrders.forEach(ord => {
       let placed = false;
-      // 嘗試從現有的 box 找空間放入（同一筆訂單的所有角色必須全塞進同一個 box）
+      
+      // 尋找一個箱子，其內部包含 ord.items 所有的角色名額都完全是空的
       for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
         let currentBox = boxes[bIndex];
-        let canFit = true;
         
-        // 檢查該 box 是否已經被該筆訂單的某些角色佔用
-        for (let r of ord.items) {
-          if (!currentBox[r]) currentBox[r] = [];
-        }
-        
-        // 檢查該 box 內每個角色的數量是否會衝突（一盒通常一個角色只能有一個或依據需求，這裡假設同一筆訂單的角色如果該盒該角色已有其他人，就不能塞同一盒）
-        // 簡單判定：如果該 box 已經存在這個買家的品項，或者該角色在該 box 已經滿了，就換下一盒
-        let conflict = false;
-        let roleCountInBox = {};
+        let canFitAll = true;
+        let orderItemCount = {};
         ord.items.forEach(r => {
-          roleCountInBox[r] = (roleCountInBox[r] || 0) + 1;
+          orderItemCount[r] = (orderItemCount[r] || 0) + 1;
         });
 
-        for (let r in roleCountInBox) {
-          let existingCountForRole = currentBox[r].length;
-          // 假設每一盒每個角色只有 1 個名額，若超過代表這盒已經被佔滿或重複
-          if (existingCountForRole + roleCountInBox[r] > 1) { // 依實際每盒配率調整，若一盒每個角色各一個則限制為 1
-            conflict = true;
+        for (let r in orderItemCount) {
+          let existingCount = currentBox[r] ? currentBox[r].length : 0;
+          if (existingCount + orderItemCount[r] > 1) { // 假設每盒每個角色限 1 個
+            canFitAll = false;
             break;
           }
         }
 
-        if (!conflict) {
-          // 可以塞進這個 box！
+        // 如果這一盒夠大且所有需要品項都空著，整張訂單一起塞進這一盒
+        if (canFitAll) {
           ord.items.forEach(r => {
+            if (!currentBox[r]) currentBox[r] = [];
             currentBox[r].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId });
           });
           placed = true;
@@ -1950,11 +1946,12 @@ async function loadSplitBoardData() {
         }
       }
 
-      // 如果所有現有的 box 都塞不進去（會衝突），就開新的一盒 (New Box)
+      // 如果找不到任何一盒可以完整容納，就開新的一盒
       if (!placed) {
         let newBox = {};
         roles.forEach(r => { newBox[r] = []; });
         ord.items.forEach(r => {
+          if (!newBox[r]) newBox[r] = [];
           newBox[r].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId });
         });
         boxes.push(newBox);
