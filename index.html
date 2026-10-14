@@ -1250,19 +1250,14 @@ async function selectGroup(groupName, isExpired) {
   }
   selectedGroupName = groupName;
 
-  // 💡 修正：直接把首頁的外層主容器 (.container) 隱藏起來，這樣左側列表就會完全消失
-  let mainContainer = document.querySelector('.container');
-  let productOrderView = document.getElementById('productOrderView');
-  let activeGroupTitle = document.getElementById('activeGroupTitle');
-  let activeGroupRemark = document.getElementById('activeGroupRemark');
-
-  if (mainContainer) mainContainer.style.display = 'none'; // 隱藏首頁列表與導覽列
-  if (productOrderView) productOrderView.style.display = 'block'; // 顯示右側填單與商品頁
-  if (activeGroupTitle) activeGroupTitle.innerText = groupName;
+  // 保持原本正常運作的顯示切換
+  document.getElementById('groupListView').style.display = 'none';
+  document.getElementById('productOrderView').style.display = 'block';
+  document.getElementById('activeGroupTitle').innerText = groupName;
 
   let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
   let remarkText = (currentGroupObj && currentGroupObj["團務備註"]) ? currentGroupObj["團務備註"] : "本團務無特殊備註事項。";
-  if (activeGroupRemark) activeGroupRemark.innerText = remarkText;
+  document.getElementById('activeGroupRemark').innerText = remarkText;
 
   orderQuantities = {};
   activeCategory = "全部";
@@ -1390,12 +1385,8 @@ function renderProductGrid() {
   checkCanSubmit();
 }
   function backToGroupList() {
-  // 💡 修正：點擊返回時，把商品填單頁關閉，並把首頁主容器顯示回來
-  let productOrderView = document.getElementById('productOrderView');
-  let mainContainer = document.querySelector('.container');
-
-  if (productOrderView) productOrderView.style.display = 'none';
-  if (mainContainer) mainContainer.style.display = 'block';
+  document.getElementById('productOrderView').style.display = 'none';
+  document.getElementById('groupListView').style.display = 'block';
   selectedGroupName = "";
 }
 window.backToGroupList = backToGroupList;
