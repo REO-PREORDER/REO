@@ -1837,6 +1837,28 @@ async function loadSplitBoardData() {
   container.innerHTML = `<p style="color: #aaa; text-align: center; font-size: 13px; padding: 20px;">載入喊單資料中...</p>`;
 
   try {
+    // 💡 1. 先從 products 資料庫撈出該團務的所有商品，並依照 id 由小到大排序
+    const { data: prodData, error: prodErr } = await db
+      .from('products')
+      .select('*')
+      .eq('團務名稱', selectedGroup);
+
+    let dbRoleOrder = [];
+    if (!prodErr && prodData) {
+      prodData.sort((a, b) => a.id - b.id); // 💡 關鍵：id 排序 (由小到大)
+      
+      prodData.forEach(p => {
+        let pName = p['商品名稱'] || '';
+        let pCat = p['商品分類'] || '';
+        if (pCat === '拆團款' || pName.includes('[拆團款]')) {
+          let roleName = pName.replace('[拆團款]', '').trim();
+          if (!dbRoleOrder.includes(roleName)) {
+            dbRoleOrder.push(roleName);
+          }
+        }
+      });
+    }
+
     const { data: orders, error } = await db
       .from('orders')
       .select('*')
@@ -1892,9 +1914,11 @@ async function loadSplitBoardData() {
       }
     });
 
+    // 💡 2. 結合資料庫順序，讓看板角色嚴格按照 id 由小到大排列
     let roles = dbRoleOrder.length > 0 
-  ? dbRoleOrder.filter(r => roleSet.has(r)) 
-  : Array.from(roleSet).sort();
+      ? dbRoleOrder.filter(r => roleSet.has(r)) 
+      : Array.from(roleSet).sort();
+
     if (roles.length === 0 || validOrders.length === 0) {
       container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有包含拆團款的喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
