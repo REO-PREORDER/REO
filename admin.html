@@ -2000,8 +2000,8 @@ let maxBoxCount = Math.max(boxes.length, 4);
         let boxData = boxes[b] ? boxes[b][role] : null;
         let entry = (boxData && boxData.length > 0) ? boxData[0] : null;
 
-        let cellContent = entry ? `<div style="font-weight: bold; color: #fff;">${entry.buyer}</div><div style="font-size: 11px; color: #888;">(${entry.time})</div>` : `<span style="color: #555; font-style: italic;">(尚無)</span>`;
-        let cellBg = entry ? "#1e293b" : "transparent";
+// 💡 顯示：買家名稱 (訂單編號) 以及下單時間
+let cellContent = entry ? `<div style="font-weight: bold; color: #fff;">${entry.buyer} <span style="color: #38bdf8; font-size: 11px;">(#${entry.orderId})</span></div><div style="font-size: 11px; color: #888;">(${entry.time})</div>` : `<span style="color: #555; font-style: italic;">(尚無)</span>`;        let cellBg = entry ? "#1e293b" : "transparent";
         tableHtml += `<td style="padding: 8px 10px; border-right: 1px solid #333; background: ${cellBg}; text-align: center; vertical-align: middle;">${cellContent}</td>`;
       }
       tableHtml += `</tr>`;
