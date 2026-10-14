@@ -1787,7 +1787,7 @@ async function loadSplitGroupOptions() {
     // 2. 找出哪些團務名稱底下的商品含有 "[拆團款]" 或 "[抱盒款]"
     let splitGroupNames = new Set();
     products.forEach(p => {
-      let pName = p['商品名稱'] || '';
+      let pName = p['商品分類'] || '';
       let gName = p['團務名稱'] || '';
       // 只要商品名稱包含拆團或抱盒相關關鍵字，就把該團務記錄下來
       if (pName.includes('[拆團款]') || pName.includes('[抱盒款]') || pName.includes('拆團')) {
