@@ -2795,7 +2795,7 @@ async function loadFrontendSplitGroupOptions() {
 }
 window.loadFrontendSplitGroupOptions = loadFrontendSplitGroupOptions;
 
-// 📊 讀取並計算該拆團的方格看板數據（依商品 id 由小到大排序，不顯示訂單編號）
+// 📊 讀取並計算該拆團的方格看板數據（依商品 id 由小到大排序，獨立排隊，不顯示訂單編號）
 async function loadFrontendSplitBoardData() {
   const selectEl = document.getElementById('frontendSplitGroupSelect');
   const container = document.getElementById('frontendSplitBoardTableContainer');
@@ -2905,33 +2905,31 @@ async function loadFrontendSplitBoardData() {
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
+    // 📦 箱子分配邏輯：一盒一個角色一個名額，複數自動拆開跨箱排隊（前台不顯示訂單編號）
     let boxes = [];
-    validOrders.sort((a, b) => b.items.length - a.items.length);
-
+    let individualItems = [];
     validOrders.forEach(ord => {
+      ord.items.forEach(roleName => {
+        individualItems.push({
+          buyer: ord.buyer,
+          time: ord.time,
+          role: roleName
+        });
+      });
+    });
+
+    individualItems.forEach(item => {
       let placed = false;
-      
+
       for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
         let currentBox = boxes[bIndex];
-        let canFitAll = true;
-        let orderItemCount = {};
-        ord.items.forEach(r => {
-          orderItemCount[r] = (orderItemCount[r] || 0) + 1;
-        });
 
-        for (let r in orderItemCount) {
-          let existingCount = currentBox[r] ? currentBox[r].length : 0;
-          if (existingCount + orderItemCount[r] > 1) {
-            canFitAll = false;
-            break;
-          }
+        if (!currentBox[item.role]) {
+          currentBox[item.role] = [];
         }
 
-        if (canFitAll) {
-          ord.items.forEach(r => {
-            if (!currentBox[r]) currentBox[r] = [];
-            currentBox[r].push({ buyer: ord.buyer, time: ord.time });
-          });
+        if (currentBox[item.role].length === 0) {
+          currentBox[item.role].push({ buyer: item.buyer, time: item.time });
           placed = true;
           break;
         }
@@ -2940,10 +2938,8 @@ async function loadFrontendSplitBoardData() {
       if (!placed) {
         let newBox = {};
         roles.forEach(r => { newBox[r] = []; });
-        ord.items.forEach(r => {
-          if (!newBox[r]) newBox[r] = [];
-          newBox[r].push({ buyer: ord.buyer, time: ord.time });
-        });
+        
+        newBox[item.role].push({ buyer: item.buyer, time: item.time });
         boxes.push(newBox);
       }
     });
@@ -2969,6 +2965,7 @@ async function loadFrontendSplitBoardData() {
         let boxData = boxes[b] ? boxes[b][role] : null;
         let entry = (boxData && boxData.length > 0) ? boxData[0] : null;
 
+        // 前台保持簡潔，不顯示訂單編號
         let cellContent = entry ? `<div style="font-weight: bold; color: #fff;">${entry.buyer}</div><div style="font-size: 11px; color: #888;">(${entry.time})</div>` : `<span style="color: #555; font-style: italic;">(尚無)</span>`;
         let cellBg = entry ? "#1e293b" : "transparent";
         tableHtml += `<td style="padding: 8px 10px; border-right: 1px solid #333; background: ${cellBg}; text-align: center; vertical-align: middle;">${cellContent}</td>`;
