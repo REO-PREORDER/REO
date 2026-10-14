@@ -3086,39 +3086,49 @@ async function loadFrontendSplitBoardData() {
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
     let boxes = [];
+    
+    // 💡 關鍵優化：先將所有有效訂單依照「品項數量多寡」由多到少排序（買越多的排越前面優先進駐箱子）
+    validOrders.sort((a, b) => b.items.length - a.items.length);
+
     validOrders.forEach(ord => {
       let placed = false;
+      
+      // 尋找一個箱子，其內部包含 ord.items 所有的角色名額都完全是空的
       for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
         let currentBox = boxes[bIndex];
-        let roleCountInBox = {};
+        
+        let canFitAll = true;
+        let orderItemCount = {};
         ord.items.forEach(r => {
-          roleCountInBox[r] = (roleCountInBox[r] || 0) + 1;
+          orderItemCount[r] = (orderItemCount[r] || 0) + 1;
         });
 
-        let conflict = false;
-        for (let r in roleCountInBox) {
-          let existingCountForRole = currentBox[r] ? currentBox[r].length : 0;
-          if (existingCountForRole + roleCountInBox[r] > 1) {
-            conflict = true;
+        for (let r in orderItemCount) {
+          let existingCount = currentBox[r] ? currentBox[r].length : 0;
+          if (existingCount + orderItemCount[r] > 1) { // 假設每盒每個角色限 1 個
+            canFitAll = false;
             break;
           }
         }
 
-        if (!conflict) {
+        // 如果這一盒夠大且所有需要品項都空著，整張訂單一起塞進這一盒
+        if (canFitAll) {
           ord.items.forEach(r => {
             if (!currentBox[r]) currentBox[r] = [];
-            currentBox[r].push({ buyer: ord.buyer, time: ord.time });
+            currentBox[r].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId });
           });
           placed = true;
           break;
         }
       }
 
+      // 如果找不到任何一盒可以完整容納，就開新的一盒
       if (!placed) {
         let newBox = {};
         roles.forEach(r => { newBox[r] = []; });
         ord.items.forEach(r => {
-          newBox[r].push({ buyer: ord.buyer, time: ord.time });
+          if (!newBox[r]) newBox[r] = [];
+          newBox[r].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId });
         });
         boxes.push(newBox);
       }
