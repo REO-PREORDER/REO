@@ -2933,7 +2933,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <!-- 📊 統計摘要區 -->
       <div id="frontendSplitSummaryStats" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; font-size: 12px; color: #d4d4d8;"></div>
 
-      <!-- 📋 橫向方格看板容器（不含訂單編號） -->
+      <!-- 📋 橫向方格看板容器 -->
       <div id="frontendSplitBoardContainer" style="width: 100%; max-width: 100%; overflow-x: auto; box-sizing: border-box; background: #121212; border: 1px solid #333; border-radius: 6px; padding: 15px;">
         <p style="color: #888; text-align: center; font-size: 13px;">請先選擇一個拆團，以展開方格看板。</p>
       </div>
@@ -2948,7 +2948,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const modal = document.getElementById('frontendSplitBoardModal');
     if (modal) modal.style.display = 'flex';
     
-    // 自動載入含有拆團款的團務下拉選單
     const selectElem = document.getElementById('frontendSplitGroupSelect');
     if (!selectElem) return;
     
@@ -3003,7 +3002,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   window.closeFrontendSplitBoardModal = closeFrontendSplitBoardModal;
 
-  // 載入前台拆團看板資料（僅顯示拆團款、不顯示訂單編號）
+  // 載入前台拆團看板資料
   async function loadFrontendSplitBoardData() {
     const selectEl = document.getElementById('frontendSplitGroupSelect');
     const container = document.getElementById('frontendSplitBoardContainer');
@@ -3012,7 +3011,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const selectedGroup = selectEl.value;
     if (!selectedGroup) {
-      container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請先選擇一個拆團。</p>";`;
+      container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請先選擇一個拆團。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
       return;
     }
@@ -3047,7 +3046,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         items.forEach(item => {
           let pName = item.name || item['商品名稱'] || '';
-          if (!pName.includes('[拆團款]')) return; // 只抓拆團款
+          if (!pName.includes('[拆團款]')) return;
 
           let pQty = parseInt(item.qty || item['數量'] || 1);
           let roleName = pName.replace('[拆團款]', '').replace('[抱盒款]', '').trim();
@@ -3127,7 +3126,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
   window.loadFrontendSplitBoardData = loadFrontendSplitBoardData;
-  
-</script> <!-- 👈 把它放在 </script> 的正上方就對囉！ -->
+</script>
 </body>
 </html>
