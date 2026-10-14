@@ -2965,7 +2965,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       let splitGroupNames = new Set();
       products.forEach(p => {
-        let pName = p['商品名稱'] || '';
+        let pName = p['商品分類'] || '';
         let gName = p['團務名稱'] || '';
         if (pName.includes('[拆團款]') || pName.includes('拆團')) {
           if (gName) splitGroupNames.add(gName);
