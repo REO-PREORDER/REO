@@ -1250,14 +1250,19 @@ async function selectGroup(groupName, isExpired) {
   }
   selectedGroupName = groupName;
 
-  // 保持原本正常運作的顯示切換
-  document.getElementById('groupListView').style.display = 'none';
-  document.getElementById('productOrderView').style.display = 'block';
-  document.getElementById('activeGroupTitle').innerText = groupName;
+  // 💡 點擊卡片時，隱藏團務卡片列表容器，顯示商品填單頁面
+  let cardsContainer = document.getElementById('groupCardsContainer');
+  let productOrderView = document.getElementById('productOrderView');
+  let activeGroupTitle = document.getElementById('activeGroupTitle');
+  let activeGroupRemark = document.getElementById('activeGroupRemark');
+
+  if (cardsContainer) cardsContainer.style.display = 'none';
+  if (productOrderView) productOrderView.style.display = 'block';
+  if (activeGroupTitle) activeGroupTitle.innerText = groupName;
 
   let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
   let remarkText = (currentGroupObj && currentGroupObj["團務備註"]) ? currentGroupObj["團務備註"] : "本團務無特殊備註事項。";
-  document.getElementById('activeGroupRemark').innerText = remarkText;
+  if (activeGroupRemark) activeGroupRemark.innerText = remarkText;
 
   orderQuantities = {};
   activeCategory = "全部";
@@ -1385,8 +1390,12 @@ function renderProductGrid() {
   checkCanSubmit();
 }
   function backToGroupList() {
-  document.getElementById('productOrderView').style.display = 'none';
-  document.getElementById('groupListView').style.display = 'block';
+  // 💡 點擊返回時，關閉商品填單頁面，將團務卡片列表顯示回來
+  let productOrderView = document.getElementById('productOrderView');
+  let cardsContainer = document.getElementById('groupCardsContainer');
+
+  if (productOrderView) productOrderView.style.display = 'none';
+  if (cardsContainer) cardsContainer.style.display = 'grid'; // 因為原本是 grid 網格排版
   selectedGroupName = "";
 }
 window.backToGroupList = backToGroupList;
