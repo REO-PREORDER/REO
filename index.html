@@ -1243,14 +1243,14 @@ async function exportProductSummaryCSV() {
     }
   }
 
-  async function selectGroup(groupName, isExpired) {
+ async function selectGroup(groupName, isExpired) {
   if (isExpired) { 
     alert("此團務已結單，無法再進行預購！"); 
     return; 
   }
   selectedGroupName = groupName;
 
-  // 🛡️ 加上防呆機制：確保抓得到元素才去改動它的 style，抓不到也不會報錯
+  // 🛡️ 完整防呆：檢查元素是否存在，避免抓到 null 導致 style 報錯
   let groupListView = document.getElementById('groupListView');
   let productOrderView = document.getElementById('productOrderView');
   let activeGroupTitle = document.getElementById('activeGroupTitle');
@@ -1269,6 +1269,7 @@ async function exportProductSummaryCSV() {
   await loadProducts(groupName);
 }
 window.selectGroup = selectGroup;
+
 
   async function loadProducts(groupName) {
     const gridContainer = document.getElementById('productGridContainer');
