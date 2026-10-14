@@ -2732,6 +2732,233 @@ function updateFilterGroupOptions(orders) {
   select.innerHTML = html;
   select.value = currentVal;
 }
+  // 📦 開啟前台拆團看板 Modal
+async function openFrontendSplitBoardModal() {
+  const modal = document.getElementById('frontendSplitBoardModal');
+  if (modal) modal.style.display = 'flex';
+  await loadFrontendSplitGroupOptions();
+}
+window.openFrontendSplitBoardModal = openFrontendSplitBoardModal;
+
+// 📦 關閉前台拆團看板 Modal
+function closeFrontendSplitBoardModal() {
+  const modal = document.getElementById('frontendSplitBoardModal');
+  if (modal) modal.style.display = 'none';
+}
+window.closeFrontendSplitBoardModal = closeFrontendSplitBoardModal;
+
+// 📦 自動過濾並載入「有包含拆團商品」的團務下拉選單
+async function loadFrontendSplitGroupOptions() {
+  const selectElem = document.getElementById('frontendSplitGroupSelect');
+  if (!selectElem) return;
+  
+  try {
+    const [groupsRes, productsRes] = await Promise.all([
+      db.from('groups').select('*').order('created_at', { ascending: false }),
+      db.from('products').select('*')
+    ]);
+
+    if (groupsRes.error) throw groupsRes.error;
+    if (productsRes.error) throw productsRes.error;
+
+    const groups = groupsRes.data || [];
+    const products = productsRes.data || [];
+
+    let splitGroupNames = new Set();
+    products.forEach(p => {
+      let pName = p['商品分類'] || '';
+      let gName = p['團務名稱'] || '';
+      if (pName.includes('[拆團款]') || pName.includes('[抱盒款]') || pName.includes('拆團')) {
+        if (gName) splitGroupNames.add(gName);
+      }
+    });
+
+    let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
+    let matchedCount = 0;
+
+    groups.forEach(g => {
+      const gName = g["團務名稱"] || '';
+      if (splitGroupNames.has(gName)) {
+        html += `<option value="${gName}">${gName}</option>`;
+        matchedCount++;
+      }
+    });
+
+    if (matchedCount === 0) {
+      html = `<option value="">-- 目前沒有偵測到含有拆團商品的團務 --</option>`;
+    }
+
+    selectElem.innerHTML = html;
+  } catch (err) {
+    console.error("載入前台拆團下拉選單失敗：", err);
+  }
+}
+window.loadFrontendSplitGroupOptions = loadFrontendSplitGroupOptions;
+
+// 📊 讀取並計算該拆團的方格看板數據（不顯示訂單編號）
+async function loadFrontendSplitBoardData() {
+  const selectEl = document.getElementById('frontendSplitGroupSelect');
+  const container = document.getElementById('frontendSplitBoardTableContainer');
+  const statsContainer = document.getElementById('frontendSplitSummaryStats');
+  if (!selectEl || !container) return;
+
+  const selectedGroup = selectEl.value;
+  if (!selectedGroup) {
+    container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請先選擇一個拆團。</p>`;
+    if (statsContainer) statsContainer.innerHTML = "";
+    return;
+  }
+
+  container.innerHTML = `<p style="color: #aaa; text-align: center; font-size: 13px; padding: 20px;">載入喊單資料中...</p>`;
+
+  try {
+    const { data: orders, error } = await db
+      .from('orders')
+      .select('*')
+      .eq('團務名稱', selectedGroup)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    if (!orders || orders.length === 0) {
+      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有任何訂單。</p>`;
+      if (statsContainer) statsContainer.innerHTML = "";
+      return;
+    }
+
+    let roleSet = new Set();
+    let roleTotals = {};
+    let validOrders = [];
+
+    orders.forEach(ord => {
+      let rawStatus = String(ord['處理狀態'] || '').trim();
+      if (rawStatus === '已取消') return;
+
+      let items = ord['訂單內容'] || [];
+      if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
+
+      let orderItemsParsed = [];
+      items.forEach(item => {
+        let pName = item.name || item['商品名稱'] || '';
+        let pCat = item.category || item['分類'] || item['商品分類'] || '';
+        if (pCat === '抱盒款' || pName.includes('[抱盒款]')) return;
+
+        let pQty = parseInt(item.qty || item['數量'] || 1);
+        let roleName = pName.replace('[拆團款]', '').replace('[抱盒款]', '').trim();
+        if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
+
+        roleSet.add(roleName);
+        if (!roleTotals[roleName]) roleTotals[roleName] = 0;
+        roleTotals[roleName] += pQty;
+
+        for (let i = 0; i < pQty; i++) {
+          orderItemsParsed.push(roleName);
+        }
+      });
+
+      if (orderItemsParsed.length > 0) {
+        validOrders.push({
+          buyer: ord['買家名稱'] || '未具名',
+          time: new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          items: orderItemsParsed
+        });
+      }
+    });
+
+    let roles = Array.from(roleSet).sort();
+    if (roles.length === 0 || validOrders.length === 0) {
+      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有包含拆團款的喊單紀錄。</p>`;
+      if (statsContainer) statsContainer.innerHTML = "";
+      return;
+    }
+
+    let statsHtml = `<div style="background: #27272a; padding: 6px 10px; border-radius: 6px; color: #fff;">📦 <b>總喊單統計：</b></div>`;
+    roles.forEach(r => {
+      let count = roleTotals[r] || 0;
+      statsHtml += `<div style="background: #1e1e1e; padding: 6px 10px; border-radius: 6px; border: 1px solid #3f3f46; color: #fff;">🔹 ${r}: <span style="color: #38bdf8; font-weight: bold;">${count} 個</span></div>`;
+    });
+    if (statsContainer) statsContainer.innerHTML = statsHtml;
+
+    let boxes = [];
+    validOrders.sort((a, b) => b.items.length - a.items.length);
+
+    validOrders.forEach(ord => {
+      let placed = false;
+      
+      for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
+        let currentBox = boxes[bIndex];
+        let canFitAll = true;
+        let orderItemCount = {};
+        ord.items.forEach(r => {
+          orderItemCount[r] = (orderItemCount[r] || 0) + 1;
+        });
+
+        for (let r in orderItemCount) {
+          let existingCount = currentBox[r] ? currentBox[r].length : 0;
+          if (existingCount + orderItemCount[r] > 1) {
+            canFitAll = false;
+            break;
+          }
+        }
+
+        if (canFitAll) {
+          ord.items.forEach(r => {
+            if (!currentBox[r]) currentBox[r] = [];
+            currentBox[r].push({ buyer: ord.buyer, time: ord.time });
+          });
+          placed = true;
+          break;
+        }
+      }
+
+      if (!placed) {
+        let newBox = {};
+        roles.forEach(r => { newBox[r] = []; });
+        ord.items.forEach(r => {
+          if (!newBox[r]) newBox[r] = [];
+          newBox[r].push({ buyer: ord.buyer, time: ord.time });
+        });
+        boxes.push(newBox);
+      }
+    });
+
+    let maxBoxCount = Math.max(boxes.length, 4);
+
+    let tableHtml = `
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb; white-space: nowrap;">
+        <thead>
+          <tr style="background: #27272a; border-bottom: 2px solid #444;">
+            <th style="padding: 10px; border-right: 1px solid #444; width: 100px; text-align: center; color: #38bdf8;">角色 / 款式</th>
+    `;
+    for (let b = 1; b <= maxBoxCount; b++) {
+      tableHtml += `<th style="padding: 10px; border-right: 1px solid #444; text-align: center; min-width: 140px;">第 ${b} 盒</th>`;
+    }
+    tableHtml += `</tr></thead><tbody>`;
+
+    roles.forEach(role => {
+      tableHtml += `<tr style="border-bottom: 1px solid #333;">`;
+      tableHtml += `<td style="padding: 10px; border-right: 1px solid #444; font-weight: bold; background: #18181b; color: #f59e0b; text-align: center;">${role}</td>`;
+
+      for (let b = 0; b < maxBoxCount; b++) {
+        let boxData = boxes[b] ? boxes[b][role] : null;
+        let entry = (boxData && boxData.length > 0) ? boxData[0] : null;
+
+        let cellContent = entry ? `<div style="font-weight: bold; color: #fff;">${entry.buyer}</div><div style="font-size: 11px; color: #888;">(${entry.time})</div>` : `<span style="color: #555; font-style: italic;">(尚無)</span>`;
+        let cellBg = entry ? "#1e293b" : "transparent";
+        tableHtml += `<td style="padding: 8px 10px; border-right: 1px solid #333; background: ${cellBg}; text-align: center; vertical-align: middle;">${cellContent}</td>`;
+      }
+      tableHtml += `</tr>`;
+    });
+
+    tableHtml += `</tbody></table>`;
+    container.innerHTML = tableHtml;
+
+  } catch (err) {
+    container.innerHTML = `<p style="color: #ef4444; text-align: center; font-size: 13px; padding: 20px;">載入失敗：${err.message}</p>`;
+  }
+}
+window.loadFrontendSplitBoardData = loadFrontendSplitBoardData;
+  
   function openModifyModal(order) {
     let orderId = order.id;
     let modalBg = document.createElement('div');
@@ -2910,18 +3137,19 @@ document.addEventListener("DOMContentLoaded", () => {
     emailInput.value = localStorage.getItem('reo_buyer_email');
   }
 });
+  
 </script> <!-- 👈 把它放在 </script> 的正上方就對囉！ -->
-  <!-- 📦 前台專用：拆團方格看板 Modal -->
+<!-- 📦 前台專用：拆團方格看板 Modal -->
 <div id="frontendSplitBoardModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
   <div style="background: #18181b; border: 1px solid #3f3f46; border-radius: 12px; width: 90%; max-width: 1000px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
     
-    <!-- 彈跳視窗標題列 -->
+    <!-- 標題列 -->
     <div style="padding: 16px 20px; background: #27272a; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3f3f46;">
       <h3 style="margin: 0; color: #fff; font-size: 16px;">📦 拆團方格看板</h3>
       <button type="button" onclick="closeFrontendSplitBoardModal()" style="background: transparent; border: none; color: #a1a1aa; font-size: 18px; cursor: pointer; font-weight: bold;">✕</button>
     </div>
 
-    <!-- 內容選單與表格區 -->
+    <!-- 內容與表格區 -->
     <div style="padding: 20px; overflow-y: auto; flex: 1;">
       <div style="margin-bottom: 16px; display: flex; gap: 10px; align-items: center;">
         <label style="color: #cbd5e1; font-size: 13px; font-weight: bold;">選擇拆團團務：</label>
