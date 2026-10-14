@@ -1937,13 +1937,14 @@ async function loadSplitBoardData() {
     // 📦 箱子分配邏輯：一盒一個角色一個名額，複數自動拆開跨箱排隊
     let boxes = [];
 
-    // 💡 關鍵：先把所有有效訂單展開成「單一品項單位」，讓每項都能夠獨立參與排隊
+   // 💡 把所有有效訂單展開成單一品項單位（順便帶入 orderId）
     let individualItems = [];
     validOrders.forEach(ord => {
       ord.items.forEach(roleName => {
         individualItems.push({
           buyer: ord.buyer,
           time: ord.time,
+          orderId: ord.orderId, // 💡 加上這行
           role: roleName
         });
       });
@@ -1964,7 +1965,7 @@ async function loadSplitBoardData() {
 
         if (currentBox[item.role].length === 0) {
           // 夠空！放進這一盒
-          currentBox[item.role].push({ buyer: item.buyer, time: item.time });
+          currentBox[item.role].push({ buyer: item.buyer, time: item.time, orderId: item.orderId });
           placed = true;
           break;
         }
@@ -1975,7 +1976,7 @@ async function loadSplitBoardData() {
         let newBox = {};
         roles.forEach(r => { newBox[r] = []; });
         
-        newBox[item.role].push({ buyer: item.buyer, time: item.time });
+        newBox[item.role].push({ buyer: item.buyer, time: item.time, orderId: item.orderId });
         boxes.push(newBox);
       }
     });
