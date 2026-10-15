@@ -1917,11 +1917,11 @@ async function loadSplitBoardData() {
 
     let dbRoleOrder = [];
     if (!prodErr && prodData) {
-      let filteredProds = prodData.filter(p => {
-        let pCat = p['商品分類'] || '';
-        return pCat === selectedCategory; // 嚴格比對分類（例如 拆團款-徽章）
-      });
-
+      // 💡 改成包含比對，避免空白或格式微調導致抓不到
+    let filteredProds = prodData.filter(p => {
+      let pCat = String(p['商品分類'] || '').trim();
+      return pCat.includes(selectedCategory) || selectedCategory.includes(pCat);
+    });
       filteredProds.sort((a, b) => a.id - b.id); // 依 id 由小到大排序
       
       filteredProds.forEach(p => {
@@ -1965,7 +1965,8 @@ async function loadSplitBoardData() {
         let pCat = item.category || item['分類'] || item['商品分類'] || '';
         
         // 如果這個品項的分類不符合當前選中的分類，就跳過
-        if (pCat !== selectedCategory) return;
+       let itemCategory = String(pCat || '').trim();
+    if (!itemCategory.includes(selectedCategory) && !selectedCategory.includes(itemCategory)) return;
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
         let roleName = pName.replace('[拆團款]', '').trim();
