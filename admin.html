@@ -1862,15 +1862,15 @@ async function loadSplitBoardData() {
       .eq('團務名稱', selectedGroup)
       .order('id', { ascending: true }); // 👈 加上這行才會真正按 id 抓取！
 
+    // 💡 1. 嚴格依據資料庫 id 由小到大排序的商品名稱，建立固定的角色排序基準 (dbRoleOrder)
     let dbRoleOrder = [];
     if (!prodErr && prodData) {
-      // 嚴格篩選出符合當前選擇分類（例如 拆團款-徽章）的商品
       let filteredProds = prodData.filter(p => {
         let pCat = String(p['商品分類'] || '').trim();
         return pCat === selectedCategory;
       });
 
-      filteredProds.sort((a, b) => a.id - b.id); // 💡 關鍵：id 排序 (由小到大)
+      filteredProds.sort((a, b) => a.id - b.id); // 💡 強制確保依照 id 數值由小到大排序
       
       filteredProds.forEach(p => {
         let pName = p['商品名稱'] || '';
@@ -1909,17 +1909,16 @@ async function loadSplitBoardData() {
       if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
 
       let orderItemsParsed = [];
-     items.forEach(item => {
+      items.forEach(item => {
         let pName = item.name || item['商品名稱'] || '';
         let pCat = item.category || item['分類'] || item['商品分類'] || '';
         
-        // 🛑 嚴格排除：只要品項分類或名稱包含「抱盒款」，就直接跳過不計入拆團看板！
+        // 🛑 嚴格排除抱盒款
         if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
 
         let roleName = pName.replace('[拆團款]', '').trim();
         if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
 
-        // 💡 核心檢查：確保這個品項的角色名稱確實存在於我們剛剛抓到的該分類清單中
         if (dbRoleOrder.length > 0 && !dbRoleOrder.includes(roleName)) return;
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
@@ -1943,12 +1942,10 @@ async function loadSplitBoardData() {
       }
     });
 
-   // 💡 絕對強制：直接以資料庫 id 排序好的 dbRoleOrder 順序為準
-    let roles = [];
-    if (dbRoleOrder.length > 0) {
-      dbRoleOrder.forEach(r => {
-        if (roleSet.has(r) && !roles.includes(r)) {
-          roles.push(r);
+    // 💡 3. 【絕對強制排序】：直接以資料庫 id 排序好的 dbRoleOrder 為唯一基準來過濾顯示的角色
+    let roles = dbRoleOrder.length > 0 
+      ? dbRoleOrder.filter(r => roleSet.has(r)) 
+      : Array.from(roleSet);
         }
       });
     } else {
