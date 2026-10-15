@@ -1957,9 +1957,13 @@ async function loadSplitBoardData() {
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
-    // 3. 獨立排隊與分盒邏輯（一盒一個角色一個名額）
+    // 3. 獨立排隊與分盒邏輯（一盒一個角色一個名額，嚴格按下單時間先後排序）
     let boxes = [];
     let individualItems = [];
+    
+    // 💡 確保 validOrders 嚴格按照下單時間（created_at）由舊到新排序
+    validOrders.sort((a, b) => new Date(a.time) - new Date(b.time));
+
     validOrders.forEach(ord => {
       ord.items.forEach(roleName => {
         individualItems.push({
@@ -1973,6 +1977,8 @@ async function loadSplitBoardData() {
 
     individualItems.forEach(item => {
       let placed = false;
+      
+      // 從第 1 個箱子開始找，看哪一個箱子的這個角色還是空的
       for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
         let currentBox = boxes[bIndex];
         if (!currentBox[item.role]) currentBox[item.role] = [];
@@ -1984,6 +1990,7 @@ async function loadSplitBoardData() {
         }
       }
 
+      // 如果前面的箱子該角色都滿了，就開新的一盒
       if (!placed) {
         let newBox = {};
         roles.forEach(r => { newBox[r] = []; });
