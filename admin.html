@@ -1943,7 +1943,7 @@ async function loadSplitBoardData() {
     });
 
     // 💡 絕對強制：角色順序完全以資料庫 products 的 id 排序（dbRoleOrder）為準，且只顯示有被喊單的項目
-    let roles = dbRoleOrder.length > 0 
+   let roles = dbRoleOrder.length > 0 
       ? dbRoleOrder.filter(r => roleSet.has(r)) 
       : Array.from(roleSet).sort();
 
@@ -1952,7 +1952,6 @@ async function loadSplitBoardData() {
       if (statsContainer) statsContainer.innerHTML = "";
       return;
     }
-
     // 渲染上方統計摘要
     let statsHtml = `<div style="background: #27272a; padding: 8px 12px; border-radius: 6px;">📦 <b>${selectedCategory} 總喊單統計：</b></div>`;
     roles.forEach(r => {
