@@ -2035,7 +2035,7 @@ async function loadSplitBoardData() {
     container.innerHTML = `<p style="color: #ef4444; text-align: center; font-size: 13px; padding: 20px;">載入失敗：${err.message}</p>`;
   }
 }
-    // 1. 當團務選擇改變時：去 products 撈出該團務擁有的所有拆團分類，並填入分類下拉選單
+    // 1. 當團務選擇改變時：只抓取分類包含「拆團款」的商品，並填入分類下拉選單
 async function onGroupSelectChanged() {
   const groupSelect = document.getElementById('splitGroupSelect');
   const catSelect = document.getElementById('splitCategorySelect');
@@ -2065,16 +2065,22 @@ async function onGroupSelectChanged() {
     if (prodData) {
       prodData.forEach(p => {
         let pCat = String(p['商品分類'] || '').trim();
-        // 💡 只要分類名稱包含「拆團」或「拆團款」，或者任何有填寫的分類，全部抓進來供選擇
-        if (pCat) {
-          categoriesSet.add(pCat);
+        let pName = String(p['商品名稱'] || '').trim();
+        
+        // 💡 嚴格限制：只要分類或名稱包含「拆團款」才收錄
+        if (pCat.includes('拆團款') || pName.includes('[拆團款]')) {
+          if (pCat && pCat !== '拆團款') {
+            categoriesSet.add(pCat);
+          } else {
+            categoriesSet.add('一般拆團');
+          }
         }
       });
     }
 
     let catHtml = `<option value="">-- 請選擇商品分類 --</option>`;
     if (categoriesSet.size === 0) {
-      catHtml = `<option value="">-- 該團務無商品分類 --</option>`;
+      catHtml = `<option value="">-- 該團務無拆團款分類 --</option>`;
     } else {
       categoriesSet.forEach(cat => {
         catHtml += `<option value="${cat}">${cat}</option>`;
@@ -2092,7 +2098,8 @@ async function onGroupSelectChanged() {
     console.error("載入分類失敗:", err);
   }
 }
-window.onGroupSelectChanged = onGroupSelectChanged;    
+window.onGroupSelectChanged = onGroupSelectChanged;
+    
   </script>
 </body>
 </html>
