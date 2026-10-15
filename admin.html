@@ -1854,45 +1854,6 @@ async function loadSplitBoardData() {
   container.innerHTML = `<p style="color: #aaa; text-align: center; font-size: 13px; padding: 20px;">載入喊單資料中...</p>`;
 
 try {
-    // 1. 撈出該團務的所有商品，並強制依照 id 由小到大排序
-    const { data: prodData, error: prodErr } = await db
-      .from('products')
-      .select('*')
-      .eq('團務名稱', selectedGroup)
-      .order('id', { ascending: true });
-
-    if (prodErr) throw prodErr;
-
-    // 2. 嚴格篩選出「只屬於當前選擇分類」的商品
-    let filteredProds = (prodData || []).filter(p => {
-      let pCat = String(p['商品分類'] || '').trim();
-      return pCat === selectedCategory;
-    });
-
-    filteredProds.sort((a, b) => Number(a.id) - Number(b.id));
-
-    let roles = [];
-    let validProductNames = new Set(); // 💡 記錄這個分類底下所有的精準商品名稱（例如 "[拆團款-拍立得] 櫻"）
-
-    filteredProds.forEach(p => {
-      let pName = p['商品名稱'] || '';
-      let pCat = p['商品分類'] || '';
-      
-      if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
-
-      validProductNames.add(pName); // 把這個分類底下的商品全名記下來
-
-      let roleName = pName
-        .replace(/\[拆團款(-[^\]]+)?\]/g, '')
-        .replace(/\[抱盒款(-[^\]]+)?\]/g, '')
-        .trim();
-      if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
-
-      if (roleName && !roles.includes(roleName)) {
-        roles.push(roleName);
-      }
-    });
-
     // 3. 撈取訂單
     const { data: orders, error: ordErr } = await db
       .from('orders')
@@ -1912,7 +1873,7 @@ try {
     let roleTotals = {};
     let validOrders = [];
 
-    // 4. 解析訂單內容：嚴格比對商品全名，確保只有選定分類的商品會被算進來！
+    // 4. 正確解析訂單內容：直接從訂單商品名稱中檢查分類與角色
     orders.forEach(ord => {
       let rawStatus = String(ord['處理狀態'] || '').trim();
       if (rawStatus === '已取消') return;
@@ -1924,15 +1885,21 @@ try {
       items.forEach(item => {
         let pName = item.name || item['商品名稱'] || '';
         
-        // 🛑 核心防護：如果買家買的商品名稱不在這個分類的商品清單內（例如買的是徽章，現在看的是拍立得），直接略過！
-        if (!validProductNames.has(pName)) return;
+        // 🛑 排除抱盒款
+        if (pName.includes('[抱盒款]')) return;
 
+        // 💡 關鍵檢查：這項商品的名稱必須包含你目前在下拉選單選取的分類（例如 "拆團款-拍立得"）
+        if (!pName.includes(selectedCategory)) return;
+
+        // 萃取角色名稱（例如從 "[拆團款-拍立得] 櫻" 中精準抓出 "櫻"）
         let roleName = pName
           .replace(/\[拆團款(-[^\]]+)?\]/g, '')
           .replace(/\[抱盒款(-[^\]]+)?\]/g, '')
           .trim();
+        
         if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
 
+        // 確保這個角色存在於我們剛剛排好序的 roles 清單中
         if (!roles.includes(roleName)) return;
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
