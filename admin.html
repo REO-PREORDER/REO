@@ -1862,19 +1862,29 @@ async function loadSplitBoardData() {
       .eq('團務名稱', selectedGroup)
       .order('id', { ascending: true });
 
-    // 💡 1. 嚴格過濾出該分類的商品，並強制在 JavaScript 裡用數字大小進行 id 排序
+try {
+    // 1. 先從 products 撈出該團務的所有商品，並強制依照 id 由小到大排序
+    const { data: prodData, error: prodErr } = await db
+      .from('products')
+      .select('*')
+      .eq('團務名稱', selectedGroup)
+      .order('id', { ascending: true });
+
+    if (prodErr) throw prodErr;
+
+    // 2. 嚴格篩選出該分類的商品，並【強制以 id 數值由小到大排序】
     let filteredProds = (prodData || []).filter(p => {
       let pCat = String(p['商品分類'] || '').trim();
-      let pCatTrimmed = pCat.replace(/\s+/g, '');
-      let selCatTrimmed = selectedCategory.replace(/\s+/g, '');
-      return pCat === selectedCategory || pCatTrimmed === selCatTrimmed;
+      return pCat === selectedCategory;
     });
 
-    // 🔑 關鍵：強制用 id 數值由小到大 (975 -> 976 -> 977...) 排序
+    // 🔑 絕對強制：確保用 id 數字大小進行排序 (975, 976, 977...)
     filteredProds.sort((a, b) => Number(a.id) - Number(b.id));
 
+    // 3. 直接依序產生角色陣列 (roles)，這就是左側欄位顯示的固定順序
     let roles = [];
     let dbRoleOrder = [];
+    
     filteredProds.forEach(p => {
       let pName = p['商品名稱'] || '';
       let pCat = p['商品分類'] || '';
@@ -1885,12 +1895,9 @@ async function loadSplitBoardData() {
       let roleName = pName.replace('[拆團款]', '').trim();
       if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
 
-      if (roleName && !dbRoleOrder.includes(roleName)) {
+      if (roleName && !roles.includes(roleName)) {
+        roles.push(roleName);
         dbRoleOrder.push(roleName);
-        // 只要這項商品在資料庫存在，就直接依序排進 roles，確保完全按照 id 順序
-        if (!roles.includes(roleName)) {
-          roles.push(roleName);
-        }
       }
     });
     
