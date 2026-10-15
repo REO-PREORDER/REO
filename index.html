@@ -2732,11 +2732,11 @@ function updateFilterGroupOptions(orders) {
   select.innerHTML = html;
   select.value = currentVal;
 }
-  // 📦 開啟前台拆團看板 Modal
+// 📦 開啟前台拆團看板 Modal
 async function openFrontendSplitBoardModal() {
   const modal = document.getElementById('frontendSplitBoardModal');
   if (modal) modal.style.display = 'flex';
-  await ();
+  await loadFrontendSplitGroupOptions();
 }
 window.openFrontendSplitBoardModal = openFrontendSplitBoardModal;
 
@@ -2811,7 +2811,7 @@ async function onFrontendGroupSelected() {
   if (!groupSelect || !catSelect) return;
   const selectedGroup = groupSelect.value;
 
-  if (container) container.innerHTML = "";
+  if (container) container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請選擇商品分類。</p>`;
   if (statsContainer) statsContainer.innerHTML = "";
 
   if (!selectedGroup) {
@@ -2871,7 +2871,7 @@ async function loadFrontendSplitBoardData() {
   const selectedCategory = catSelect.value;
 
   if (!selectedGroup) {
-    container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請先選擇一個拆團。</p>";
+    container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請先選擇一個拆團。</p>`;
     if (statsContainer) statsContainer.innerHTML = "";
     return;
   }
@@ -2884,7 +2884,6 @@ async function loadFrontendSplitBoardData() {
   container.innerHTML = `<p style="color: #aaa; text-align: center; font-size: 13px; padding: 20px;">載入喊單資料中...</p>`;
 
   try {
-    // 1. 先從 products 撈出該團務所有商品，並按 id 由小到大排序
     const { data: prodData, error: prodErr } = await db
       .from('products')
       .select('*')
@@ -2893,7 +2892,6 @@ async function loadFrontendSplitBoardData() {
 
     if (prodErr) throw prodErr;
 
-    // 2. 萃取出該分類底下的所有角色清單 (roles)
     let roles = [];
     (prodData || []).forEach(p => {
       let pName = p['商品名稱'] || '';
@@ -2920,7 +2918,6 @@ async function loadFrontendSplitBoardData() {
       return;
     }
 
-    // 3. 撈取訂單
     const { data: orders, error: ordErr } = await db
       .from('orders')
       .select('*')
@@ -2939,7 +2936,6 @@ async function loadFrontendSplitBoardData() {
     let roleTotals = {};
     let validOrders = [];
 
-    // 4. 正確解析訂單內容
     orders.forEach(ord => {
       let rawStatus = String(ord['處理狀態'] || '').trim();
       if (rawStatus === '已取消') return;
@@ -2989,7 +2985,6 @@ async function loadFrontendSplitBoardData() {
       return;
     }
 
-    // 5. 渲染上方統計摘要
     let statsHtml = `<div style="background: #27272a; padding: 6px 10px; border-radius: 6px; color: #fff;">📦 <b>總喊單統計：</b></div>`;
     roles.forEach(r => {
       let count = roleTotals[r] || 0;
@@ -2997,7 +2992,6 @@ async function loadFrontendSplitBoardData() {
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
-    // 6. 分盒邏輯 (前台不顯示訂單編號)
     let boxes = [];
     let individualItems = [];
     
