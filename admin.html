@@ -1858,17 +1858,17 @@ async function onGroupSelectChanged() {
     let categoriesSet = new Set();
     if (prodData) {
       prodData.forEach(p => {
-        let pName = p['商品名稱'] || '';
         let pCat = p['商品分類'] || '';
-        if (pCat === '拆團款' || pName.includes('[拆團款]')) {
-          let categoryName = pCat && pCat !== '拆團款' ? pCat : '一般拆團';
-          categoriesSet.add(categoryName);
+        // 只要分類是以「拆團款」開頭的（例如 拆團款-徽章、拆團款-拍立得），就把它抓進來
+        if (pCat.startsWith('拆團款') || pCat.includes('拆團')) {
+          categoriesSet.add(pCat);
         }
       });
     }
 
     let catHtml = `<option value="">-- 請選擇商品分類 --</option>`;
     categoriesSet.forEach(cat => {
+      // 顯示名稱可以保留完整「拆團款-徽章」，或者你想簡化顯示也可以
       catHtml += `<option value="${cat}">${cat}</option>`;
     });
     catSelect.innerHTML = catHtml;
@@ -1919,14 +1919,14 @@ async function loadSplitBoardData() {
     if (!prodErr && prodData) {
       let filteredProds = prodData.filter(p => {
         let pCat = p['商品分類'] || '';
-        let targetCat = pCat && pCat !== '拆團款' ? pCat : '一般拆團';
-        return targetCat === selectedCategory;
+        return pCat === selectedCategory; // 嚴格比對分類（例如 拆團款-徽章）
       });
 
-      filteredProds.sort((a, b) => a.id - b.id);
+      filteredProds.sort((a, b) => a.id - b.id); // 依 id 由小到大排序
       
       filteredProds.forEach(p => {
         let pName = p['商品名稱'] || '';
+        // 如果商品名稱帶有 [拆團款] 或是直接就是角色名稱，我們把它清乾淨作為角色名
         let roleName = pName.replace('[拆團款]', '').trim();
         if (!dbRoleOrder.includes(roleName)) {
           dbRoleOrder.push(roleName);
@@ -1963,13 +1963,12 @@ async function loadSplitBoardData() {
       items.forEach(item => {
         let pName = item.name || item['商品名稱'] || '';
         let pCat = item.category || item['分類'] || item['商品分類'] || '';
-        if (pCat === '抱盒款' || pName.includes('[抱盒款]')) return;
-
-        let itemCategory = pCat && pCat !== '拆團款' ? pCat : '一般拆團';
-        if (itemCategory !== selectedCategory && !dbRoleOrder.some(r => pName.includes(r))) return;
+        
+        // 如果這個品項的分類不符合當前選中的分類，就跳過
+        if (pCat !== selectedCategory) return;
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
-        let roleName = pName.replace('[拆團款]', '').replace('[抱盒款]', '').trim();
+        let roleName = pName.replace('[拆團款]', '').trim();
         if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
 
         if (dbRoleOrder.length > 0 && !dbRoleOrder.includes(roleName)) return;
@@ -1998,7 +1997,7 @@ async function loadSplitBoardData() {
       : Array.from(roleSet).sort();
 
     if (roles.length === 0 || validOrders.length === 0) {
-      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含拆團款的喊單紀錄。</p>`;
+      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含該項目的喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
       return;
     }
@@ -2010,6 +2009,7 @@ async function loadSplitBoardData() {
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
+    // 📦 獨立排隊與分盒邏輯（一盒一個角色一個名額）
     let boxes = [];
     let individualItems = [];
     validOrders.forEach(ord => {
