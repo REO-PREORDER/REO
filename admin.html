@@ -2065,22 +2065,20 @@ async function onGroupSelectChanged() {
 
     if (error) throw error;
 
-    let categoriesSet = new Set();
+   let categoriesSet = new Set();
     if (prodData) {
       prodData.forEach(p => {
         let pCat = String(p['商品分類'] || '').trim();
         let pName = String(p['商品名稱'] || '').trim();
         
-        if (pCat.includes('拆團款') || pName.includes('[拆團款]')) {
-          if (pCat && pCat !== '拆團款') {
-            categoriesSet.add(pCat);
-          } else {
-            categoriesSet.add('一般拆團');
-          }
+        // 排除抱盒款，只抓拆團相關的商品分類
+        if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
+
+        if (pCat) {
+          categoriesSet.add(pCat); // 💡 直接使用資料庫裡寫的真實分類名稱（例如「拆團款」），不再強制改成「一般拆團」
         }
       });
     }
-
     let catHtml = `<option value="">-- 請選擇商品分類 --</option>`;
     if (categoriesSet.size === 0) {
       catHtml = `<option value="">-- 該團務無拆團款分類 --</option>`;
