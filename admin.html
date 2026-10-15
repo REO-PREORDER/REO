@@ -304,8 +304,7 @@
     <!-- 🏷️ 2. 選擇商品分類（新增的第二層選單） -->
     <div style="margin-bottom: 15px;">
       <label style="font-size: 13px; color: #60a5fa; font-weight: bold;">選擇商品分類：</label>
-      <select id="splitCategorySelect" onchange="()" style="width: 100%; padding: 8px; margin-top: 5px; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 6px; font-size: 13px;">
-        <option value="">-- 請先選擇團務 --</option>
+<select id="splitCategorySelect" onchange="loadSplitBoardData()" style="...">        <option value="">-- 請先選擇團務 --</option>
       </select>
     </div>
 
@@ -1829,7 +1828,7 @@ async function loadSplitGroupOptions() {
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
 
-// 📊 讀取並計算該拆團指定分類的方格看板數據（結合雙下拉選單與分類過濾）
+// 📊 讀取並計算該拆團指定分類的方格看板數據
 async function loadSplitBoardData() {
   const groupSelect = document.getElementById('splitGroupSelect');
   const catSelect = document.getElementById('splitCategorySelect');
@@ -1855,15 +1854,7 @@ async function loadSplitBoardData() {
   container.innerHTML = `<p style="color: #aaa; text-align: center; font-size: 13px; padding: 20px;">載入喊單資料中...</p>`;
 
   try {
-    // 1. 先從 products 撈出該團務的所有商品，並強制依照 id 由小到大排序
-    const { data: prodData, error: prodErr } = await db
-      .from('products')
-      .select('*')
-      .eq('團務名稱', selectedGroup)
-      .order('id', { ascending: true });
-
-try {
-    // 1. 先從 products 撈出該團務的所有商品，並強制依照 id 由小到大排序
+    // 1. 撈出該團務的所有商品，並強制依照 id 由小到大排序
     const { data: prodData, error: prodErr } = await db
       .from('products')
       .select('*')
@@ -1872,16 +1863,14 @@ try {
 
     if (prodErr) throw prodErr;
 
-    // 2. 嚴格篩選出該分類的商品，並【強制以 id 數值由小到大排序】
+    // 2. 嚴格過濾出該分類的商品，並強制以 id 數字由小到大排序
     let filteredProds = (prodData || []).filter(p => {
       let pCat = String(p['商品分類'] || '').trim();
       return pCat === selectedCategory;
     });
 
-    // 🔑 絕對強制：確保用 id 數字大小進行排序 (975, 976, 977...)
     filteredProds.sort((a, b) => Number(a.id) - Number(b.id));
 
-    // 3. 直接依序產生角色陣列 (roles)，這就是左側欄位顯示的固定順序
     let roles = [];
     let dbRoleOrder = [];
     
@@ -1889,7 +1878,6 @@ try {
       let pName = p['商品名稱'] || '';
       let pCat = p['商品分類'] || '';
       
-      // 🛑 排除抱盒款
       if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
 
       let roleName = pName.replace('[拆團款]', '').trim();
@@ -1900,8 +1888,8 @@ try {
         dbRoleOrder.push(roleName);
       }
     });
-    
-// 3. 撈取該團務的所有有效訂單
+
+    // 3. 撈取訂單
     const { data: orders, error: ordErr } = await db
       .from('orders')
       .select('*')
@@ -1920,7 +1908,6 @@ try {
     let roleTotals = {};
     let validOrders = [];
 
-    // 4. 解析並過濾訂單內的商品項目（放寬比對）
     orders.forEach(ord => {
       let rawStatus = String(ord['處理狀態'] || '').trim();
       if (rawStatus === '已取消') return;
@@ -1933,14 +1920,12 @@ try {
         let pName = item.name || item['商品名稱'] || '';
         let pCat = item.category || item['分類'] || item['商品分類'] || '';
         
-        // 排除抱盒款
         if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
 
         let roleName = pName.replace('[拆團款]', '').trim();
         if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
 
-        // 只要角色名稱存在於我們剛剛建立的 roles 陣列中，就納入統計
-        if (roles.length > 0 && !roles.includes(roleName)) return;
+        if (dbRoleOrder.length > 0 && !dbRoleOrder.includes(roleName)) return;
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
 
@@ -1963,13 +1948,13 @@ try {
       }
     });
 
-    if (validOrders.length === 0) {
-      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含喊單紀錄（請檢查訂單內容與商品名稱是否對應）。</p>`;
+    if (roles.length === 0 || validOrders.length === 0) {
+      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
       return;
     }
 
-    // 渲染上方統計摘要
+    // 4. 渲染上方統計摘要
     let statsHtml = `<div style="background: #27272a; padding: 6px 10px; border-radius: 6px; color: #fff;">📦 <b>總喊單統計：</b></div>`;
     roles.forEach(r => {
       let count = roleTotals[r] || 0;
@@ -1977,7 +1962,7 @@ try {
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
-    // 4. 獨立排隊與分盒邏輯
+    // 5. 分盒邏輯
     let boxes = [];
     let individualItems = [];
     
@@ -2017,7 +2002,7 @@ try {
 
     let maxBoxCount = Math.max(boxes.length, 4);
 
-    // 5. 組合表格 HTML
+    // 6. 組合表格 HTML
     let tableHtml = `
       <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb; white-space: nowrap;">
         <thead>
