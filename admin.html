@@ -1942,15 +1942,13 @@ async function loadSplitBoardData() {
       }
     });
 
-    // 💡 絕對強制：角色順序完全以資料庫 products 的 id 排序（dbRoleOrder）為準，且只顯示有被喊單的項目
-   let roles = dbRoleOrder.length > 0 
-      ? dbRoleOrder.filter(r => roleSet.has(r)) 
-      : Array.from(roleSet).sort();
-
-    if (roles.length === 0 || validOrders.length === 0) {
-      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有包含拆團款的喊單紀錄。</p>`;
-      if (statsContainer) statsContainer.innerHTML = "";
-      return;
+    // 💡 絕對強制：直接以該分類在資料庫中設定的商品順序（id 由小到大）作為左側角色欄位的固定順序
+    let roles = [];
+    if (dbRoleOrder.length > 0) {
+      // 直接把資料庫依 id 排序好的角色拿來用（不管有沒有人喊，保持版面固定；若只想顯示有喊的也可以保留 filter）
+      roles = [...dbRoleOrder];
+    } else {
+      roles = Array.from(roleSet).sort();
     }
     // 渲染上方統計摘要
     let statsHtml = `<div style="background: #27272a; padding: 8px 12px; border-radius: 6px;">📦 <b>${selectedCategory} 總喊單統計：</b></div>`;
