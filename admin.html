@@ -1923,10 +1923,14 @@ async function loadSplitBoardData() {
         // 排除抱盒款
         if (pName.includes('[抱盒款]')) return;
 
-        // 萃取角色名稱（例如從 "[拆團款] 蘇" 抓出 "蘇"）
-        let roleName = pName.replace('[拆團款]', '').trim();
+        // 💡 萬用萃取角色名稱：無論是 "[拆團款] 櫻" 還是 "[拆團款-徽章] 櫻"，都能精準抓出 "櫻"
+        let roleName = pName
+          .replace(/\[拆團款(-[^\]]+)?\]/g, '') // 移除 [拆團款] 或 [拆團款-徽章] 等標籤
+          .replace(/\[抱盒款(-[^\]]+)?\]/g, '')
+          .trim();
+        
         if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
-
+        
         // 💡 核心對應：只要這個角色確實存在於我們剛剛抓到的該分類角色清單（roles）中，就直接算進去！
         if (!roles.includes(roleName)) return;
 
