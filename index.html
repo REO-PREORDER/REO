@@ -2736,7 +2736,7 @@ function updateFilterGroupOptions(orders) {
 async function openFrontendSplitBoardModal() {
   const modal = document.getElementById('frontendSplitBoardModal');
   if (modal) modal.style.display = 'flex';
-  await loadFrontendSplitGroupOptions();
+  await ();
 }
 window.openFrontendSplitBoardModal = openFrontendSplitBoardModal;
 
@@ -2750,8 +2750,13 @@ window.closeFrontendSplitBoardModal = closeFrontendSplitBoardModal;
 // 📦 自動過濾並載入「有包含拆團商品」的團務下拉選單
 async function loadFrontendSplitGroupOptions() {
   const selectElem = document.getElementById('frontendSplitGroupSelect');
+  const catSelectElem = document.getElementById('frontendSplitCategorySelect');
   if (!selectElem) return;
   
+  if (catSelectElem) {
+    catSelectElem.innerHTML = `<option value="">-- 請先選擇團務 --</option>`;
+  }
+
   try {
     const [groupsRes, productsRes] = await Promise.all([
       db.from('groups').select('*').order('created_at', { ascending: false }),
@@ -2766,9 +2771,10 @@ async function loadFrontendSplitGroupOptions() {
 
     let splitGroupNames = new Set();
     products.forEach(p => {
-      let pName = p['商品分類'] || '';
+      let pName = p['商品名稱'] || '';
+      let pCat = String(p['商品分類'] || '').trim();
       let gName = p['團務名稱'] || '';
-      if (pName.includes('[拆團款]') || pName.includes('[抱盒款]') || pName.includes('拆團')) {
+      if (pCat.includes('拆團款') || pName.includes('[拆團款]')) {
         if (gName) splitGroupNames.add(gName);
       }
     });
@@ -2795,16 +2801,82 @@ async function loadFrontendSplitGroupOptions() {
 }
 window.loadFrontendSplitGroupOptions = loadFrontendSplitGroupOptions;
 
-// 📊 讀取並計算該拆團的方格看板數據（依商品 id 由小到大排序，獨立排隊，不顯示訂單編號）
-async function loadFrontendSplitBoardData() {
-  const selectEl = document.getElementById('frontendSplitGroupSelect');
+// 📂 當前台選擇的團務改變時，動態載入該團務底下的「拆團商品分類」
+async function onFrontendGroupSelected() {
+  const groupSelect = document.getElementById('frontendSplitGroupSelect');
+  const catSelect = document.getElementById('frontendSplitCategorySelect');
   const container = document.getElementById('frontendSplitBoardTableContainer');
   const statsContainer = document.getElementById('frontendSplitSummaryStats');
-  if (!selectEl || !container) return;
 
-  const selectedGroup = selectEl.value;
+  if (!groupSelect || !catSelect) return;
+  const selectedGroup = groupSelect.value;
+
+  if (container) container.innerHTML = "";
+  if (statsContainer) statsContainer.innerHTML = "";
+
   if (!selectedGroup) {
-    container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請先選擇一個拆團。</p>`;
+    catSelect.innerHTML = `<option value="">-- 請先選擇團務 --</option>`;
+    return;
+  }
+
+  catSelect.innerHTML = `<option value="">載入分類中...</option>`;
+
+  try {
+    const { data: products, error } = await db
+      .from('products')
+      .select('*')
+      .eq('團務名稱', selectedGroup);
+
+    if (error) throw error;
+
+    let categoriesSet = new Set();
+    (products || []).forEach(p => {
+      let pCat = String(p['商品分類'] || '').trim();
+      let pName = p['商品名稱'] || '';
+      
+      if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
+
+      if (pCat.includes('拆團款') || pName.includes('[拆團款]')) {
+        if (pCat) categoriesSet.add(pCat);
+      }
+    });
+
+    let html = `<option value="">-- 請選擇商品分類 --</option>`;
+    categoriesSet.forEach(cat => {
+      html += `<option value="${cat}">${cat}</option>`;
+    });
+
+    if (categoriesSet.size === 0) {
+      html = `<option value="">-- 此團務沒有拆團分類 --</option>`;
+    }
+
+    catSelect.innerHTML = html;
+  } catch (err) {
+    console.error("載入分類失敗：", err);
+    catSelect.innerHTML = `<option value="">載入分類失敗</option>`;
+  }
+}
+window.onFrontendGroupSelected = onFrontendGroupSelected;
+
+// 📊 讀取並計算前台指定分類的方格看板數據
+async function loadFrontendSplitBoardData() {
+  const groupSelect = document.getElementById('frontendSplitGroupSelect');
+  const catSelect = document.getElementById('frontendSplitCategorySelect');
+  const container = document.getElementById('frontendSplitBoardTableContainer');
+  const statsContainer = document.getElementById('frontendSplitSummaryStats');
+  
+  if (!groupSelect || !catSelect || !container) return;
+
+  const selectedGroup = groupSelect.value;
+  const selectedCategory = catSelect.value;
+
+  if (!selectedGroup) {
+    container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請先選擇一個拆團。</p>";
+    if (statsContainer) statsContainer.innerHTML = "";
+    return;
+  }
+  if (!selectedCategory) {
+    container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請選擇商品分類。</p>`;
     if (statsContainer) statsContainer.innerHTML = "";
     return;
   }
@@ -2812,35 +2884,50 @@ async function loadFrontendSplitBoardData() {
   container.innerHTML = `<p style="color: #aaa; text-align: center; font-size: 13px; padding: 20px;">載入喊單資料中...</p>`;
 
   try {
-    // 💡 1. 直接從 products 資料庫撈出該團務所有商品，並依照 id 由小到大排序（id 小的在前，id 大的在後）
+    // 1. 先從 products 撈出該團務所有商品，並按 id 由小到大排序
     const { data: prodData, error: prodErr } = await db
       .from('products')
       .select('*')
-      .eq('團務名稱', selectedGroup);
+      .eq('團務名稱', selectedGroup)
+      .order('id', { ascending: true });
 
-    let dbRoleOrder = [];
-    if (!prodErr && prodData) {
-      prodData.sort((a, b) => a.id - b.id); // 💡 關鍵：id 排序 (由小到大)
-      
-      prodData.forEach(p => {
-        let pName = p['商品名稱'] || '';
-        let pCat = p['商品分類'] || '';
-        if (pCat === '拆團款' || pName.includes('[拆團款]')) {
-          let roleName = pName.replace('[拆團款]', '').trim();
-          if (!dbRoleOrder.includes(roleName)) {
-            dbRoleOrder.push(roleName);
-          }
+    if (prodErr) throw prodErr;
+
+    // 2. 萃取出該分類底下的所有角色清單 (roles)
+    let roles = [];
+    (prodData || []).forEach(p => {
+      let pName = p['商品名稱'] || '';
+      let pCat = String(p['商品分類'] || '').trim();
+
+      if (pCat === selectedCategory || pName.includes(selectedCategory)) {
+        if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
+
+        let roleName = pName
+          .replace(/\[拆團款(-[^\]]+)?\]/g, '')
+          .replace(/\[抱盒款(-[^\]]+)?\]/g, '')
+          .trim();
+        if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
+
+        if (roleName && !roles.includes(roleName)) {
+          roles.push(roleName);
         }
-      });
+      }
+    });
+
+    if (roles.length === 0) {
+      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有設定任何商品或角色。</p>`;
+      if (statsContainer) statsContainer.innerHTML = "";
+      return;
     }
 
-    const { data: orders, error } = await db
+    // 3. 撈取訂單
+    const { data: orders, error: ordErr } = await db
       .from('orders')
       .select('*')
       .eq('團務名稱', selectedGroup)
       .order('created_at', { ascending: true });
 
-    if (error) throw error;
+    if (ordErr) throw ordErr;
 
     if (!orders || orders.length === 0) {
       container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有任何訂單。</p>`;
@@ -2852,6 +2939,7 @@ async function loadFrontendSplitBoardData() {
     let roleTotals = {};
     let validOrders = [];
 
+    // 4. 正確解析訂單內容
     orders.forEach(ord => {
       let rawStatus = String(ord['處理狀態'] || '').trim();
       if (rawStatus === '已取消') return;
@@ -2862,12 +2950,20 @@ async function loadFrontendSplitBoardData() {
       let orderItemsParsed = [];
       items.forEach(item => {
         let pName = item.name || item['商品名稱'] || '';
-        let pCat = item.category || item['分類'] || item['商品分類'] || '';
-        if (pCat === '抱盒款' || pName.includes('[抱盒款]')) return;
+        
+        if (pName.includes('[抱盒款]')) return;
+        if (!pName.includes(selectedCategory)) return;
+
+        let roleName = pName
+          .replace(/\[拆團款(-[^\]]+)?\]/g, '')
+          .replace(/\[抱盒款(-[^\]]+)?\]/g, '')
+          .trim();
+        
+        if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
+
+        if (!roles.includes(roleName)) return;
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
-        let roleName = pName.replace('[拆團款]', '').replace('[抱盒款]', '').trim();
-        if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
 
         roleSet.add(roleName);
         if (!roleTotals[roleName]) roleTotals[roleName] = 0;
@@ -2887,17 +2983,13 @@ async function loadFrontendSplitBoardData() {
       }
     });
 
-    // 💡 2. 結合資料庫順序，讓看板角色嚴格按照 id 由小到大排列
-    let roles = dbRoleOrder.length > 0 
-      ? dbRoleOrder.filter(r => roleSet.has(r)) 
-      : Array.from(roleSet).sort();
-
     if (roles.length === 0 || validOrders.length === 0) {
-      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有包含拆團款的喊單紀錄。</p>`;
+      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
       return;
     }
 
+    // 5. 渲染上方統計摘要
     let statsHtml = `<div style="background: #27272a; padding: 6px 10px; border-radius: 6px; color: #fff;">📦 <b>總喊單統計：</b></div>`;
     roles.forEach(r => {
       let count = roleTotals[r] || 0;
@@ -2905,9 +2997,12 @@ async function loadFrontendSplitBoardData() {
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
-    // 📦 箱子分配邏輯：一盒一個角色一個名額，複數自動拆開跨箱排隊（前台不顯示訂單編號）
+    // 6. 分盒邏輯 (前台不顯示訂單編號)
     let boxes = [];
     let individualItems = [];
+    
+    validOrders.sort((a, b) => new Date(a.time) - new Date(b.time));
+
     validOrders.forEach(ord => {
       ord.items.forEach(roleName => {
         individualItems.push({
@@ -2920,13 +3015,9 @@ async function loadFrontendSplitBoardData() {
 
     individualItems.forEach(item => {
       let placed = false;
-
       for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
         let currentBox = boxes[bIndex];
-
-        if (!currentBox[item.role]) {
-          currentBox[item.role] = [];
-        }
+        if (!currentBox[item.role]) currentBox[item.role] = [];
 
         if (currentBox[item.role].length === 0) {
           currentBox[item.role].push({ buyer: item.buyer, time: item.time });
@@ -2938,7 +3029,6 @@ async function loadFrontendSplitBoardData() {
       if (!placed) {
         let newBox = {};
         roles.forEach(r => { newBox[r] = []; });
-        
         newBox[item.role].push({ buyer: item.buyer, time: item.time });
         boxes.push(newBox);
       }
@@ -2950,7 +3040,7 @@ async function loadFrontendSplitBoardData() {
       <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb; white-space: nowrap;">
         <thead>
           <tr style="background: #27272a; border-bottom: 2px solid #444;">
-            <th style="padding: 10px; border-right: 1px solid #444; width: 100px; text-align: center; color: #38bdf8;">角色 / 款式</th>
+            <th style="padding: 10px; border-right: 1px solid #444; width: 100px; text-align: center; color: #38bdf8;">${selectedCategory} / 角色</th>
     `;
     for (let b = 1; b <= maxBoxCount; b++) {
       tableHtml += `<th style="padding: 10px; border-right: 1px solid #444; text-align: center; min-width: 140px;">第 ${b} 盒</th>`;
@@ -2965,7 +3055,6 @@ async function loadFrontendSplitBoardData() {
         let boxData = boxes[b] ? boxes[b][role] : null;
         let entry = (boxData && boxData.length > 0) ? boxData[0] : null;
 
-        // 前台保持簡潔，不顯示訂單編號
         let cellContent = entry ? `<div style="font-weight: bold; color: #fff;">${entry.buyer}</div><div style="font-size: 11px; color: #888;">(${entry.time})</div>` : `<span style="color: #555; font-style: italic;">(尚無)</span>`;
         let cellBg = entry ? "#1e293b" : "transparent";
         tableHtml += `<td style="padding: 8px 10px; border-right: 1px solid #333; background: ${cellBg}; text-align: center; vertical-align: middle;">${cellContent}</td>`;
