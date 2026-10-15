@@ -1829,7 +1829,7 @@ async function loadSplitGroupOptions() {
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
 
-// 📊 讀取並計算該拆團指定分類的方格看板數據（結合雙下拉選單與分類過濾）
+// 📊 讀取並計算該拆團指定分類的方格看板數據
 async function loadSplitBoardData() {
   const groupSelect = document.getElementById('splitGroupSelect');
   const catSelect = document.getElementById('splitCategorySelect');
@@ -1841,13 +1841,8 @@ async function loadSplitBoardData() {
   const selectedGroup = groupSelect.value;
   const selectedCategory = catSelect.value;
 
-  if (!selectedGroup) {
-    container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請先選擇一個團務。</p>`;
-    if (statsContainer) statsContainer.innerHTML = "";
-    return;
-  }
-  if (!selectedCategory) {
-    container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請選擇商品分類。</p>`;
+  if (!selectedGroup || !selectedCategory) {
+    container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請先選擇團務與商品分類。</p>`;
     if (statsContainer) statsContainer.innerHTML = "";
     return;
   }
@@ -1855,52 +1850,42 @@ async function loadSplitBoardData() {
   container.innerHTML = `<p style="color: #aaa; text-align: center; font-size: 13px; padding: 20px;">載入喊單資料中...</p>`;
 
   try {
-    // 1. 先從 products 撈出該團務的所有商品，並強制依照 id 由小到大排序
+    // 1. 撈出該團務的所有商品，並直接用 .order('id', { ascending: true }) 確保從小到大
     const { data: prodData, error: prodErr } = await db
       .from('products')
       .select('*')
       .eq('團務名稱', selectedGroup)
       .order('id', { ascending: true });
 
-    // 💡 1. 嚴格過濾出該分類的商品，並強制在 JavaScript 裡用數字大小進行 id 排序
-    let filteredProds = (prodData || []).filter(p => {
-      let pCat = String(p['商品分類'] || '').trim();
-      let pCatTrimmed = pCat.replace(/\s+/g, '');
-      let selCatTrimmed = selectedCategory.replace(/\s+/g, '');
-      return pCat === selectedCategory || pCatTrimmed === selCatTrimmed;
-    });
+    if (prodErr) throw prodErr;
 
-    // 🔑 關鍵：強制用 id 數值由小到大 (975 -> 976 -> 977...) 排序
-    filteredProds.sort((a, b) => Number(a.id) - Number(b.id));
-
-    let roles = [];
+    // 2. 嚴格過濾出符合該分類的角色順序 (dbRoleOrder)
     let dbRoleOrder = [];
-    filteredProds.forEach(p => {
-      let pName = p['商品名稱'] || '';
-      let pCat = p['商品分類'] || '';
-      
-      // 🛑 排除抱盒款
-      if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
+    if (prodData) {
+      prodData
+        .filter(p => String(p['商品分類'] || '').trim() === selectedCategory)
+        .forEach(p => {
+          let pName = p['商品名稱'] || '';
+          let pCat = p['商品分類'] || '';
+          if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
 
-      let roleName = pName.replace('[拆團款]', '').trim();
-      if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
+          let roleName = pName.replace('[拆團款]', '').trim();
+          if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
+          
+          if (roleName && !dbRoleOrder.includes(roleName)) {
+            dbRoleOrder.push(roleName);
+          }
+        });
+    }
 
-      if (roleName && !dbRoleOrder.includes(roleName)) {
-        dbRoleOrder.push(roleName);
-        // 只要這項商品在資料庫存在，就直接依序排進 roles，確保完全按照 id 順序
-        if (!roles.includes(roleName)) {
-          roles.push(roleName);
-        }
-      }
-    });
-    
-    const { data: orders, error } = await db
+    // 3. 撈取訂單
+    const { data: orders, error: ordErr } = await db
       .from('orders')
       .select('*')
       .eq('團務名稱', selectedGroup)
       .order('created_at', { ascending: true });
 
-    if (error) throw error;
+    if (ordErr) throw ordErr;
 
     if (!orders || orders.length === 0) {
       container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有任何訂單。</p>`;
@@ -1912,10 +1897,8 @@ async function loadSplitBoardData() {
     let roleTotals = {};
     let validOrders = [];
 
-    // 2. 蒐集符合該分類角色的訂單資料
     orders.forEach(ord => {
-      let rawStatus = String(ord['處理狀態'] || '').trim();
-      if (rawStatus === '已取消') return;
+      if (String(ord['處理狀態'] || '').trim() === '已取消') return;
 
       let items = ord['訂單內容'] || [];
       if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
@@ -1953,13 +1936,16 @@ async function loadSplitBoardData() {
       }
     });
 
+    // 4. 關鍵：角色順序嚴格按照資料庫 id 排序的 dbRoleOrder 過濾
+    let roles = dbRoleOrder.filter(r => roleSet.has(r));
+
     if (roles.length === 0 || validOrders.length === 0) {
       container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
       return;
     }
 
-    // 渲染上方統計摘要
+    // 5. 渲染上方統計摘要
     let statsHtml = `<div style="background: #27272a; padding: 6px 10px; border-radius: 6px; color: #fff;">📦 <b>總喊單統計：</b></div>`;
     roles.forEach(r => {
       let count = roleTotals[r] || 0;
@@ -1967,7 +1953,7 @@ async function loadSplitBoardData() {
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
-    // 4. 獨立排隊與分盒邏輯
+    // 6. 分盒邏輯
     let boxes = [];
     let individualItems = [];
     
@@ -2007,7 +1993,7 @@ async function loadSplitBoardData() {
 
     let maxBoxCount = Math.max(boxes.length, 4);
 
-    // 5. 組合表格 HTML
+    // 7. 組合表格 HTML
     let tableHtml = `
       <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb; white-space: nowrap;">
         <thead>
