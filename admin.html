@@ -1853,7 +1853,7 @@ async function loadSplitBoardData() {
 
   container.innerHTML = `<p style="color: #aaa; text-align: center; font-size: 13px; padding: 20px;">載入喊單資料中...</p>`;
 
-  try {
+try {
     // 1. 撈出該團務的所有商品，並強制依照 id 由小到大排序
     const { data: prodData, error: prodErr } = await db
       .from('products')
@@ -1863,7 +1863,7 @@ async function loadSplitBoardData() {
 
     if (prodErr) throw prodErr;
 
-    // 2. 嚴格過濾出該分類的商品，並強制以 id 數字由小到大排序
+    // 2. 嚴格篩選出「只屬於當前選擇分類」的商品
     let filteredProds = (prodData || []).filter(p => {
       let pCat = String(p['商品分類'] || '').trim();
       return pCat === selectedCategory;
@@ -1872,20 +1872,24 @@ async function loadSplitBoardData() {
     filteredProds.sort((a, b) => Number(a.id) - Number(b.id));
 
     let roles = [];
-    let dbRoleOrder = [];
-    
+    let validProductNames = new Set(); // 💡 記錄這個分類底下所有的精準商品名稱（例如 "[拆團款-拍立得] 櫻"）
+
     filteredProds.forEach(p => {
       let pName = p['商品名稱'] || '';
       let pCat = p['商品分類'] || '';
       
       if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
 
-      let roleName = pName.replace('[拆團款]', '').trim();
+      validProductNames.add(pName); // 把這個分類底下的商品全名記下來
+
+      let roleName = pName
+        .replace(/\[拆團款(-[^\]]+)?\]/g, '')
+        .replace(/\[抱盒款(-[^\]]+)?\]/g, '')
+        .trim();
       if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
 
       if (roleName && !roles.includes(roleName)) {
         roles.push(roleName);
-        dbRoleOrder.push(roleName);
       }
     });
 
@@ -1908,7 +1912,7 @@ async function loadSplitBoardData() {
     let roleTotals = {};
     let validOrders = [];
 
-    // 2. 解析訂單內容：直接比對商品名稱是否包含角色名稱
+    // 4. 解析訂單內容：嚴格比對商品全名，確保只有選定分類的商品會被算進來！
     orders.forEach(ord => {
       let rawStatus = String(ord['處理狀態'] || '').trim();
       if (rawStatus === '已取消') return;
@@ -1920,18 +1924,15 @@ async function loadSplitBoardData() {
       items.forEach(item => {
         let pName = item.name || item['商品名稱'] || '';
         
-        // 排除抱盒款
-        if (pName.includes('[抱盒款]')) return;
+        // 🛑 核心防護：如果買家買的商品名稱不在這個分類的商品清單內（例如買的是徽章，現在看的是拍立得），直接略過！
+        if (!validProductNames.has(pName)) return;
 
-        // 💡 萬用萃取角色名稱：無論是 "[拆團款] 櫻" 還是 "[拆團款-徽章] 櫻"，都能精準抓出 "櫻"
         let roleName = pName
-          .replace(/\[拆團款(-[^\]]+)?\]/g, '') // 移除 [拆團款] 或 [拆團款-徽章] 等標籤
+          .replace(/\[拆團款(-[^\]]+)?\]/g, '')
           .replace(/\[抱盒款(-[^\]]+)?\]/g, '')
           .trim();
-        
         if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
-        
-        // 💡 核心對應：只要這個角色確實存在於我們剛剛抓到的該分類角色清單（roles）中，就直接算進去！
+
         if (!roles.includes(roleName)) return;
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
@@ -1954,7 +1955,7 @@ async function loadSplitBoardData() {
         });
       }
     });
-    
+  
     if (roles.length === 0 || validOrders.length === 0) {
       container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
