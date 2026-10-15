@@ -1862,25 +1862,38 @@ async function loadSplitBoardData() {
       .eq('團務名稱', selectedGroup)
       .order('id', { ascending: true });
 
+    // 💡 1. 嚴格過濾出該分類的商品，並強制在 JavaScript 裡用數字大小進行 id 排序
+    let filteredProds = (prodData || []).filter(p => {
+      let pCat = String(p['商品分類'] || '').trim();
+      let pCatTrimmed = pCat.replace(/\s+/g, '');
+      let selCatTrimmed = selectedCategory.replace(/\s+/g, '');
+      return pCat === selectedCategory || pCatTrimmed === selCatTrimmed;
+    });
+
+    // 🔑 關鍵：強制用 id 數值由小到大 (975 -> 976 -> 977...) 排序
+    filteredProds.sort((a, b) => Number(a.id) - Number(b.id));
+
+    let roles = [];
     let dbRoleOrder = [];
-    if (!prodErr && prodData) {
-      let filteredProds = prodData.filter(p => {
-        let pCat = String(p['商品分類'] || '').trim();
-        return pCat === selectedCategory;
-      });
-
-      filteredProds.sort((a, b) => a.id - b.id);
+    filteredProds.forEach(p => {
+      let pName = p['商品名稱'] || '';
+      let pCat = p['商品分類'] || '';
       
-      filteredProds.forEach(p => {
-        let pName = p['商品名稱'] || '';
-        let roleName = pName.replace('[拆團款]', '').replace('[抱盒款]', '').trim();
-        if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
-        if (roleName && !dbRoleOrder.includes(roleName)) {
-          dbRoleOrder.push(roleName);
-        }
-      });
-    }
+      // 🛑 排除抱盒款
+      if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
 
+      let roleName = pName.replace('[拆團款]', '').trim();
+      if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
+
+      if (roleName && !dbRoleOrder.includes(roleName)) {
+        dbRoleOrder.push(roleName);
+        // 只要這項商品在資料庫存在，就直接依序排進 roles，確保完全按照 id 順序
+        if (!roles.includes(roleName)) {
+          roles.push(roleName);
+        }
+      }
+    });
+    
     const { data: orders, error } = await db
       .from('orders')
       .select('*')
@@ -1939,18 +1952,6 @@ async function loadSplitBoardData() {
         });
       }
     });
-
-    // 3. 角色順序嚴格對齊資料庫 id 排序 (dbRoleOrder)
-    let roles = [];
-    if (dbRoleOrder.length > 0) {
-      dbRoleOrder.forEach(r => {
-        if (roleSet.has(r)) {
-          roles.push(r);
-        }
-      });
-    } else {
-      roles = Array.from(roleSet).sort();
-    }
 
     if (roles.length === 0 || validOrders.length === 0) {
       container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含喊單紀錄。</p>`;
