@@ -1943,19 +1943,12 @@ async function loadSplitBoardData() {
     });
 
     // 💡 絕對強制：角色順序完全以資料庫 products 的 id 排序（dbRoleOrder）為準，且只顯示有被喊單的項目
-    let roles = [];
-    if (dbRoleOrder.length > 0) {
-      dbRoleOrder.forEach(r => {
-        if (roleSet.has(r)) {
-          roles.push(r);
-        }
-      });
-    } else {
-      roles = Array.from(roleSet).sort();
-    }
+    let roles = dbRoleOrder.length > 0 
+      ? dbRoleOrder.filter(r => roleSet.has(r)) 
+      : Array.from(roleSet).sort();
 
     if (roles.length === 0 || validOrders.length === 0) {
-      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含該項目的喊單紀錄。</p>`;
+      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有包含拆團款的喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
       return;
     }
