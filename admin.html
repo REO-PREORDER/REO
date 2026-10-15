@@ -1908,6 +1908,7 @@ async function loadSplitBoardData() {
     let roleTotals = {};
     let validOrders = [];
 
+    // 2. 解析訂單內容：直接比對商品名稱是否包含角色名稱
     orders.forEach(ord => {
       let rawStatus = String(ord['處理狀態'] || '').trim();
       if (rawStatus === '已取消') return;
@@ -1918,18 +1919,16 @@ async function loadSplitBoardData() {
       let orderItemsParsed = [];
       items.forEach(item => {
         let pName = item.name || item['商品名稱'] || '';
-        let pCat = item.category || item['分類'] || item['商品分類'] || '';
         
-        // 🛑 嚴格檢查分類：如果這項商品的分類跟目前選取的分類不符，直接跳過！
-        if (pCat !== selectedCategory && !pCat.includes(selectedCategory)) return;
-
         // 排除抱盒款
-        if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
+        if (pName.includes('[抱盒款]')) return;
 
+        // 萃取角色名稱（例如從 "[拆團款] 蘇" 抓出 "蘇"）
         let roleName = pName.replace('[拆團款]', '').trim();
         if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
 
-        if (dbRoleOrder.length > 0 && !dbRoleOrder.includes(roleName)) return;
+        // 💡 核心對應：只要這個角色確實存在於我們剛剛抓到的該分類角色清單（roles）中，就直接算進去！
+        if (!roles.includes(roleName)) return;
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
 
@@ -1941,6 +1940,7 @@ async function loadSplitBoardData() {
           orderItemsParsed.push(roleName);
         }
       });
+
       if (orderItemsParsed.length > 0) {
         validOrders.push({
           buyer: ord['買家名稱'] || '未具名',
@@ -1950,7 +1950,7 @@ async function loadSplitBoardData() {
         });
       }
     });
-
+    
     if (roles.length === 0 || validOrders.length === 0) {
       container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
