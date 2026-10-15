@@ -1958,36 +1958,47 @@ async function loadSplitBoardData() {
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
     // 3. 獨立排隊與分盒邏輯（一盒一個角色一個名額）
+    // 📦 箱子分配邏輯：以「整張訂單」為單位，按照下單時間先後順序，整張單的角色一起去搶能完全容納該單的箱子
     let boxes = [];
-    let individualItems = [];
-    validOrders.forEach(ord => {
-      ord.items.forEach(roleName => {
-        individualItems.push({
-          buyer: ord.buyer,
-          time: ord.time,
-          orderId: ord.orderId,
-          role: roleName
-        });
-      });
-    });
 
-    individualItems.forEach(item => {
+    // 💡 確保 validOrders 嚴格按照訂單時間（created_at）由舊到新排序
+    validOrders.sort((a, b) => new Date(a.time) - new Date(b.time));
+
+    validOrders.forEach(ord => {
       let placed = false;
+
+      // 從第 1 個箱子開始找，看哪一個箱子能夠「完整塞下」這整筆訂單的所有角色
       for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
         let currentBox = boxes[bIndex];
-        if (!currentBox[item.role]) currentBox[item.role] = [];
+        
+        // 檢查這一盒裡面，這筆訂單需要的角色是不是全部都「空的（還沒有人認領）」
+        let canFitInThisBox = true;
+        for (let roleName of ord.items) {
+          if (!currentBox[roleName]) currentBox[roleName] = [];
+          if (currentBox[roleName].length > 0) {
+            canFitInThisBox = false; // 只要有一個角色被佔了，這箱就塞不下整單
+            break;
+          }
+        }
 
-        if (currentBox[item.role].length === 0) {
-          currentBox[item.role].push({ buyer: item.buyer, time: item.time, orderId: item.orderId });
+        // 如果這箱全部角色都空著，就把這整單放進這一箱！
+        if (canFitInThisBox) {
+          ord.items.forEach(roleName => {
+            currentBox[roleName].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId });
+          });
           placed = true;
           break;
         }
       }
 
+      // 如果前面的箱子都沒有辦法完整塞下這整單，就開新的一盒
       if (!placed) {
         let newBox = {};
         roles.forEach(r => { newBox[r] = []; });
-        newBox[item.role].push({ buyer: item.buyer, time: item.time, orderId: item.orderId });
+        
+        ord.items.forEach(roleName => {
+          newBox[roleName].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId });
+        });
         boxes.push(newBox);
       }
     });
