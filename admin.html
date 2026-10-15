@@ -1942,18 +1942,11 @@ async function loadSplitBoardData() {
       }
     });
 
-    // 💡 嚴格按照資料庫 products 的 id 順序排列角色，若該角色有人喊才顯示，若該分類沒設定商品則退回預設排序
+    // 💡 絕對強制：角色順序完全以資料庫 products 的 id 排序（dbRoleOrder）為準，且只顯示有被喊單的項目
     let roles = [];
     if (dbRoleOrder.length > 0) {
-      // 依照資料庫 id 由小到大的順序逐一檢查，只要有人喊過就加入
       dbRoleOrder.forEach(r => {
-        if (roleSet.has(r) && !roles.includes(r)) {
-          roles.push(r);
-        }
-      });
-      // 如果有些喊單的角色剛好不在 products 裡面，也補在後面避免漏掉
-      roleSet.forEach(r => {
-        if (!roles.includes(r)) {
+        if (roleSet.has(r)) {
           roles.push(r);
         }
       });
