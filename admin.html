@@ -1829,62 +1829,7 @@ async function loadSplitGroupOptions() {
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
 
-// 1. 當團務選擇改變時：去 products 撈出該團務擁有的所有拆團分類，並填入分類下拉選單
-async function onGroupSelectChanged() {
-  const groupSelect = document.getElementById('splitGroupSelect');
-  const catSelect = document.getElementById('splitCategorySelect');
-  const container = document.getElementById('splitBoardTableContainer');
-  const statsContainer = document.getElementById('splitSummaryStats');
-  
-  if (!groupSelect || !catSelect) return;
-  const selectedGroup = groupSelect.value;
-
-  // 清空看板與統計
-  container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請選擇商品分類。</p>`;
-  if (statsContainer) statsContainer.innerHTML = "";
-  catSelect.innerHTML = `<option value="">-- 請選擇商品分類 --</option>`;
-
-  if (!selectedGroup) return;
-
-  try {
-    // 從 products 撈出該團務的所有商品
-    const { data: prodData, error } = await db
-      .from('products')
-      .select('*')
-      .eq('團務名稱', selectedGroup);
-
-    if (error) throw error;
-
-    let categoriesSet = new Set();
-    if (prodData) {
-      prodData.forEach(p => {
-        let pCat = p['商品分類'] || '';
-        // 只要分類是以「拆團款」開頭的（例如 拆團款-徽章、拆團款-拍立得），就把它抓進來
-        if (pCat.startsWith('拆團款') || pCat.includes('拆團')) {
-          categoriesSet.add(pCat);
-        }
-      });
-    }
-
-    let catHtml = `<option value="">-- 請選擇商品分類 --</option>`;
-    categoriesSet.forEach(cat => {
-      // 顯示名稱可以保留完整「拆團款-徽章」，或者你想簡化顯示也可以
-      catHtml += `<option value="${cat}">${cat}</option>`;
-    });
-    catSelect.innerHTML = catHtml;
-
-    // 如果剛好只有一個分類，自動幫使用者選定並載入看板
-    if (categoriesSet.size === 1) {
-      catSelect.value = Array.from(categoriesSet)[0];
-      loadSplitBoardData();
-    }
-
-  } catch (err) {
-    console.error("載入分類失敗:", err);
-  }
-}
-
-// 2. 載入並計算指定「團務 + 分類」的拆團看板數據
+// 📊 讀取並計算該拆團指定分類的方格看板數據（結合雙下拉選單與分類過濾）
 async function loadSplitBoardData() {
   const groupSelect = document.getElementById('splitGroupSelect');
   const catSelect = document.getElementById('splitCategorySelect');
@@ -1910,6 +1855,7 @@ async function loadSplitBoardData() {
   container.innerHTML = `<p style="color: #aaa; text-align: center; font-size: 13px; padding: 20px;">載入喊單資料中...</p>`;
 
   try {
+    // 💡 1. 先從 products 撈出該團務的所有商品，並依照 id 由小到大排序
     const { data: prodData, error: prodErr } = await db
       .from('products')
       .select('*')
@@ -1917,18 +1863,19 @@ async function loadSplitBoardData() {
 
     let dbRoleOrder = [];
     if (!prodErr && prodData) {
-      // 💡 改成包含比對，避免空白或格式微調導致抓不到
-    let filteredProds = prodData.filter(p => {
-      let pCat = String(p['商品分類'] || '').trim();
-      return pCat.includes(selectedCategory) || selectedCategory.includes(pCat);
-    });
-      filteredProds.sort((a, b) => a.id - b.id); // 依 id 由小到大排序
+      // 嚴格篩選出符合當前選擇分類（例如 拆團款-徽章）的商品
+      let filteredProds = prodData.filter(p => {
+        let pCat = String(p['商品分類'] || '').trim();
+        return pCat === selectedCategory;
+      });
+
+      filteredProds.sort((a, b) => a.id - b.id); // 💡 關鍵：id 排序 (由小到大)
       
       filteredProds.forEach(p => {
         let pName = p['商品名稱'] || '';
-        // 如果商品名稱帶有 [拆團款] 或是直接就是角色名稱，我們把它清乾淨作為角色名
-        let roleName = pName.replace('[拆團款]', '').trim();
-        if (!dbRoleOrder.includes(roleName)) {
+        let roleName = pName.replace('[拆團款]', '').replace('[抱盒款]', '').trim();
+        if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
+        if (roleName && !dbRoleOrder.includes(roleName)) {
           dbRoleOrder.push(roleName);
         }
       });
@@ -1952,6 +1899,7 @@ async function loadSplitBoardData() {
     let roleTotals = {};
     let validOrders = [];
 
+    // 2. 蒐集符合該分類角色的訂單資料
     orders.forEach(ord => {
       let rawStatus = String(ord['處理狀態'] || '').trim();
       if (rawStatus === '已取消') return;
@@ -1964,15 +1912,13 @@ async function loadSplitBoardData() {
         let pName = item.name || item['商品名稱'] || '';
         let pCat = item.category || item['分類'] || item['商品分類'] || '';
         
-        // 如果這個品項的分類不符合當前選中的分類，就跳過
-       let itemCategory = String(pCat || '').trim();
-    if (!itemCategory.includes(selectedCategory) && !selectedCategory.includes(itemCategory)) return;
-
-        let pQty = parseInt(item.qty || item['數量'] || 1);
-        let roleName = pName.replace('[拆團款]', '').trim();
+        let roleName = pName.replace('[拆團款]', '').replace('[抱盒款]', '').trim();
         if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
 
+        // 💡 核心檢查：確保這個品項的角色名稱確實存在於我們剛剛抓到的該分類清單中
         if (dbRoleOrder.length > 0 && !dbRoleOrder.includes(roleName)) return;
+
+        let pQty = parseInt(item.qty || item['數量'] || 1);
 
         roleSet.add(roleName);
         if (!roleTotals[roleName]) roleTotals[roleName] = 0;
@@ -2003,14 +1949,15 @@ async function loadSplitBoardData() {
       return;
     }
 
-    let statsHtml = `<div style="background: #27272a; padding: 6px 10px; border-radius: 6px; color: #fff;">📦 <b>${selectedCategory} 總喊單統計：</b></div>`;
+    // 渲染上方統計摘要
+    let statsHtml = `<div style="background: #27272a; padding: 8px 12px; border-radius: 6px;">📦 <b>${selectedCategory} 總喊單統計：</b></div>`;
     roles.forEach(r => {
       let count = roleTotals[r] || 0;
-      statsHtml += `<div style="background: #1e1e1e; padding: 6px 10px; border-radius: 6px; border: 1px solid #3f3f46; color: #fff;">🔹 ${r}: <span style="color: #38bdf8; font-weight: bold;">${count} 個</span></div>`;
+      statsHtml += `<div style="background: #1e1e1e; padding: 8px 12px; border-radius: 6px; border: 1px solid #3f3f46;">🔹 ${r}: <span style="color: #38bdf8; font-weight: bold;">${count} 個</span></div>`;
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
-    // 📦 獨立排隊與分盒邏輯（一盒一個角色一個名額）
+    // 3. 獨立排隊與分盒邏輯（一盒一個角色一個名額）
     let boxes = [];
     let individualItems = [];
     validOrders.forEach(ord => {
@@ -2047,6 +1994,7 @@ async function loadSplitBoardData() {
 
     let maxBoxCount = Math.max(boxes.length, 4);
 
+    // 4. 組合表格 HTML
     let tableHtml = `
       <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb; white-space: nowrap;">
         <thead>
@@ -2081,7 +2029,6 @@ async function loadSplitBoardData() {
   }
 }
 window.loadSplitBoardData = loadSplitBoardData;
-window.onGroupSelectChanged = onGroupSelectChanged;
     
   </script>
 </body>
