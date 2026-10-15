@@ -293,10 +293,19 @@
   <h4 style="color: #60a5fa; margin-bottom: 10px;">📦 拆團方格看板（依序模擬分盒）</h4>
   <div style="background: #18181b; padding: 15px; border-radius: 8px; border: 1px solid #27272a; margin-bottom: 20px;">
     
+    <!-- 📦 1. 選擇團務 -->
     <div style="margin-bottom: 15px;">
-      <label style="font-size: 13px; color: #60a5fa; font-weight: bold;">選擇拆團項目：</label>
-      <select id="splitGroupSelect" onchange="loadSplitBoardData()" style="width: 100%; padding: 8px; margin-top: 5px; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 6px; font-size: 13px;">
-        <option value="">-- 請選擇要檢視的拆團 --</option>
+      <label style="font-size: 13px; color: #60a5fa; font-weight: bold;">選擇團務：</label>
+      <select id="splitGroupSelect" onchange="onGroupSelectChanged()" style="width: 100%; padding: 8px; margin-top: 5px; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 6px; font-size: 13px;">
+        <option value="">-- 請先選擇團務 --</option>
+      </select>
+    </div>
+
+    <!-- 🏷️ 2. 選擇商品分類（新增的第二層選單） -->
+    <div style="margin-bottom: 15px;">
+      <label style="font-size: 13px; color: #60a5fa; font-weight: bold;">選擇商品分類：</label>
+      <select id="splitCategorySelect" onchange="loadSplitBoardData()" style="width: 100%; padding: 8px; margin-top: 5px; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 6px; font-size: 13px;">
+        <option value="">-- 請先選擇團務 --</option>
       </select>
     </div>
 
@@ -1820,16 +1829,80 @@ async function loadSplitGroupOptions() {
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
 
-// 📊 讀取並計算該拆團的方格看板數據（整單對應一盒）
-async function loadSplitBoardData() {
-  const selectEl = document.getElementById('splitGroupSelect');
+// 1. 當團務選擇改變時：去 products 撈出該團務擁有的所有拆團分類，並填入分類下拉選單
+async function onGroupSelectChanged() {
+  const groupSelect = document.getElementById('splitGroupSelect');
+  const catSelect = document.getElementById('splitCategorySelect');
   const container = document.getElementById('splitBoardTableContainer');
   const statsContainer = document.getElementById('splitSummaryStats');
-  if (!selectEl || !container) return;
+  
+  if (!groupSelect || !catSelect) return;
+  const selectedGroup = groupSelect.value;
 
-  const selectedGroup = selectEl.value;
+  // 清空看板與統計
+  container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請選擇商品分類。</p>`;
+  if (statsContainer) statsContainer.innerHTML = "";
+  catSelect.innerHTML = `<option value="">-- 請選擇商品分類 --</option>`;
+
+  if (!selectedGroup) return;
+
+  try {
+    // 從 products 撈出該團務的所有商品
+    const { data: prodData, error } = await db
+      .from('products')
+      .select('*')
+      .eq('團務名稱', selectedGroup);
+
+    if (error) throw error;
+
+    let categoriesSet = new Set();
+    if (prodData) {
+      prodData.forEach(p => {
+        let pName = p['商品名稱'] || '';
+        let pCat = p['商品分類'] || '';
+        if (pCat === '拆團款' || pName.includes('[拆團款]')) {
+          let categoryName = pCat && pCat !== '拆團款' ? pCat : '一般拆團';
+          categoriesSet.add(categoryName);
+        }
+      });
+    }
+
+    let catHtml = `<option value="">-- 請選擇商品分類 --</option>`;
+    categoriesSet.forEach(cat => {
+      catHtml += `<option value="${cat}">${cat}</option>`;
+    });
+    catSelect.innerHTML = catHtml;
+
+    // 如果剛好只有一個分類，自動幫使用者選定並載入看板
+    if (categoriesSet.size === 1) {
+      catSelect.value = Array.from(categoriesSet)[0];
+      loadSplitBoardData();
+    }
+
+  } catch (err) {
+    console.error("載入分類失敗:", err);
+  }
+}
+
+// 2. 載入並計算指定「團務 + 分類」的拆團看板數據
+async function loadSplitBoardData() {
+  const groupSelect = document.getElementById('splitGroupSelect');
+  const catSelect = document.getElementById('splitCategorySelect');
+  const container = document.getElementById('splitBoardTableContainer');
+  const statsContainer = document.getElementById('splitSummaryStats');
+  
+  if (!groupSelect || !catSelect || !container) return;
+
+  const selectedGroup = groupSelect.value;
+  const selectedCategory = catSelect.value;
+
   if (!selectedGroup) {
-    container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請先選擇一個拆團。</p>`;
+    container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請先選擇一個團務。</p>`;
+    if (statsContainer) statsContainer.innerHTML = "";
+    return;
+  }
+  if (!selectedCategory) {
+    container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請選擇商品分類。</p>`;
     if (statsContainer) statsContainer.innerHTML = "";
     return;
   }
@@ -1837,7 +1910,6 @@ async function loadSplitBoardData() {
   container.innerHTML = `<p style="color: #aaa; text-align: center; font-size: 13px; padding: 20px;">載入喊單資料中...</p>`;
 
   try {
-    // 💡 1. 先從 products 資料庫撈出該團務的所有商品，並依照 id 由小到大排序
     const { data: prodData, error: prodErr } = await db
       .from('products')
       .select('*')
@@ -1845,16 +1917,19 @@ async function loadSplitBoardData() {
 
     let dbRoleOrder = [];
     if (!prodErr && prodData) {
-      prodData.sort((a, b) => a.id - b.id); // 💡 關鍵：id 排序 (由小到大)
-      
-      prodData.forEach(p => {
-        let pName = p['商品名稱'] || '';
+      let filteredProds = prodData.filter(p => {
         let pCat = p['商品分類'] || '';
-        if (pCat === '拆團款' || pName.includes('[拆團款]')) {
-          let roleName = pName.replace('[拆團款]', '').trim();
-          if (!dbRoleOrder.includes(roleName)) {
-            dbRoleOrder.push(roleName);
-          }
+        let targetCat = pCat && pCat !== '拆團款' ? pCat : '一般拆團';
+        return targetCat === selectedCategory;
+      });
+
+      filteredProds.sort((a, b) => a.id - b.id);
+      
+      filteredProds.forEach(p => {
+        let pName = p['商品名稱'] || '';
+        let roleName = pName.replace('[拆團款]', '').trim();
+        if (!dbRoleOrder.includes(roleName)) {
+          dbRoleOrder.push(roleName);
         }
       });
     }
@@ -1877,7 +1952,6 @@ async function loadSplitBoardData() {
     let roleTotals = {};
     let validOrders = [];
 
-    // 1. 先蒐集所有出現過的角色款式，並統計總數
     orders.forEach(ord => {
       let rawStatus = String(ord['處理狀態'] || '').trim();
       if (rawStatus === '已取消') return;
@@ -1889,11 +1963,16 @@ async function loadSplitBoardData() {
       items.forEach(item => {
         let pName = item.name || item['商品名稱'] || '';
         let pCat = item.category || item['分類'] || item['商品分類'] || '';
-        if (pCat === '抱盒款' || pName.includes('[抱盒款]')) return; // 排除抱盒款
+        if (pCat === '抱盒款' || pName.includes('[抱盒款]')) return;
+
+        let itemCategory = pCat && pCat !== '拆團款' ? pCat : '一般拆團';
+        if (itemCategory !== selectedCategory && !dbRoleOrder.some(r => pName.includes(r))) return;
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
         let roleName = pName.replace('[拆團款]', '').replace('[抱盒款]', '').trim();
         if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
+
+        if (dbRoleOrder.length > 0 && !dbRoleOrder.includes(roleName)) return;
 
         roleSet.add(roleName);
         if (!roleTotals[roleName]) roleTotals[roleName] = 0;
@@ -1914,79 +1993,64 @@ async function loadSplitBoardData() {
       }
     });
 
-    // 💡 2. 結合資料庫順序，讓看板角色嚴格按照 id 由小到大排列
     let roles = dbRoleOrder.length > 0 
       ? dbRoleOrder.filter(r => roleSet.has(r)) 
       : Array.from(roleSet).sort();
 
     if (roles.length === 0 || validOrders.length === 0) {
-      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有包含拆團款的喊單紀錄。</p>`;
+      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含拆團款的喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
       return;
     }
 
-    // 渲染上方統計摘要
-    let statsHtml = `<div style="background: #27272a; padding: 8px 12px; border-radius: 6px;">📦 <b>拆團款總喊單統計：</b></div>`;
+    let statsHtml = `<div style="background: #27272a; padding: 6px 10px; border-radius: 6px; color: #fff;">📦 <b>${selectedCategory} 總喊單統計：</b></div>`;
     roles.forEach(r => {
       let count = roleTotals[r] || 0;
-      statsHtml += `<div style="background: #1e1e1e; padding: 8px 12px; border-radius: 6px; border: 1px solid #3f3f46;">🔹 ${r}: <span style="color: #38bdf8; font-weight: bold;">${count} 個</span></div>`;
+      statsHtml += `<div style="background: #1e1e1e; padding: 6px 10px; border-radius: 6px; border: 1px solid #3f3f46; color: #fff;">🔹 ${r}: <span style="color: #38bdf8; font-weight: bold;">${count} 個</span></div>`;
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
-    // 2. 核心邏輯：將有效訂單依序放入「箱子 (Boxes)」中
-    // 📦 箱子分配邏輯：一盒一個角色一個名額，複數自動拆開跨箱排隊
     let boxes = [];
-
-   // 💡 把所有有效訂單展開成單一品項單位（順便帶入 orderId）
     let individualItems = [];
     validOrders.forEach(ord => {
       ord.items.forEach(roleName => {
         individualItems.push({
           buyer: ord.buyer,
           time: ord.time,
-          orderId: ord.orderId, // 💡 加上這行
+          orderId: ord.orderId,
           role: roleName
         });
       });
     });
 
-    // 依照下單時間先後順序來排入各個箱子
     individualItems.forEach(item => {
       let placed = false;
-
-      // 從第 1 個箱子開始找，看哪一個箱子該角色還是空的（還沒被佔用）
       for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
         let currentBox = boxes[bIndex];
-
-        // 檢查這一盒的這個角色是不是空的（還沒有人認領）
-        if (!currentBox[item.role]) {
-          currentBox[item.role] = [];
-        }
+        if (!currentBox[item.role]) currentBox[item.role] = [];
 
         if (currentBox[item.role].length === 0) {
-          // 夠空！放進這一盒
           currentBox[item.role].push({ buyer: item.buyer, time: item.time, orderId: item.orderId });
           placed = true;
           break;
         }
       }
 
-      // 如果前面的箱子該角色都滿了，就開新的一盒
       if (!placed) {
         let newBox = {};
         roles.forEach(r => { newBox[r] = []; });
-        
         newBox[item.role].push({ buyer: item.buyer, time: item.time, orderId: item.orderId });
         boxes.push(newBox);
       }
     });
-let maxBoxCount = Math.max(boxes.length, 4);
-    // 3. 組合表格 HTML
+
+    let maxBoxCount = Math.max(boxes.length, 4);
+
     let tableHtml = `
       <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb; white-space: nowrap;">
         <thead>
           <tr style="background: #27272a; border-bottom: 2px solid #444;">
-            <th style="padding: 10px; border-right: 1px solid #444; width: 100px; text-align: center; color: #38bdf8;">角色 / 款式</th>
+            <th style="padding: 10px; border-right: 1px solid #444; width: 100px; text-align: center; color: #38bdf8;">${selectedCategory} / 角色</th>
     `;
     for (let b = 1; b <= maxBoxCount; b++) {
       tableHtml += `<th style="padding: 10px; border-right: 1px solid #444; text-align: center; min-width: 140px;">第 ${b} 盒</th>`;
@@ -2001,8 +2065,8 @@ let maxBoxCount = Math.max(boxes.length, 4);
         let boxData = boxes[b] ? boxes[b][role] : null;
         let entry = (boxData && boxData.length > 0) ? boxData[0] : null;
 
-// 💡 顯示：買家名稱 (訂單編號) 以及下單時間
-let cellContent = entry ? `<div style="font-weight: bold; color: #fff;">${entry.buyer} <span style="color: #38bdf8; font-size: 11px;">(#${entry.orderId})</span></div><div style="font-size: 11px; color: #888;">(${entry.time})</div>` : `<span style="color: #555; font-style: italic;">(尚無)</span>`;        let cellBg = entry ? "#1e293b" : "transparent";
+        let cellContent = entry ? `<div style="font-weight: bold; color: #fff;">${entry.buyer} <span style="color: #38bdf8; font-size: 11px;">(#${entry.orderId})</span></div><div style="font-size: 11px; color: #888;">(${entry.time})</div>` : `<span style="color: #555; font-style: italic;">(尚無)</span>`;
+        let cellBg = entry ? "#1e293b" : "transparent";
         tableHtml += `<td style="padding: 8px 10px; border-right: 1px solid #333; background: ${cellBg}; text-align: center; vertical-align: middle;">${cellContent}</td>`;
       }
       tableHtml += `</tr>`;
@@ -2016,6 +2080,7 @@ let cellContent = entry ? `<div style="font-weight: bold; color: #fff;">${entry.
   }
 }
 window.loadSplitBoardData = loadSplitBoardData;
+window.onGroupSelectChanged = onGroupSelectChanged;
     
   </script>
 </body>
