@@ -2035,8 +2035,64 @@ async function loadSplitBoardData() {
     container.innerHTML = `<p style="color: #ef4444; text-align: center; font-size: 13px; padding: 20px;">載入失敗：${err.message}</p>`;
   }
 }
-window.loadSplitBoardData = loadSplitBoardData;
-    
+    // 1. 當團務選擇改變時：去 products 撈出該團務擁有的所有拆團分類，並填入分類下拉選單
+async function onGroupSelectChanged() {
+  const groupSelect = document.getElementById('splitGroupSelect');
+  const catSelect = document.getElementById('splitCategorySelect');
+  const container = document.getElementById('splitBoardTableContainer');
+  const statsContainer = document.getElementById('splitSummaryStats');
+  
+  if (!groupSelect || !catSelect) return;
+  const selectedGroup = groupSelect.value;
+
+  // 清空看板與統計
+  container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請選擇商品分類。</p>`;
+  if (statsContainer) statsContainer.innerHTML = "";
+  catSelect.innerHTML = `<option value="">-- 請選擇商品分類 --</option>`;
+
+  if (!selectedGroup) return;
+
+  try {
+    // 從 products 撈出該團務的所有商品
+    const { data: prodData, error } = await db
+      .from('products')
+      .select('*')
+      .eq('團務名稱', selectedGroup);
+
+    if (error) throw error;
+
+    let categoriesSet = new Set();
+    if (prodData) {
+      prodData.forEach(p => {
+        let pCat = String(p['商品分類'] || '').trim();
+        // 💡 只要分類名稱包含「拆團」或「拆團款」，或者任何有填寫的分類，全部抓進來供選擇
+        if (pCat) {
+          categoriesSet.add(pCat);
+        }
+      });
+    }
+
+    let catHtml = `<option value="">-- 請選擇商品分類 --</option>`;
+    if (categoriesSet.size === 0) {
+      catHtml = `<option value="">-- 該團務無商品分類 --</option>`;
+    } else {
+      categoriesSet.forEach(cat => {
+        catHtml += `<option value="${cat}">${cat}</option>`;
+      });
+    }
+    catSelect.innerHTML = catHtml;
+
+    // 如果剛好只有一個分類，自動幫使用者選定並載入看板
+    if (categoriesSet.size === 1) {
+      catSelect.value = Array.from(categoriesSet)[0];
+      loadSplitBoardData();
+    }
+
+  } catch (err) {
+    console.error("載入分類失敗:", err);
+  }
+}
+window.onGroupSelectChanged = onGroupSelectChanged;    
   </script>
 </body>
 </html>
