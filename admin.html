@@ -1920,6 +1920,10 @@ async function loadSplitBoardData() {
         let pName = item.name || item['商品名稱'] || '';
         let pCat = item.category || item['分類'] || item['商品分類'] || '';
         
+        // 🛑 嚴格檢查分類：如果這項商品的分類跟目前選取的分類不符，直接跳過！
+        if (pCat !== selectedCategory && !pCat.includes(selectedCategory)) return;
+
+        // 排除抱盒款
         if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
 
         let roleName = pName.replace('[拆團款]', '').trim();
@@ -1937,7 +1941,6 @@ async function loadSplitBoardData() {
           orderItemsParsed.push(roleName);
         }
       });
-
       if (orderItemsParsed.length > 0) {
         validOrders.push({
           buyer: ord['買家名稱'] || '未具名',
