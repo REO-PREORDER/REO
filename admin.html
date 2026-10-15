@@ -1855,14 +1855,13 @@ async function loadSplitBoardData() {
   container.innerHTML = `<p style="color: #aaa; text-align: center; font-size: 13px; padding: 20px;">載入喊單資料中...</p>`;
 
   try {
-   // 💡 1. 先從 products 撈出該團務的所有商品，並【強制依照 id 由小到大排序】
+    // 1. 先從 products 撈出該團務的所有商品，並強制依照 id 由小到大排序
     const { data: prodData, error: prodErr } = await db
       .from('products')
       .select('*')
       .eq('團務名稱', selectedGroup)
-      .order('id', { ascending: true }); // 👈 加上這行才會真正按 id 抓取！
+      .order('id', { ascending: true });
 
-    // 💡 1. 嚴格依據資料庫 id 由小到大排序的商品名稱，建立固定的角色排序基準 (dbRoleOrder)
     let dbRoleOrder = [];
     if (!prodErr && prodData) {
       let filteredProds = prodData.filter(p => {
@@ -1870,7 +1869,7 @@ async function loadSplitBoardData() {
         return pCat === selectedCategory;
       });
 
-      filteredProds.sort((a, b) => a.id - b.id); // 💡 強制確保依照 id 數值由小到大排序
+      filteredProds.sort((a, b) => a.id - b.id);
       
       filteredProds.forEach(p => {
         let pName = p['商品名稱'] || '';
@@ -1913,7 +1912,6 @@ async function loadSplitBoardData() {
         let pName = item.name || item['商品名稱'] || '';
         let pCat = item.category || item['分類'] || item['商品分類'] || '';
         
-        // 🛑 嚴格排除抱盒款
         if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
 
         let roleName = pName.replace('[拆團款]', '').trim();
@@ -1942,17 +1940,25 @@ async function loadSplitBoardData() {
       }
     });
 
-    // 💡 3. 【絕對強制排序】：直接以資料庫 id 排序好的 dbRoleOrder 為唯一基準來過濾顯示的角色
-    let roles = dbRoleOrder.length > 0 
-      ? dbRoleOrder.filter(r => roleSet.has(r)) 
-      : Array.from(roleSet).sort();
+    // 3. 角色順序嚴格對齊資料庫 id 排序 (dbRoleOrder)
+    let roles = [];
+    if (dbRoleOrder.length > 0) {
+      dbRoleOrder.forEach(r => {
+        if (roleSet.has(r)) {
+          roles.push(r);
+        }
+      });
+    } else {
+      roles = Array.from(roleSet).sort();
+    }
 
     if (roles.length === 0 || validOrders.length === 0) {
-      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有包含拆團款的喊單紀錄。</p>`;
+      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
       return;
     }
 
+    // 渲染上方統計摘要
     let statsHtml = `<div style="background: #27272a; padding: 6px 10px; border-radius: 6px; color: #fff;">📦 <b>總喊單統計：</b></div>`;
     roles.forEach(r => {
       let count = roleTotals[r] || 0;
@@ -1960,11 +1966,10 @@ async function loadSplitBoardData() {
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
-    // 3. 獨立排隊與分盒邏輯（一盒一個角色一個名額，嚴格按下單時間先後排序）
+    // 4. 獨立排隊與分盒邏輯
     let boxes = [];
     let individualItems = [];
     
-    // 💡 確保 validOrders 嚴格按照下單時間（created_at）由舊到新排序
     validOrders.sort((a, b) => new Date(a.time) - new Date(b.time));
 
     validOrders.forEach(ord => {
@@ -1980,8 +1985,6 @@ async function loadSplitBoardData() {
 
     individualItems.forEach(item => {
       let placed = false;
-      
-      // 從第 1 個箱子開始找，看哪一個箱子的這個角色還是空的
       for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
         let currentBox = boxes[bIndex];
         if (!currentBox[item.role]) currentBox[item.role] = [];
@@ -1993,7 +1996,6 @@ async function loadSplitBoardData() {
         }
       }
 
-      // 如果前面的箱子該角色都滿了，就開新的一盒
       if (!placed) {
         let newBox = {};
         roles.forEach(r => { newBox[r] = []; });
@@ -2004,7 +2006,7 @@ async function loadSplitBoardData() {
 
     let maxBoxCount = Math.max(boxes.length, 4);
 
-    // 4. 組合表格 HTML
+    // 5. 組合表格 HTML
     let tableHtml = `
       <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb; white-space: nowrap;">
         <thead>
@@ -2038,7 +2040,9 @@ async function loadSplitBoardData() {
     container.innerHTML = `<p style="color: #ef4444; text-align: center; font-size: 13px; padding: 20px;">載入失敗：${err.message}</p>`;
   }
 }
-    // 1. 當團務選擇改變時：只抓取分類包含「拆團款」的商品，並填入分類下拉選單
+window.loadSplitBoardData = loadSplitBoardData;
+
+// 1. 當團務選擇改變時：只抓取分類包含「拆團款」的商品，並填入分類下拉選單
 async function onGroupSelectChanged() {
   const groupSelect = document.getElementById('splitGroupSelect');
   const catSelect = document.getElementById('splitCategorySelect');
@@ -2048,7 +2052,6 @@ async function onGroupSelectChanged() {
   if (!groupSelect || !catSelect) return;
   const selectedGroup = groupSelect.value;
 
-  // 清空看板與統計
   container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請選擇商品分類。</p>`;
   if (statsContainer) statsContainer.innerHTML = "";
   catSelect.innerHTML = `<option value="">-- 請選擇商品分類 --</option>`;
@@ -2056,7 +2059,6 @@ async function onGroupSelectChanged() {
   if (!selectedGroup) return;
 
   try {
-    // 從 products 撈出該團務的所有商品
     const { data: prodData, error } = await db
       .from('products')
       .select('*')
@@ -2070,7 +2072,6 @@ async function onGroupSelectChanged() {
         let pCat = String(p['商品分類'] || '').trim();
         let pName = String(p['商品名稱'] || '').trim();
         
-        // 💡 嚴格限制：只要分類或名稱包含「拆團款」才收錄
         if (pCat.includes('拆團款') || pName.includes('[拆團款]')) {
           if (pCat && pCat !== '拆團款') {
             categoriesSet.add(pCat);
@@ -2091,7 +2092,6 @@ async function onGroupSelectChanged() {
     }
     catSelect.innerHTML = catHtml;
 
-    // 如果剛好只有一個分類，自動幫使用者選定並載入看板
     if (categoriesSet.size === 1) {
       catSelect.value = Array.from(categoriesSet)[0];
       loadSplitBoardData();
