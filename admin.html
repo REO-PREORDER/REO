@@ -304,7 +304,7 @@
     <!-- 🏷️ 2. 選擇商品分類（新增的第二層選單） -->
     <div style="margin-bottom: 15px;">
       <label style="font-size: 13px; color: #60a5fa; font-weight: bold;">選擇商品分類：</label>
-      <select id="splitCategorySelect" onchange="loadSplitBoardData()" style="width: 100%; padding: 8px; margin-top: 5px; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 6px; font-size: 13px;">
+      <select id="splitCategorySelect" onchange="()" style="width: 100%; padding: 8px; margin-top: 5px; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 6px; font-size: 13px;">
         <option value="">-- 請先選擇團務 --</option>
       </select>
     </div>
@@ -1855,11 +1855,12 @@ async function loadSplitBoardData() {
   container.innerHTML = `<p style="color: #aaa; text-align: center; font-size: 13px; padding: 20px;">載入喊單資料中...</p>`;
 
   try {
-    // 💡 1. 先從 products 撈出該團務的所有商品，並依照 id 由小到大排序
+   // 💡 1. 先從 products 撈出該團務的所有商品，並【強制依照 id 由小到大排序】
     const { data: prodData, error: prodErr } = await db
       .from('products')
       .select('*')
-      .eq('團務名稱', selectedGroup);
+      .eq('團務名稱', selectedGroup)
+      .order('id', { ascending: true }); // 👈 加上這行才會真正按 id 抓取！
 
     let dbRoleOrder = [];
     if (!prodErr && prodData) {
@@ -1942,11 +1943,14 @@ async function loadSplitBoardData() {
       }
     });
 
-    // 💡 絕對強制：直接以該分類在資料庫中設定的商品順序（id 由小到大）作為左側角色欄位的固定順序
+   // 💡 絕對強制：直接以資料庫 id 排序好的 dbRoleOrder 順序為準
     let roles = [];
     if (dbRoleOrder.length > 0) {
-      // 直接把資料庫依 id 排序好的角色拿來用（不管有沒有人喊，保持版面固定；若只想顯示有喊的也可以保留 filter）
-      roles = [...dbRoleOrder];
+      dbRoleOrder.forEach(r => {
+        if (roleSet.has(r) && !roles.includes(r)) {
+          roles.push(r);
+        }
+      });
     } else {
       roles = Array.from(roleSet).sort();
     }
