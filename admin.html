@@ -1901,13 +1901,14 @@ try {
       }
     });
     
-    const { data: orders, error } = await db
+// 3. 撈取該團務的所有有效訂單
+    const { data: orders, error: ordErr } = await db
       .from('orders')
       .select('*')
       .eq('團務名稱', selectedGroup)
       .order('created_at', { ascending: true });
 
-    if (error) throw error;
+    if (ordErr) throw ordErr;
 
     if (!orders || orders.length === 0) {
       container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此團務目前沒有任何訂單。</p>`;
@@ -1919,7 +1920,7 @@ try {
     let roleTotals = {};
     let validOrders = [];
 
-    // 2. 蒐集符合該分類角色的訂單資料
+    // 4. 解析並過濾訂單內的商品項目（放寬比對）
     orders.forEach(ord => {
       let rawStatus = String(ord['處理狀態'] || '').trim();
       if (rawStatus === '已取消') return;
@@ -1932,12 +1933,14 @@ try {
         let pName = item.name || item['商品名稱'] || '';
         let pCat = item.category || item['分類'] || item['商品分類'] || '';
         
+        // 排除抱盒款
         if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
 
         let roleName = pName.replace('[拆團款]', '').trim();
         if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
 
-        if (dbRoleOrder.length > 0 && !dbRoleOrder.includes(roleName)) return;
+        // 只要角色名稱存在於我們剛剛建立的 roles 陣列中，就納入統計
+        if (roles.length > 0 && !roles.includes(roleName)) return;
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
 
@@ -1960,8 +1963,8 @@ try {
       }
     });
 
-    if (roles.length === 0 || validOrders.length === 0) {
-      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含喊單紀錄。</p>`;
+    if (validOrders.length === 0) {
+      container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含喊單紀錄（請檢查訂單內容與商品名稱是否對應）。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
       return;
     }
