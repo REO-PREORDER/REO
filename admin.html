@@ -1780,7 +1780,6 @@ async function loadSplitGroupOptions() {
   if (!selectElem) return;
   
   try {
-    // 同時抓取 groups 與 products
     const [groupsRes, productsRes] = await Promise.all([
       db.from('groups').select('*').order('created_at', { ascending: false }),
       db.from('products').select('團務名稱, 商品分類').range(0, 4999)
@@ -1792,30 +1791,35 @@ async function loadSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    // 1. 找出 products 裡面所有分類含「拆」字的商品，搜集它們的關鍵字
-    let hasSplitKeyword = false;
+    // 1. 嚴格蒐集所有「商品分類」含有「拆」字的團務名稱
+    let validGroupNames = new Set();
     products.forEach(p => {
-      let pCat = String(p['商品分類'] || '');
-      if (pCat.includes('拆')) {
-        hasSplitKeyword = true;
+      let pCat = String(p['商品分類'] || '').trim();
+      let gName = String(p['團務名稱'] || '').trim();
+      
+      if (pCat.includes('拆') && gName) {
+        validGroupNames.add(gName);
       }
     });
 
+    console.log("確定擁有拆團款的團務：", Array.from(validGroupNames));
+
+    // 2. 嚴格過濾：groups 裡的名稱必須「完全符合」有拆團款的清單才秀出來！
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let count = 0;
 
-    // 2. 直接把 groups 裡面的所有團務印出來！
-    // 只要有任何商品是拆團款，我們就把後台建立的所有團務全部列在選單裡讓你選，不再用字串互相對應搞自閉
     groups.forEach(g => {
       const gName = String(g["團務名稱"] || '').trim();
-      if (gName) {
+      
+      // 只有裡面真的有拆團款的團務才會被放行
+      if (gName && validGroupNames.has(gName)) {
         html += `<option value="${gName}">${gName}</option>`;
         count++;
       }
     });
 
     if (count === 0) {
-      html = `<option value="">-- 目前沒有任何團務資料 --</option>`;
+      html = `<option value="">-- 目前沒有包含拆團款的團務 --</option>`;
     }
 
     selectElem.innerHTML = html;
@@ -1824,6 +1828,7 @@ async function loadSplitGroupOptions() {
   }
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
+
 
 // 📊 讀取並計算該拆團指定分類的方格看板數據
 async function loadSplitBoardData() {
