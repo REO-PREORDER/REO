@@ -2747,7 +2747,7 @@ function closeFrontendSplitBoardModal() {
 }
 window.closeFrontendSplitBoardModal = closeFrontendSplitBoardModal;
 
-// 📦 前台專用：含完整除錯機制的下拉選單載入函式
+// 📦 前台專用：暴力抓出所有商品的分類來檢查
 async function loadFrontendSplitGroupOptions() {
   const selectElem = document.getElementById('frontendSplitGroupSelect');
   const catSelectElem = document.getElementById('frontendSplitCategorySelect');
@@ -2758,7 +2758,6 @@ async function loadFrontendSplitGroupOptions() {
   }
 
   try {
-    console.log("👉 [DEBUG] 開始向 Supabase 撈取 groups 與 products...");
     const [groupsRes, productsRes] = await Promise.all([
       db.from('groups').select('*').order('created_at', { ascending: false }),
       db.from('products').select('*').range(0, 4999)
@@ -2770,24 +2769,26 @@ async function loadFrontendSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    console.log(`👉 [DEBUG] 成功抓取！groups 數量: ${groups.length}, products 數量: ${products.length}`);
-
-    const cleanStr = (str) => String(str || '').replace(/[\s\u3000]+/g, '').trim();
-
-    // 1. 檢查哪些商品的分類包含「拆」字
-    let validGroupNames = new Set();
+    // 👉 這裡直接把資料庫裡「白西裝」的所有商品跟它的分類印出來看！
+    console.log("🔍 【檢查資料庫商品】所有商品的 團務名稱 與 商品分類 如下：");
     products.forEach(p => {
-      let pCat = cleanStr(p['商品分類']);
-      let gName = String(p['團務名稱'] || '').trim();
-      
-      // 除錯印出每個商品的分類與所屬團務（方便在 F12 檢查）
-      if (pCat.includes('拆')) {
-        console.log(`✅ [符合拆團] 團務: 「${gName}」 | 商品分類: 「${pCat}」`);
-        if (gName) validGroupNames.add(gName);
+      let g = p['團務名稱'] || '';
+      let c = p['商品分類'] || '';
+      if (g.includes('白西裝') || g.includes('防風少年')) {
+        console.log(`團務: [${g}] => 商品分類: [${c}]`);
       }
     });
 
-    console.log("👉 [DEBUG] 所有符合條件的團務名稱集合：", Array.from(validGroupNames));
+    let validGroupNames = new Set();
+    products.forEach(p => {
+      let pCat = String(p['商品分類'] || '');
+      let gName = String(p['團務名稱'] || '').trim();
+      
+      // 只要分類裡面有「拆」字，就納入
+      if (pCat.includes('拆') && gName) {
+        validGroupNames.add(gName);
+      }
+    });
 
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let count = 0;
@@ -2802,12 +2803,11 @@ async function loadFrontendSplitGroupOptions() {
 
     if (count === 0) {
       html = `<option value="">-- 目前沒有包含拆團款的團務 --</option>`;
-      console.warn("⚠️ [DEBUG] 警告：沒有任何團務通過篩選條件！");
     }
 
     selectElem.innerHTML = html;
   } catch (err) {
-    console.error("❌ [DEBUG] 載入前台拆團下拉選單失敗：", err);
+    console.error("載入前台拆團下拉選單失敗：", err);
   }
 }
 window.loadFrontendSplitGroupOptions = loadFrontendSplitGroupOptions;
