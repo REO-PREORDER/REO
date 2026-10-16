@@ -1789,23 +1789,24 @@ async function loadSplitGroupOptions() {
     if (productsRes.error) throw productsRes.error;
 
     const groups = groupsRes.data || [];
-    // 💡 修正這裡：確保把 productsRes.data 正確指定給 products 陣列變數！
     const products = productsRes.data || [];
 
     let validGroupNames = new Set();
     
     products.forEach(p => {
-      let pCat = String(p['商品分類'] || '').trim();
+      // 強制轉字串並把所有空白清光
+      let pCat = String(p['商品分類'] || '').replace(/\s+/g, '');
       let gName = String(p['團務名稱'] || '').trim();
 
-      if (pCat.includes('拆團款')) {
+      // 只要分類裡面含有「拆」這個字，就直接通過！
+      if (pCat.includes('拆')) {
         if (gName) {
           validGroupNames.add(gName);
         }
       }
     });
 
-    console.log("成功抓到含有拆團的有效團務有：", Array.from(validGroupNames));
+    console.log("成功抓到含有拆的有效團務有：", Array.from(validGroupNames));
 
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let matchedCount = 0;
