@@ -2069,19 +2069,18 @@ async function onGroupSelectChanged() {
 
     if (error) throw error;
 
-   let categoriesSet = new Set();
-    if (prodData) {
-      prodData.forEach(p => {
-        let pCat = String(p['商品分類'] || '').trim();
-        let pName = String(p['商品名稱'] || '').trim();
-        
-        // 排除抱盒款，只抓拆團相關的商品分類
-        if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
-
-        if (pCat) {
-          categoriesSet.add(pCat); // 💡 直接使用資料庫裡寫的真實分類名稱（例如「拆團款」），不再強制改成「一般拆團」
-        }
-      });
+  let categoriesSet = new Set();
+    (products || []).forEach(p => {
+      let pCat = String(p['商品分類'] || '').trim();
+      let pName = p['商品名稱'] || '';
+      
+      // 💡 嚴格限制：排除抱盒款，且分類名稱必須包含「拆團款」
+      if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
+      
+      if (pCat.includes('拆團款')) {
+        categoriesSet.add(pCat);
+      }
+    });
     }
     let catHtml = `<option value="">-- 請選擇商品分類 --</option>`;
     if (categoriesSet.size === 0) {
