@@ -1791,40 +1791,45 @@ async function loadSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    let validGroupNames = new Set();
+    // 標準化字串工具：去除所有空白、換行、全形半形差異
+    const normalize = (str) => String(str || '').replace(/[\s\u3000]+/g, '').trim();
+
+    // 1. 建立一個「標準化後的有效團務名稱」對照集合
+    let validNormalizedNames = new Set();
     
     products.forEach(p => {
-      // 強制轉字串並把所有空白清光
-      let pCat = String(p['商品分類'] || '').replace(/\s+/g, '');
-      let gName = String(p['團務名稱'] || '').trim();
+      let pCat = normalize(p['商品分類']);
+      let gName = String(p['團務名稱'] || '').trim(); // 保持原始名稱用來顯示
 
-      // 只要分類裡面含有「拆」這個字，就直接通過！
-      if (pCat.includes('拆')) {
-        if (gName) {
-          validGroupNames.add(gName);
-        }
+      // 只要分類包含「拆」字，就把這個團務的原始名稱記錄下來
+      if (pCat.includes('拆') && gName) {
+        validNormalizedNames.add(normalize(gName));
       }
     });
 
-    console.log("成功抓到含有拆的有效團務有：", Array.from(validGroupNames));
+    console.log("自動對應到的有效團務標準化清單：", Array.from(validNormalizedNames));
 
+    // 2. 產生下拉選單：拿 groups 裡的名稱標準化後去比對
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
-    let matchedCount = 0;
+    let count = 0;
 
     groups.forEach(g => {
-      const gName = String(g["團務名稱"] || '').trim();
-      if (validGroupNames.has(gName)) {
-        html += `<option value="${gName}">${gName}</option>`;
-        matchedCount++;
+      const originalName = String(g["團務名稱"] || '').trim();
+      const normalizedName = normalize(originalName);
+
+      // 只要標準化後對得上，就直接放行！以後任何新團務只要底下有拆團商品就會自動出現
+      if (validNormalizedNames.has(normalizedName)) {
+        html += `<option value="${originalName}">${originalName}</option>`;
+        count++;
       }
     });
 
-    if (matchedCount === 0) {
+    if (count === 0) {
       html = `<option value="">-- 目前沒有包含拆團款的團務 --</option>`;
     }
 
     selectElem.innerHTML = html;
-  } catch (err) {
+  } colspan (err) {
     console.error("載入團務下拉選單失敗：", err);
   }
 }
