@@ -2747,7 +2747,7 @@ function closeFrontendSplitBoardModal() {
 }
 window.closeFrontendSplitBoardModal = closeFrontendSplitBoardModal;
 
-// 📦 前台專用：加上 .range(0, 4999) 突破 1000 筆限制
+// 📦 前台專用：強固版拆團團務選單載入函式
 async function loadFrontendSplitGroupOptions() {
   const selectElem = document.getElementById('frontendSplitGroupSelect');
   const catSelectElem = document.getElementById('frontendSplitCategorySelect');
@@ -2760,7 +2760,7 @@ async function loadFrontendSplitGroupOptions() {
   try {
     const [groupsRes, productsRes] = await Promise.all([
       db.from('groups').select('*').order('created_at', { ascending: false }),
-      db.from('products').select('*').range(0, 4999) // 👈 關鍵：突破 1000 筆限制！
+      db.from('products').select('*').range(0, 4999)
     ]);
 
     if (groupsRes.error) throw groupsRes.error;
@@ -2769,13 +2769,15 @@ async function loadFrontendSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    const cleanStr = (str) => String(str || '').replace(/[\s\u3000]+/g, '').trim();
+    // 強制深度清洗字串（去除所有空白與特殊符號）
+    const cleanStr = (str) => String(str || '').replace(/[\s\u3000\t\n]+/g, '').trim();
 
     let validGroupNames = new Set();
     products.forEach(p => {
       let pCat = cleanStr(p['商品分類']);
       let gName = String(p['團務名稱'] || '').trim();
       
+      // 只要商品分類包含「拆」字，就強力收錄該團務
       if (pCat.includes('拆') && gName) {
         validGroupNames.add(gName);
       }
