@@ -2805,7 +2805,7 @@ async function loadFrontendSplitGroupOptions() {
 }
 window.loadFrontendSplitGroupOptions = loadFrontendSplitGroupOptions;
 
-// 📂 當前台選擇的團務改變時，動態載入該團務底下的「拆團商品分類」
+// 📂 當前台選擇的團務改變時，動態載入該團務底下「只包含拆團款」的商品分類
 async function onFrontendGroupSelected() {
   const groupSelect = document.getElementById('frontendSplitGroupSelect');
   const catSelect = document.getElementById('frontendSplitCategorySelect');
@@ -2826,6 +2826,7 @@ async function onFrontendGroupSelected() {
   catSelect.innerHTML = `<option value="">載入分類中...</option>`;
 
   try {
+    // 加上 .range(0, 4999) 確保所有商品都被撈出來
     const { data: products, error } = await db
       .from('products')
       .select('*')
@@ -2835,15 +2836,17 @@ async function onFrontendGroupSelected() {
     if (error) throw error;
 
     let categoriesSet = new Set();
+    
     (products || []).forEach(p => {
       let pCat = String(p['商品分類'] || '').trim();
-      let pName = p['商品名稱'] || '';
+      let pName = String(p['商品名稱'] || '').trim();
       
+      // 排除抱盒款
       if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
 
-      // 只保留包含「拆」字的分類
-      if (pCat.includes('拆') || pName.includes('[拆團款]')) {
-        if (pCat) categoriesSet.add(pCat);
+      // 嚴格檢查：只要分類裡面有「拆」字的，才放入前台分類選單
+      if (pCat.includes('拆')) {
+        categoriesSet.add(pCat);
       }
     });
 
@@ -2863,7 +2866,7 @@ async function onFrontendGroupSelected() {
   }
 }
 window.onFrontendGroupSelected = onFrontendGroupSelected;
-
+  
 // 📊 讀取並計算前台指定分類的方格看板數據
 async function loadFrontendSplitBoardData() {
   const groupSelect = document.getElementById('frontendSplitGroupSelect');
