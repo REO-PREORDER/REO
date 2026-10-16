@@ -1780,7 +1780,6 @@ async function loadSplitGroupOptions() {
   if (!selectElem) return;
   
   try {
-    // 同時抓取 groups 與 products，且 products 必須加上 .range(0, 4999) 突破 1000 筆限制！
     const [groupsRes, productsRes] = await Promise.all([
       db.from('groups').select('*').order('created_at', { ascending: false }),
       db.from('products').select('*').range(0, 4999)
@@ -1792,25 +1791,29 @@ async function loadSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    // 1. 蒐集所有「商品分類」包含「拆團款」的團務名稱
     let validGroupNames = new Set();
+    
+    // 檢查每一個商品
     products.forEach(p => {
       let pCat = String(p['商品分類'] || '').trim();
       let gName = String(p['團務名稱'] || '').trim();
 
-      if (pCat.includes('拆團款')) {
+      // 只要分類裡面包含「拆團」兩個字，就納入有效清單
+      if (pCat.includes('拆团') || pCat.includes('拆團')) {
         if (gName) {
           validGroupNames.add(gName);
         }
       }
     });
 
-    // 2. 組合下拉選單：絕對只有「確定有拆團款商品」的團務才會出現！
+    console.log("成功抓到含有拆團的有效團務有：", Array.from(validGroupNames));
+
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let matchedCount = 0;
 
     groups.forEach(g => {
       const gName = String(g["團務名稱"] || '').trim();
+      // 嚴格過濾：groups 裡的名稱必須在 validGroupNames 裡面才准顯示！
       if (validGroupNames.has(gName)) {
         html += `<option value="${gName}">${gName}</option>`;
         matchedCount++;
@@ -1827,6 +1830,7 @@ async function loadSplitGroupOptions() {
   }
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
+    
 // 📊 讀取並計算該拆團指定分類的方格看板數據
 async function loadSplitBoardData() {
   const groupSelect = document.getElementById('splitGroupSelect');
