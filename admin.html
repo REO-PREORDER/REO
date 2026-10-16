@@ -1789,17 +1789,16 @@ async function loadSplitGroupOptions() {
     if (productsRes.error) throw productsRes.error;
 
     const groups = groupsRes.data || [];
+    // 💡 修正這裡：確保把 productsRes.data 正確指定給 products 陣列變數！
     const products = productsRes.data || [];
 
     let validGroupNames = new Set();
     
-    // 檢查每一個商品
     products.forEach(p => {
       let pCat = String(p['商品分類'] || '').trim();
       let gName = String(p['團務名稱'] || '').trim();
 
-      // 只要分類裡面包含「拆團」兩個字，就納入有效清單
-      if (pCat.includes('拆团') || pCat.includes('拆團')) {
+      if (pCat.includes('拆團款')) {
         if (gName) {
           validGroupNames.add(gName);
         }
@@ -1813,7 +1812,6 @@ async function loadSplitGroupOptions() {
 
     groups.forEach(g => {
       const gName = String(g["團務名稱"] || '').trim();
-      // 嚴格過濾：groups 裡的名稱必須在 validGroupNames 裡面才准顯示！
       if (validGroupNames.has(gName)) {
         html += `<option value="${gName}">${gName}</option>`;
         matchedCount++;
