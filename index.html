@@ -2747,7 +2747,7 @@ function closeFrontendSplitBoardModal() {
 }
 window.closeFrontendSplitBoardModal = closeFrontendSplitBoardModal;
 
-// 📦 前台專用：暴力抓出所有商品的分類來檢查
+// 📦 前台專用：加上 .range(0, 4999) 突破 1000 筆限制
 async function loadFrontendSplitGroupOptions() {
   const selectElem = document.getElementById('frontendSplitGroupSelect');
   const catSelectElem = document.getElementById('frontendSplitCategorySelect');
@@ -2760,7 +2760,7 @@ async function loadFrontendSplitGroupOptions() {
   try {
     const [groupsRes, productsRes] = await Promise.all([
       db.from('groups').select('*').order('created_at', { ascending: false }),
-      db.from('products').select('*').range(0, 4999)
+      db.from('products').select('*').range(0, 4999) // 👈 關鍵：突破 1000 筆限制！
     ]);
 
     if (groupsRes.error) throw groupsRes.error;
@@ -2769,22 +2769,13 @@ async function loadFrontendSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    // 👉 這裡直接把資料庫裡「白西裝」的所有商品跟它的分類印出來看！
-    console.log("🔍 【檢查資料庫商品】所有商品的 團務名稱 與 商品分類 如下：");
-    products.forEach(p => {
-      let g = p['團務名稱'] || '';
-      let c = p['商品分類'] || '';
-      if (g.includes('白西裝') || g.includes('防風少年')) {
-        console.log(`團務: [${g}] => 商品分類: [${c}]`);
-      }
-    });
+    const cleanStr = (str) => String(str || '').replace(/[\s\u3000]+/g, '').trim();
 
     let validGroupNames = new Set();
     products.forEach(p => {
-      let pCat = String(p['商品分類'] || '');
+      let pCat = cleanStr(p['商品分類']);
       let gName = String(p['團務名稱'] || '').trim();
       
-      // 只要分類裡面有「拆」字，就納入
       if (pCat.includes('拆') && gName) {
         validGroupNames.add(gName);
       }
