@@ -2051,11 +2051,11 @@ async function onGroupSelectChanged() {
   const catSelect = document.getElementById('splitCategorySelect');
   const container = document.getElementById('splitBoardTableContainer');
   const statsContainer = document.getElementById('splitSummaryStats');
-  
+
   if (!groupSelect || !catSelect) return;
   const selectedGroup = groupSelect.value;
 
-  container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請選擇商品分類。</p>`;
+  if (container) container.innerHTML = `<p style="color: #888; text-align: center; font-size: 13px;">請選擇商品分類。</p>`;
   if (statsContainer) statsContainer.innerHTML = "";
   catSelect.innerHTML = `<option value="">-- 請選擇商品分類 --</option>`;
 
@@ -2069,35 +2069,34 @@ async function onGroupSelectChanged() {
 
     if (error) throw error;
 
-  let categoriesSet = new Set();
-    (products || []).forEach(p => {
+    let categoriesSet = new Set();
+    
+    // 💡 修正這裡：把原本錯誤的 products 改成正確的 prodData
+    (prodData || []).forEach(p => {
       let pCat = String(p['商品分類'] || '').trim();
       let pName = p['商品名稱'] || '';
-      
-      // 💡 嚴格限制：排除抱盒款，且分類名稱必須包含「拆團款」
+
+      // 嚴格排除抱盒款，且分類必須包含「拆團款」
       if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
-      
+
       if (pCat.includes('拆團款')) {
         categoriesSet.add(pCat);
       }
     });
-    let catHtml = `<option value="">-- 請選擇商品分類 --</option>`;
+
+    let html = `<option value="">-- 請選擇商品分類 --</option>`;
+    categoriesSet.forEach(cat => {
+      html += `<option value="${cat}">${cat}</option>`;
+    });
+
     if (categoriesSet.size === 0) {
-      catHtml = `<option value="">-- 該團務無拆團款分類 --</option>`;
-    } else {
-      categoriesSet.forEach(cat => {
-        catHtml += `<option value="${cat}">${cat}</option>`;
-      });
-    }
-    catSelect.innerHTML = catHtml;
-
-    if (categoriesSet.size === 1) {
-      catSelect.value = Array.from(categoriesSet)[0];
-      loadSplitBoardData();
+      html = `<option value="">-- 此團務沒有拆團分類 --</option>`;
     }
 
+    catSelect.innerHTML = html;
   } catch (err) {
-    console.error("載入分類失敗:", err);
+    console.error("載入分類失敗：", err);
+    catSelect.innerHTML = `<option value="">載入分類失敗</option>`;
   }
 }
 window.onGroupSelectChanged = onGroupSelectChanged;
