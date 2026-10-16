@@ -1774,7 +1774,6 @@ document.addEventListener("DOMContentLoaded", () => {
     emailInput.value = localStorage.getItem('reo_buyer_email');
   }
 });
-   // 📦 自動過濾並載入「有包含拆團商品」的團務下拉選單
 // 1. 載入含有拆團款的團務選單
 async function loadSplitGroupOptions() {
   const selectElem = document.getElementById('splitGroupSelect');
@@ -1792,10 +1791,8 @@ async function loadSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    // 標準化與空白清理工具
     const cleanStr = (str) => String(str || '').replace(/[\s\u3000]+/g, '').trim();
 
-    // 收集所有包含「拆」字的團務名稱
     let validGroupNames = new Set();
     products.forEach(p => {
       let pCat = cleanStr(p['商品分類']);
@@ -1810,7 +1807,6 @@ async function loadSplitGroupOptions() {
 
     groups.forEach(g => {
       const gName = String(g["團務名稱"] || '').trim();
-      // 比對 groups 名稱是否存在於有拆團商品的清單中
       if (gName && validGroupNames.has(gName)) {
         html += `<option value="${gName}">${gName}</option>`;
         count++;
@@ -1827,9 +1823,9 @@ async function loadSplitGroupOptions() {
   }
 }
 
-// 2. 當選擇團務後，載入該團務底下的商品分類（修復載入分類失敗的問題）
+// 2. 當選擇團務後，載入該團務底下「只包含拆團款」的商品分類
 async function loadCategoriesByGroup(groupName) {
-  const catSelect = document.getElementById('splitCategorySelect'); // 假設這是分類選單的 ID
+  const catSelect = document.getElementById('splitCategorySelect');
   if (!catSelect) return;
 
   if (!groupName) {
@@ -1848,13 +1844,20 @@ async function loadCategoriesByGroup(groupName) {
     let categories = new Set();
     (products || []).forEach(p => {
       let cat = String(p['商品分類'] || '').trim();
-      if (cat) categories.add(cat);
+      // 只保留包含「拆」字的分類
+      if (cat && cat.includes('拆')) {
+        categories.add(cat);
+      }
     });
 
     let html = `<option value="">-- 請選擇商品分類 --</option>`;
     categories.forEach(cat => {
       html += `<option value="${cat}">${cat}</option>`;
     });
+
+    if (categories.size === 0) {
+      html = `<option value="">-- 該團務無拆團款分類 --</option>`;
+    }
 
     catSelect.innerHTML = html;
   } catch (err) {
@@ -1874,6 +1877,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSplitGroupOptions();
 });
 
+// 這兩行務必保留
 window.loadSplitGroupOptions = loadSplitGroupOptions;
 window.loadCategoriesByGroup = loadCategoriesByGroup;
 
