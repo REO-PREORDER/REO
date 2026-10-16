@@ -2747,7 +2747,7 @@ function closeFrontendSplitBoardModal() {
 }
 window.closeFrontendSplitBoardModal = closeFrontendSplitBoardModal;
 
-// 📦 前台專用：只抓取「真正包含拆團款商品」的團務下拉選單
+// 📦 前台專用：嚴格檢查 products 的「商品分類」包含「拆」字的團務
 async function loadFrontendSplitGroupOptions() {
   const selectElem = document.getElementById('frontendSplitGroupSelect');
   const catSelectElem = document.getElementById('frontendSplitCategorySelect');
@@ -2769,33 +2769,35 @@ async function loadFrontendSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    // 1. 嚴格過濾：找出 products 裡面分類或名稱含有「拆」字的商品所屬團務
-    let splitGroupNames = new Set();
-    products.forEach(p => {
-      let pName = String(p['商品名稱'] || '');
-      let pCat = String(p['商品分類'] || '').trim();
-      let gName = String(p['團務名稱'] || '').trim();
+    // 清理字串與空白的輔助函式
+    const cleanStr = (str) => String(str || '').replace(/[\s\u3000]+/g, '').trim();
 
-      // 只要分類或名稱裡面有「拆」字（例如「拆團款」、「[拆團款]」），就確定這是拆團
-      if ((pCat.includes('拆') || pName.includes('拆')) && gName) {
-        splitGroupNames.add(gName);
+    // 1. 找出 products 裡面「商品分類」含有「拆」字的商品所屬團務名稱
+    let validGroupNames = new Set();
+    products.forEach(p => {
+      let pCat = cleanStr(p['商品分類']);
+      let gName = String(p['團務名稱'] || '').trim();
+      
+      // 只要商品分類裡面有「拆」字（例如「拆團款-相卡」），就把該團務名稱收進來
+      if (pCat.includes('拆') && gName) {
+        validGroupNames.add(gName);
       }
     });
 
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
-    let matchedCount = 0;
+    let count = 0;
 
-    // 2. 只把存在於 splitGroupNames 中的團務印出來
+    // 2. 只有當該團務名稱確實存在於包含「拆」字商品的清單中，才准放進下拉選單
     groups.forEach(g => {
       const gName = String(g["團務名稱"] || '').trim();
-      if (gName && splitGroupNames.has(gName)) {
+      if (gName && validGroupNames.has(gName)) {
         html += `<option value="${gName}">${gName}</option>`;
-        matchedCount++;
+        count++;
       }
     });
 
-    if (matchedCount === 0) {
-      html = `<option value="">-- 目前沒有偵測到含有拆團商品的團務 --</option>`;
+    if (count === 0) {
+      html = `<option value="">-- 目前沒有包含拆團款的團務 --</option>`;
     }
 
     selectElem.innerHTML = html;
