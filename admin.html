@@ -1781,8 +1781,8 @@ async function loadSplitGroupOptions() {
   
   try {
     const [groupsRes, productsRes] = await Promise.all([
-      db.from('groups').select('*').order('created_at', { ascending: false }),
-      db.from('products').select('*').range(0, 4999)
+      db.from('groups').select('團務名稱').order('created_at', { ascending: false }),
+      db.from('products').select('團務名稱, 商品分類').range(0, 4999)
     ]);
 
     if (groupsRes.error) throw groupsRes.error;
@@ -1791,25 +1791,29 @@ async function loadSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    // 標準化字串工具：去除所有空白、換行、全形半形差異
-    const normalize = (str) => String(str || '').replace(/[\s\u3000]+/g, '').trim();
+    // 取出 products 裡面所有分類含「拆」字的團務名稱
+    const splitProducts = products.filter(p => String(p['商品分類'] || '').includes('拆'));
+    const productGroupNames = Array.from(new Set(splitProducts.map(p => String(p['團務名稱'] || '').trim())));
+    const allGroupNames = groups.map(g => String(g['團務名稱'] || '').trim());
 
-    // 1. 建立一個「標準化後的有效團務名稱」對照集合
-    let validNormalizedNames = new Set();
-    
-    products.forEach(p => {
-      let pCat = normalize(p['商品分類']);
-      let gName = String(p['團務名稱'] || '').trim(); // 保持原始名稱用來顯示
+    // 強制在網頁下方塞一個除錯顯示框
+    let debugBox = document.getElementById('mobile-debug-box');
+    if (!debugBox) {
+      debugBox = document.createElement('div');
+      debugBox.id = 'mobile-debug-box';
+      debugBox.style.cssText = 'margin: 15px; padding: 12px; background: #222; color: #00ffcc; font-size: 12px; word-break: break-all; border-radius: 8px; font-family: monospace; border: 1px solid #444;';
+      selectElem.parentElement.appendChild(debugBox);
+    }
+    debugBox.innerHTML = `
+      <b>📱 手機實體除錯面板：</b><br><br>
+      <b>1. groups 表抓到的團務：</b><br>${JSON.stringify(allGroupNames)}<br><br>
+      <b>2. products 有「拆」字的團務名稱：</b><br>${JSON.stringify(productGroupNames)}
+    `;
 
-      // 只要分類包含「拆」字，就把這個團務的原始名稱記錄下來
-      if (pCat.includes('拆') && gName) {
-        validNormalizedNames.add(normalize(gName));
-      }
-    });
+    // 標準化比對
+    const normalize = (str) => String(str || '').replace(/[\s\u3000\-_]+/g, '').trim();
+    let validNormalizedNames = new Set(productGroupNames.map(n => normalize(n)));
 
-    console.log("自動對應到的有效團務標準化清單：", Array.from(validNormalizedNames));
-
-    // 2. 產生下拉選單：拿 groups 裡的名稱標準化後去比對
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let count = 0;
 
@@ -1817,7 +1821,6 @@ async function loadSplitGroupOptions() {
       const originalName = String(g["團務名稱"] || '').trim();
       const normalizedName = normalize(originalName);
 
-      // 只要標準化後對得上，就直接放行！以後任何新團務只要底下有拆團商品就會自動出現
       if (validNormalizedNames.has(normalizedName)) {
         html += `<option value="${originalName}">${originalName}</option>`;
         count++;
@@ -1831,10 +1834,11 @@ async function loadSplitGroupOptions() {
     selectElem.innerHTML = html;
   } catch (err) {
     console.error("載入團務下拉選單失敗：", err);
+    alert("除錯出錯：" + err.message);
   }
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
-    
+
 // 📊 讀取並計算該拆團指定分類的方格看板數據
 async function loadSplitBoardData() {
   const groupSelect = document.getElementById('splitGroupSelect');
