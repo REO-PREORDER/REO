@@ -1780,7 +1780,6 @@ async function loadSplitGroupOptions() {
   if (!selectElem) return;
   
   try {
-    // 1. 同時取得所有團務與所有商品
     const [groupsRes, productsRes] = await Promise.all([
       db.from('groups').select('*').order('created_at', { ascending: false }),
       db.from('products').select('*')
@@ -1792,38 +1791,35 @@ async function loadSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    // 2. 找出哪些團務名稱底下的商品含有 "[拆團款]" 或 "[抱盒款]"
     let splitGroupNames = new Set();
     products.forEach(p => {
-      let pName = p['商品分類'] || '';
+      let pCat = String(p['商品分類'] || '').trim();
       let gName = p['團務名稱'] || '';
-      // 只要商品名稱包含拆團或抱盒相關關鍵字，就把該團務記錄下來
-      if (pName.includes('[拆團款]') || pName.includes('[抱盒款]') || pName.includes('拆團')) {
+      
+      // 💡 核心修正：只要商品分類欄位包含「拆團款」，就將該團務名稱收錄進來
+      if (pCat.includes('拆團款')) {
         if (gName) splitGroupNames.add(gName);
       }
     });
 
-    // 3. 過濾出符合條件的團務
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let matchedCount = 0;
 
     groups.forEach(g => {
       const gName = g["團務名稱"] || '';
-      // 如果該團務名稱存在於我們剛剛篩選出來的集合中，才加入下拉選單
       if (splitGroupNames.has(gName)) {
         html += `<option value="${gName}">${gName}</option>`;
         matchedCount++;
       }
     });
 
-    // 如果剛好沒有自動偵測到，退而求其次顯示提示或列出所有團務供手動選擇
     if (matchedCount === 0) {
       html = `<option value="">-- 目前沒有偵測到含有拆團商品的團務 --</option>`;
     }
 
     selectElem.innerHTML = html;
   } catch (err) {
-    console.error("載入拆團下拉選單失敗：", err);
+    console.error("載入團務下拉選單失敗：", err);
   }
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
