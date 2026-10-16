@@ -2069,12 +2069,18 @@ async function onGroupSelectChanged() {
 
     if (error) throw error;
 
-    let categoriesSet = new Set();
+   let categoriesSet = new Set();
     
-    // 💡 修正這裡：把原本錯誤的 products 改成正確的 prodData
     (prodData || []).forEach(p => {
+      // 💡 強制確保抓出來的團務名稱跟分類轉成乾淨的字串來比對
+      let dbGroupName = String(p['團務名稱'] || '').trim();
+      let targetGroup = String(selectedGroup || '').trim();
+      
+      // 如果這筆商品的團務名稱跟目前選的不一樣，直接跳過
+      if (dbGroupName !== targetGroup) return;
+
       let pCat = String(p['商品分類'] || '').trim();
-      let pName = p['商品名稱'] || '';
+      let pName = String(p['商品名稱'] || '').trim();
 
       // 嚴格排除抱盒款，且分類必須包含「拆團款」
       if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
