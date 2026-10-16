@@ -1782,16 +1782,15 @@ async function loadSplitGroupOptions() {
   try {
     const [groupsRes, productsRes] = await Promise.all([
       db.from('groups').select('*').order('created_at', { ascending: false }),
-      db.from('products').select('*')
+      db.from('products').select('*').range(0, 4999) // 解除 1000 筆限制
     ]);
 
     if (groupsRes.error) throw groupsRes.error;
     if (productsRes.error) throw productsRes.error;
 
     const groups = groupsRes.data || [];
-    const products = productsRes.data || [];
+    const products = productsRes.data || []; // 確保變數名稱對應正確
 
-    // 找出所有商品分類包含「拆團款」的團務名稱（強制全部轉字串並 trim）
     let validGroupNames = new Set();
     products.forEach(p => {
       let pCat = String(p['商品分類'] || '').trim();
@@ -1800,7 +1799,6 @@ async function loadSplitGroupOptions() {
       if (pCat.includes('拆團款')) {
         if (gName) {
           validGroupNames.add(gName);
-          console.log("成功抓到含有拆團款的團務：", gName); // 可以在 F12 主控台看到這行
         }
       }
     });
@@ -1817,7 +1815,6 @@ async function loadSplitGroupOptions() {
     });
 
     selectElem.innerHTML = html;
-    console.log("下拉選單總共塞入幾個團務：", matchedCount);
   } catch (err) {
     console.error("載入團務下拉選單失敗：", err);
   }
@@ -2062,7 +2059,7 @@ async function onGroupSelectChanged() {
   if (!selectedGroup) return;
 
   try {
-    const { data: productsRes, error } = await db.from('products').select('*').range(0, 4999)
+   const { data: productsRes, error } = await db.from('products').select('*')
       .eq('團務名稱', selectedGroup);
 
     if (error) throw error;
