@@ -2747,7 +2747,7 @@ function closeFrontendSplitBoardModal() {
 }
 window.closeFrontendSplitBoardModal = closeFrontendSplitBoardModal;
 
-// 📦 前台專用：強固版拆團團務選單載入函式
+// 📦 前台專用：與後台完全一致的拆團過濾邏輯
 async function loadFrontendSplitGroupOptions() {
   const selectElem = document.getElementById('frontendSplitGroupSelect');
   const catSelectElem = document.getElementById('frontendSplitCategorySelect');
@@ -2758,26 +2758,21 @@ async function loadFrontendSplitGroupOptions() {
   }
 
   try {
-    const [groupsRes, productsRes] = await Promise.all([
-      db.from('groups').select('*').order('created_at', { ascending: false }),
-      db.from('products').select('*').range(0, 4999)
-    ]);
+    // 直接抓取所有商品，突破 1000 筆限制
+    const { data: products, error } = await db
+      .from('products')
+      .select('*')
+      .range(0, 4999);
 
-    if (groupsRes.error) throw groupsRes.error;
-    if (productsRes.error) throw productsRes.error;
-
-    const groups = groupsRes.data || [];
-    const products = productsRes.data || [];
-
-    // 強制深度清洗字串（去除所有空白與特殊符號）
-    const cleanStr = (str) => String(str || '').replace(/[\s\u3000\t\n]+/g, '').trim();
+    if (error) throw error;
 
     let validGroupNames = new Set();
-    products.forEach(p => {
-      let pCat = cleanStr(p['商品分類']);
+    
+    // 像後台一樣嚴格檢查：只要商品分類有「拆」字，就收集該團務名稱
+    (products || []).forEach(p => {
+      let pCat = String(p['商品分類'] || '').trim();
       let gName = String(p['團務名稱'] || '').trim();
       
-      // 只要商品分類包含「拆」字，就強力收錄該團務
       if (pCat.includes('拆') && gName) {
         validGroupNames.add(gName);
       }
@@ -2786,12 +2781,10 @@ async function loadFrontendSplitGroupOptions() {
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let count = 0;
 
-    groups.forEach(g => {
-      const gName = String(g["團務名稱"] || '').trim();
-      if (gName && validGroupNames.has(gName)) {
-        html += `<option value="${gName}">${gName}</option>`;
-        count++;
-      }
+    // 將有包含拆團商品的團務名稱印成下拉選單
+    validGroupNames.forEach(gName => {
+      html += `<option value="${gName}">${gName}</option>`;
+      count++;
     });
 
     if (count === 0) {
