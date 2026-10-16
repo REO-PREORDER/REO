@@ -1791,28 +1791,33 @@ async function loadSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    // 1. 嚴格蒐集所有「商品分類」含有「拆」字的團務名稱
-    let validGroupNames = new Set();
+    // 1. 收集所有含有「拆」字的商品其所屬團務名稱
+    let splitGroupNames = new Set();
     products.forEach(p => {
-      let pCat = String(p['商品分類'] || '').trim();
+      let pCat = String(p['商品分類'] || '');
       let gName = String(p['團務名稱'] || '').trim();
-      
       if (pCat.includes('拆') && gName) {
-        validGroupNames.add(gName);
+        splitGroupNames.add(gName);
       }
     });
 
-    console.log("確定擁有拆團款的團務：", Array.from(validGroupNames));
-
-    // 2. 嚴格過濾：groups 裡的名稱必須「完全符合」有拆團款的清單才秀出來！
+    // 2. 以 groups 為主，只要該團務名稱存在於拆團商品清單中，就把它印出來
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let count = 0;
 
     groups.forEach(g => {
       const gName = String(g["團務名稱"] || '').trim();
       
-      // 只有裡面真的有拆團款的團務才會被放行
-      if (gName && validGroupNames.has(gName)) {
+      // 檢查是否精確吻合，或者包含該團務名稱
+      let isMatched = false;
+      for (let validName of splitGroupNames) {
+        if (validName === gName || validName.includes(gName) || gName.includes(validName)) {
+          isMatched = true;
+          break;
+        }
+      }
+
+      if (gName && isMatched) {
         html += `<option value="${gName}">${gName}</option>`;
         count++;
       }
