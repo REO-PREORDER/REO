@@ -2747,7 +2747,7 @@ function closeFrontendSplitBoardModal() {
 }
 window.closeFrontendSplitBoardModal = closeFrontendSplitBoardModal;
 
-// 📦 前台專用：與後台完全一致的拆團過濾邏輯
+// 📦 前台專用：分批抓取所有商品（突破 1000 筆限制），找出所有包含拆團款的團務
 async function loadFrontendSplitGroupOptions() {
   const selectElem = document.getElementById('frontendSplitGroupSelect');
   const catSelectElem = document.getElementById('frontendSplitCategorySelect');
@@ -2758,18 +2758,35 @@ async function loadFrontendSplitGroupOptions() {
   }
 
   try {
-    // 直接抓取所有商品，突破 1000 筆限制
-    const { data: products, error } = await db
-      .from('products')
-      .select('*')
-      .range(0, 4999);
+    const groupsRes = await db.from('groups').select('*').order('created_at', { ascending: false });
+    if (groupsRes.error) throw groupsRes.error;
+    const groups = groupsRes.data || [];
 
-    if (error) throw error;
+    // 分批把 products 全部抓回來（防止超過 1000 筆上限）
+    let allProducts = [];
+    let step = 1000;
+    let from = 0;
+    let keepFetching = true;
 
+    while (keepFetching) {
+      const { data: chunk, error: chunkErr } = await db
+        .from('products')
+        .select('*')
+        .range(from, from + step - 1);
+
+      if (chunkErr) throw chunkErr;
+      if (chunk && chunk.length > 0) {
+        allProducts = allProducts.concat(chunk);
+        from += step;
+        if (chunk.length < step) keepFetching = false;
+      } else {
+        keepFetching = false;
+      }
+    }
+
+    // 嚴格過濾：只要分類包含「拆」字的團務名稱
     let validGroupNames = new Set();
-    
-    // 像後台一樣嚴格檢查：只要商品分類有「拆」字，就收集該團務名稱
-    (products || []).forEach(p => {
+    allProducts.forEach(p => {
       let pCat = String(p['商品分類'] || '').trim();
       let gName = String(p['團務名稱'] || '').trim();
       
@@ -2781,10 +2798,12 @@ async function loadFrontendSplitGroupOptions() {
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let count = 0;
 
-    // 將有包含拆團商品的團務名稱印成下拉選單
-    validGroupNames.forEach(gName => {
-      html += `<option value="${gName}">${gName}</option>`;
-      count++;
+    groups.forEach(g => {
+      const gName = String(g["團務名稱"] || '').trim();
+      if (gName && validGroupNames.has(gName)) {
+        html += `<option value="${gName}">${gName}</option>`;
+        count++;
+      }
     });
 
     if (count === 0) {
