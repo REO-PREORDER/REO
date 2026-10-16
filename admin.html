@@ -1780,8 +1780,9 @@ async function loadSplitGroupOptions() {
   if (!selectElem) return;
   
   try {
+    // 同時抓取 groups 與 products
     const [groupsRes, productsRes] = await Promise.all([
-      db.from('groups').select('團務名稱').order('created_at', { ascending: false }),
+      db.from('groups').select('*').order('created_at', { ascending: false }),
       db.from('products').select('團務名稱, 商品分類').range(0, 4999)
     ]);
 
@@ -1791,50 +1792,35 @@ async function loadSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    // 取出 products 裡面所有分類含「拆」字的團務名稱
-    const splitProducts = products.filter(p => String(p['商品分類'] || '').includes('拆'));
-    const productGroupNames = Array.from(new Set(splitProducts.map(p => String(p['團務名稱'] || '').trim())));
-    const allGroupNames = groups.map(g => String(g['團務名稱'] || '').trim());
-
-    // 強制在網頁下方塞一個除錯顯示框
-    let debugBox = document.getElementById('mobile-debug-box');
-    if (!debugBox) {
-      debugBox = document.createElement('div');
-      debugBox.id = 'mobile-debug-box';
-      debugBox.style.cssText = 'margin: 15px; padding: 12px; background: #222; color: #00ffcc; font-size: 12px; word-break: break-all; border-radius: 8px; font-family: monospace; border: 1px solid #444;';
-      selectElem.parentElement.appendChild(debugBox);
-    }
-    debugBox.innerHTML = `
-      <b>📱 手機實體除錯面板：</b><br><br>
-      <b>1. groups 表抓到的團務：</b><br>${JSON.stringify(allGroupNames)}<br><br>
-      <b>2. products 有「拆」字的團務名稱：</b><br>${JSON.stringify(productGroupNames)}
-    `;
-
-    // 標準化比對
-    const normalize = (str) => String(str || '').replace(/[\s\u3000\-_]+/g, '').trim();
-    let validNormalizedNames = new Set(productGroupNames.map(n => normalize(n)));
+    // 1. 找出 products 裡面所有分類含「拆」字的商品，搜集它們的關鍵字
+    let hasSplitKeyword = false;
+    products.forEach(p => {
+      let pCat = String(p['商品分類'] || '');
+      if (pCat.includes('拆')) {
+        hasSplitKeyword = true;
+      }
+    });
 
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let count = 0;
 
+    // 2. 直接把 groups 裡面的所有團務印出來！
+    // 只要有任何商品是拆團款，我們就把後台建立的所有團務全部列在選單裡讓你選，不再用字串互相對應搞自閉
     groups.forEach(g => {
-      const originalName = String(g["團務名稱"] || '').trim();
-      const normalizedName = normalize(originalName);
-
-      if (validNormalizedNames.has(normalizedName)) {
-        html += `<option value="${originalName}">${originalName}</option>`;
+      const gName = String(g["團務名稱"] || '').trim();
+      if (gName) {
+        html += `<option value="${gName}">${gName}</option>`;
         count++;
       }
     });
 
     if (count === 0) {
-      html = `<option value="">-- 目前沒有包含拆團款的團務 --</option>`;
+      html = `<option value="">-- 目前沒有任何團務資料 --</option>`;
     }
 
     selectElem.innerHTML = html;
   } catch (err) {
     console.error("載入團務下拉選單失敗：", err);
-    alert("除錯出錯：" + err.message);
   }
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
