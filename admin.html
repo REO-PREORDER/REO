@@ -1780,6 +1780,7 @@ async function loadSplitGroupOptions() {
   if (!selectElem) return;
   
   try {
+    // 同時抓取 groups 與 products 資料表
     const [groupsRes, productsRes] = await Promise.all([
       db.from('groups').select('*').order('created_at', { ascending: false }),
       db.from('products').select('*')
@@ -1791,30 +1792,36 @@ async function loadSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    let splitGroupNames = new Set();
+    // 1. 先蒐集所有「商品分類」或「商品名稱」包含「拆團款」的團務名稱
+    let validGroupNames = new Set();
     products.forEach(p => {
       let pCat = String(p['商品分類'] || '').trim();
-      let gName = p['團務名稱'] || '';
-      
-      // 💡 核心修正：只要商品分類欄位包含「拆團款」，就將該團務名稱收錄進來
-      if (pCat.includes('拆團款')) {
-        if (gName) splitGroupNames.add(gName);
+      let pName = String(p['商品名稱'] || '').trim();
+      let gName = String(p['團務名稱'] || '').trim();
+
+      // 只要分類或名稱包含「拆團款」，就代表這團有拆團款
+      if (pCat.includes('拆團款') || pName.includes('拆團款')) {
+        if (gName) {
+          validGroupNames.add(gName);
+        }
       }
     });
 
+    // 2. 組合下拉選單：只印出那些「確定有拆團款商品」的團務
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let matchedCount = 0;
 
     groups.forEach(g => {
       const gName = g["團務名稱"] || '';
-      if (splitGroupNames.has(gName)) {
+      // 如果這個團務名稱存在於我們的有效清單中，才加入下拉選單
+      if (validGroupNames.has(gName)) {
         html += `<option value="${gName}">${gName}</option>`;
         matchedCount++;
       }
     });
 
     if (matchedCount === 0) {
-      html = `<option value="">-- 目前沒有偵測到含有拆團商品的團務 --</option>`;
+      html = `<option value="">-- 目前沒有包含拆團款的團務 --</option>`;
     }
 
     selectElem.innerHTML = html;
