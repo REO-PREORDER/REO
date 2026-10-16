@@ -2062,9 +2062,7 @@ async function onGroupSelectChanged() {
   if (!selectedGroup) return;
 
   try {
-    const { data: prodData, error } = await db
-      .from('products')
-      .select('*')
+    const { data: productsRes, error } = await db.from('products').select('*').range(0, 4999)
       .eq('團務名稱', selectedGroup);
 
     if (error) throw error;
