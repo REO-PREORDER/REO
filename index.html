@@ -2758,9 +2758,10 @@ async function loadFrontendSplitGroupOptions() {
   }
 
   try {
+    // 加上 .range(0, 4999) 突破 Supabase 1000筆限制，避免商品被漏掉
     const [groupsRes, productsRes] = await Promise.all([
       db.from('groups').select('*').order('created_at', { ascending: false }),
-      db.from('products').select('*')
+      db.from('products').select('*').range(0, 4999)
     ]);
 
     if (groupsRes.error) throw groupsRes.error;
@@ -2774,7 +2775,9 @@ async function loadFrontendSplitGroupOptions() {
       let pName = p['商品名稱'] || '';
       let pCat = String(p['商品分類'] || '').trim();
       let gName = p['團務名稱'] || '';
-      if (pCat.includes('拆團款') || pName.includes('[拆團款]')) {
+      
+      // 只要分類包含「拆」字或商品名稱包含指定標籤，就納入拆團清單
+      if (pCat.includes('拆') || pName.includes('[拆團款]')) {
         if (gName) splitGroupNames.add(gName);
       }
     });
@@ -2825,7 +2828,8 @@ async function onFrontendGroupSelected() {
     const { data: products, error } = await db
       .from('products')
       .select('*')
-      .eq('團務名稱', selectedGroup);
+      .eq('團務名稱', selectedGroup)
+      .range(0, 4999);
 
     if (error) throw error;
 
@@ -2836,7 +2840,8 @@ async function onFrontendGroupSelected() {
       
       if (pCat.includes('抱盒款') || pName.includes('[抱盒款]')) return;
 
-      if (pCat.includes('拆團款') || pName.includes('[拆團款]')) {
+      // 只保留包含「拆」字的分類
+      if (pCat.includes('拆') || pName.includes('[拆團款]')) {
         if (pCat) categoriesSet.add(pCat);
       }
     });
@@ -2888,7 +2893,8 @@ async function loadFrontendSplitBoardData() {
       .from('products')
       .select('*')
       .eq('團務名稱', selectedGroup)
-      .order('id', { ascending: true });
+      .order('id', { ascending: true })
+      .range(0, 4999);
 
     if (prodErr) throw prodErr;
 
@@ -2922,7 +2928,8 @@ async function loadFrontendSplitBoardData() {
       .from('orders')
       .select('*')
       .eq('團務名稱', selectedGroup)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .range(0, 4999);
 
     if (ordErr) throw ordErr;
 
