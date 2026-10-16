@@ -2747,7 +2747,7 @@ function closeFrontendSplitBoardModal() {
 }
 window.closeFrontendSplitBoardModal = closeFrontendSplitBoardModal;
 
-// 📦 前台專用：嚴格檢查 products 的「商品分類」包含「拆」字的團務
+// 📦 前台專用：自動過濾並載入「有包含拆團款商品」的團務下拉選單
 async function loadFrontendSplitGroupOptions() {
   const selectElem = document.getElementById('frontendSplitGroupSelect');
   const catSelectElem = document.getElementById('frontendSplitCategorySelect');
@@ -2769,16 +2769,14 @@ async function loadFrontendSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    // 清理字串與空白的輔助函式
     const cleanStr = (str) => String(str || '').replace(/[\s\u3000]+/g, '').trim();
 
-    // 1. 找出 products 裡面「商品分類」含有「拆」字的商品所屬團務名稱
+    // 1. 抓出所有「商品分類」包含「拆」字的團務名稱
     let validGroupNames = new Set();
     products.forEach(p => {
       let pCat = cleanStr(p['商品分類']);
       let gName = String(p['團務名稱'] || '').trim();
       
-      // 只要商品分類裡面有「拆」字（例如「拆團款-相卡」），就把該團務名稱收進來
       if (pCat.includes('拆') && gName) {
         validGroupNames.add(gName);
       }
@@ -2787,7 +2785,7 @@ async function loadFrontendSplitGroupOptions() {
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let count = 0;
 
-    // 2. 只有當該團務名稱確實存在於包含「拆」字商品的清單中，才准放進下拉選單
+    // 2. 只有存在於 validGroupNames 中的團務才印出來
     groups.forEach(g => {
       const gName = String(g["團務名稱"] || '').trim();
       if (gName && validGroupNames.has(gName)) {
