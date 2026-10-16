@@ -1775,6 +1775,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
    // 📦 自動過濾並載入「有包含拆團商品」的團務下拉選單
+// 1. 載入含有拆團款的團務選單
 async function loadSplitGroupOptions() {
   const selectElem = document.getElementById('splitGroupSelect');
   if (!selectElem) return;
@@ -1782,7 +1783,7 @@ async function loadSplitGroupOptions() {
   try {
     const [groupsRes, productsRes] = await Promise.all([
       db.from('groups').select('*').order('created_at', { ascending: false }),
-      db.from('products').select('團務名稱, 商品分類').range(0, 4999)
+      db.from('products').select('*').order('id', { ascending: false }).range(0, 4999)
     ]);
 
     if (groupsRes.error) throw groupsRes.error;
@@ -1791,33 +1792,26 @@ async function loadSplitGroupOptions() {
     const groups = groupsRes.data || [];
     const products = productsRes.data || [];
 
-    // 1. 收集所有含有「拆」字的商品其所屬團務名稱
-    let splitGroupNames = new Set();
+    // 標準化與空白清理工具
+    const cleanStr = (str) => String(str || '').replace(/[\s\u3000]+/g, '').trim();
+
+    // 收集所有包含「拆」字的團務名稱
+    let validGroupNames = new Set();
     products.forEach(p => {
-      let pCat = String(p['商品分類'] || '');
+      let pCat = cleanStr(p['商品分類']);
       let gName = String(p['團務名稱'] || '').trim();
       if (pCat.includes('拆') && gName) {
-        splitGroupNames.add(gName);
+        validGroupNames.add(gName);
       }
     });
 
-    // 2. 以 groups 為主，只要該團務名稱存在於拆團商品清單中，就把它印出來
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let count = 0;
 
     groups.forEach(g => {
       const gName = String(g["團務名稱"] || '').trim();
-      
-      // 檢查是否精確吻合，或者包含該團務名稱
-      let isMatched = false;
-      for (let validName of splitGroupNames) {
-        if (validName === gName || validName.includes(gName) || gName.includes(validName)) {
-          isMatched = true;
-          break;
-        }
-      }
-
-      if (gName && isMatched) {
+      // 比對 groups 名稱是否存在於有拆團商品的清單中
+      if (gName && validGroupNames.has(gName)) {
         html += `<option value="${gName}">${gName}</option>`;
         count++;
       }
@@ -1832,7 +1826,56 @@ async function loadSplitGroupOptions() {
     console.error("載入團務下拉選單失敗：", err);
   }
 }
+
+// 2. 當選擇團務後，載入該團務底下的商品分類（修復載入分類失敗的問題）
+async function loadCategoriesByGroup(groupName) {
+  const catSelect = document.getElementById('splitCategorySelect'); // 假設這是分類選單的 ID
+  if (!catSelect) return;
+
+  if (!groupName) {
+    catSelect.innerHTML = `<option value="">-- 請先選擇團務 --</option>`;
+    return;
+  }
+
+  try {
+    const { data: products, error } = await db.from('products')
+      .select('商品分類, 團務名稱')
+      .eq('團務名稱', groupName)
+      .range(0, 4999);
+
+    if (error) throw error;
+
+    let categories = new Set();
+    (products || []).forEach(p => {
+      let cat = String(p['商品分類'] || '').trim();
+      if (cat) categories.add(cat);
+    });
+
+    let html = `<option value="">-- 請選擇商品分類 --</option>`;
+    categories.forEach(cat => {
+      html += `<option value="${cat}">${cat}</option>`;
+    });
+
+    catSelect.innerHTML = html;
+  } catch (err) {
+    console.error("載入分類失敗：", err);
+    catSelect.innerHTML = `<option value="">-- 載入分類失敗 --</option>`;
+  }
+}
+
+// 綁定事件監聽
+document.addEventListener('DOMContentLoaded', () => {
+  const selectElem = document.getElementById('splitGroupSelect');
+  if (selectElem) {
+    selectElem.addEventListener('change', (e) => {
+      loadCategoriesByGroup(e.target.value);
+    });
+  }
+  loadSplitGroupOptions();
+});
+
 window.loadSplitGroupOptions = loadSplitGroupOptions;
+window.loadCategoriesByGroup = loadCategoriesByGroup;
 
 
 // 📊 讀取並計算該拆團指定分類的方格看板數據
