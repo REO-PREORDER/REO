@@ -3367,25 +3367,23 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
 });
-  // 監聽瀏覽器的上一頁/下一頁 (popstate)
+  // 監聽瀏覽器的上一頁 / 下一步 (popstate)
 window.addEventListener('popstate', async (event) => {
   const urlParams = new URLSearchParams(window.location.search);
   const targetGroup = urlParams.get('group');
 
+  const groupListView = document.getElementById('groupListView');
+  const productOrderView = document.getElementById('productOrderView');
+  const activeGroupTitle = document.getElementById('activeGroupTitle');
+
   if (!targetGroup) {
-    // 如果網址沒有 group 參數，代表回到列表頁
-    const groupListView = document.getElementById('groupListView');
-    const productOrderView = document.getElementById('productOrderView');
+    // 1. 如果網址沒有 group 參數（代表回到列表頁）
     if (groupListView) groupListView.style.display = 'block';
     if (productOrderView) productOrderView.style.display = 'none';
     selectedGroupName = "";
   } else {
-    // 如果回到某個團務頁，自動切換並載入該團務商品
+    // 2. 如果網址帶有 group 參數（代表切到該團務）
     selectedGroupName = targetGroup;
-    const groupListView = document.getElementById('groupListView');
-    const productOrderView = document.getElementById('productOrderView');
-    const activeGroupTitle = document.getElementById('activeGroupTitle');
-    
     if (groupListView) groupListView.style.display = 'none';
     if (productOrderView) productOrderView.style.display = 'block';
     if (activeGroupTitle) activeGroupTitle.innerText = targetGroup;
