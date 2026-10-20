@@ -1246,21 +1246,15 @@ async function exportProductSummaryCSV() {
   }
 
   async function selectGroup(groupName, isExpired) {
-    if (isExpired) { alert("此團務已結單，無法再進行預購！"); return; }
-    selectedGroupName = groupName;
-    document.getElementById('groupListView').style.display = 'none';
-    document.getElementById('productOrderView').style.display = 'block';
-    document.getElementById('activeGroupTitle').innerText = groupName;
-
-    let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
-    let remarkText = (currentGroupObj && currentGroupObj["團務備註"]) ? currentGroupObj["團務備註"] : "本團務無特殊備註事項。";
-    document.getElementById('activeGroupRemark').innerText = remarkText;
-
-    orderQuantities = {};
-    activeCategory = "全部";
-    await loadProducts(groupName);
+  if (isExpired) { 
+    alert("此團務已結單，無法再進行預購！"); 
+    return; 
   }
-
+  
+  // 🔗 透過網址帶入團務參數，並直接在新分頁（_blank）中開啟
+  const targetUrl = `./index.html?group=${encodeURIComponent(groupName)}`;
+  window.open(targetUrl, '_blank');
+}
   async function loadProducts(groupName) {
     const gridContainer = document.getElementById('productGridContainer');
     gridContainer.innerHTML = "載入商品中...";
@@ -3268,6 +3262,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
   
 </script> <!-- 👈 把它放在 </script> 的正上方就對囉！ -->
+  
 <!-- 📦 前台專用：拆團方格看板 Modal -->
 <div id="frontendSplitBoardModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
   <div style="background: #18181b; border: 1px solid #3f3f46; border-radius: 12px; width: 90%; max-width: 1000px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
@@ -3307,5 +3302,47 @@ document.addEventListener("DOMContentLoaded", () => {
 
   </div>
 </div>
+<script>
+window.addEventListener('DOMContentLoaded', async () => {
+  // 自動檢查網址後段有沒有帶 ?group= 參數
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetGroupFromUrl = urlParams.get('group');
+
+  if (targetGroupFromUrl) {
+    // 1. 先切換畫面讓使用者看到
+    selectedGroupName = targetGroupFromUrl;
+    const groupListView = document.getElementById('groupListView');
+    const productOrderView = document.getElementById('productOrderView');
+    const activeGroupTitle = document.getElementById('activeGroupTitle');
+    const activeGroupRemark = document.getElementById('activeGroupRemark');
+
+    if (groupListView) groupListView.style.display = 'none';
+    if (productOrderView) productOrderView.style.display = 'block';
+    if (activeGroupTitle) activeGroupTitle.innerText = targetGroupFromUrl;
+
+    // 2. 直接去資料庫撈這個團務的備註
+    try {
+      const { data: gData } = await db.from('groups').select('*').eq('團務名稱', targetGroupFromUrl).single();
+      let remarkText = (gData && gData["團務備註"]) ? gData["團務備註"] : "本團務無特殊備註事項。";
+      if (activeGroupRemark) activeGroupRemark.innerText = remarkText;
+    } catch (e) {
+      if (activeGroupRemark) activeGroupRemark.innerText = "本團務無特殊備註事項。";
+    }
+
+    orderQuantities = {};
+    activeCategory = "全部";
+    
+    // 3. 載入該團務的商品
+    if (typeof loadProducts === 'function') {
+      await loadProducts(targetGroupFromUrl);
+    }
+  } else {
+    // 如果沒有網址參數，才載入原本的團務列表
+    if (typeof loadGroupList === 'function') {
+      await loadGroupList();
+    }
+  }
+});
+</script>
 </body>
 </html>
