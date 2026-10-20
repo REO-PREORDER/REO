@@ -1256,7 +1256,7 @@ async function exportProductSummaryCSV() {
   document.getElementById('productOrderView').style.display = 'block';
   document.getElementById('activeGroupTitle').innerText = groupName;
 
-  // 🔗 更新網址參數但不增加歷史紀錄
+  // 🔗 使用 replaceState，無痛更新網址後段，且不會在瀏覽器歷史紀錄裡疊加垃圾頁面
   const newUrl = `${window.location.pathname}?group=${encodeURIComponent(groupName)}`;
   history.replaceState({ group: groupName }, '', newUrl);
 
