@@ -2120,14 +2120,13 @@ async function onGroupSelectChanged() {
   if (!selectedGroup) return;
 
   try {
-   const { data: productsRes, error } = await db.from('products').select('*')
-      .eq('團務名稱', selectedGroup);
+   const { data, error } = await db.from('products').select('*')
+  .eq('團務名稱', selectedGroup);
+if (error) throw error;
 
-    if (error) throw error;
-
-   let categoriesSet = new Set();
-    
-    (prodData || []).forEach(p => {
+let categoriesSet = new Set();
+(data || []).forEach(p => {  // ✔️ 改成正確的 data
+  
       // 💡 強制確保抓出來的團務名稱跟分類轉成乾淨的字串來比對
       let dbGroupName = String(p['團務名稱'] || '').trim();
       let targetGroup = String(selectedGroup || '').trim();
