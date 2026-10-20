@@ -1268,6 +1268,17 @@ async function exportProductSummaryCSV() {
   activeCategory = "全部";
   await loadProducts(groupName);
 }
+  function backToGroupList() {
+  // 1. 切換畫面顯示
+  document.getElementById('productOrderView').style.display = 'none';
+  document.getElementById('groupListView').style.display = 'block';
+  
+  // 2. 清空當前選取的團務狀態
+  selectedGroupName = "";
+
+  // 3. 搭配 replaceState，將網址後段的 ?group= 參數清除，恢復乾淨的首頁網址
+  history.replaceState({}, '', window.location.pathname);
+}
   async function loadProducts(groupName) {
     const gridContainer = document.getElementById('productGridContainer');
     gridContainer.innerHTML = "載入商品中...";
