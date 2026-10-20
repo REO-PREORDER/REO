@@ -1245,7 +1245,7 @@ async function exportProductSummaryCSV() {
     }
   }
 
-  async function selectGroup(groupName, isExpired) {
+ async function selectGroup(groupName, isExpired) {
   if (isExpired) { 
     alert("此團務已結單，無法再進行預購！"); 
     return; 
@@ -1256,9 +1256,9 @@ async function exportProductSummaryCSV() {
   document.getElementById('productOrderView').style.display = 'block';
   document.getElementById('activeGroupTitle').innerText = groupName;
 
-  // 🔗 使用 replaceState，無痛更新網址後段，且不會在瀏覽器歷史紀錄裡疊加垃圾頁面
+  // 🔗 使用 pushState，在瀏覽器歷史中新增紀錄，這樣按上一頁才會生效
   const newUrl = `${window.location.pathname}?group=${encodeURIComponent(groupName)}`;
-  history.replaceState({ group: groupName }, '', newUrl);
+  history.pushState({ group: groupName }, '', newUrl);
 
   let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
   let remarkText = (currentGroupObj && currentGroupObj["團務備註"]) ? currentGroupObj["團務備註"] : "本團務無特殊備註事項。";
@@ -3364,6 +3364,34 @@ window.addEventListener('DOMContentLoaded', async () => {
     // 如果沒有網址參數，才載入原本的團務列表
     if (typeof loadGroupList === 'function') {
       await loadGroupList();
+    }
+  }
+});
+  // 監聽瀏覽器的上一頁/下一頁 (popstate)
+window.addEventListener('popstate', async (event) => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetGroup = urlParams.get('group');
+
+  if (!targetGroup) {
+    // 如果網址沒有 group 參數，代表回到列表頁
+    const groupListView = document.getElementById('groupListView');
+    const productOrderView = document.getElementById('productOrderView');
+    if (groupListView) groupListView.style.display = 'block';
+    if (productOrderView) productOrderView.style.display = 'none';
+    selectedGroupName = "";
+  } else {
+    // 如果回到某個團務頁，自動切換並載入該團務商品
+    selectedGroupName = targetGroup;
+    const groupListView = document.getElementById('groupListView');
+    const productOrderView = document.getElementById('productOrderView');
+    const activeGroupTitle = document.getElementById('activeGroupTitle');
+    
+    if (groupListView) groupListView.style.display = 'none';
+    if (productOrderView) productOrderView.style.display = 'block';
+    if (activeGroupTitle) activeGroupTitle.innerText = targetGroup;
+    
+    if (typeof loadProducts === 'function') {
+      await loadProducts(targetGroup);
     }
   }
 });
