@@ -1057,6 +1057,7 @@ async function exportProductSummaryCSV() {
         if (typeof loadAllOrders === 'function') loadAllOrders(); 
         if (typeof loadOrderStats === 'function') loadOrderStats();
         if (typeof loadExportGroupOptions === 'function') loadExportGroupOptions();
+        if (typeof loadGroupSelectForEdit === 'function') loadGroupSelectForEdit();
       }
       return;
     }
