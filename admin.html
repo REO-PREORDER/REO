@@ -490,12 +490,13 @@ async function loadGroupSelectForEdit() {
 
 // 2. 當下拉選單切換時（自動判斷是要新增還是編輯）
 function onSelectGroupToEdit() {
-  let selectedVal = document.getElementById('editGroupSelect').value;
+  let selectEl = document.getElementById('editGroupSelect');
+  if (!selectEl) return; // 如果不在團務管理頁面就直接跳出，避免影響其他分頁
+  
+  let selectedVal = selectEl.value;
   let submitBtn = document.getElementById('groupSubmitBtn');
   let deleteBtn = document.getElementById('groupDeleteBtn');
   let editBox = document.getElementById('groupProductEditBox');
-  
-  // 取得動作按鈕的外層容器（假設它的 id 是 actionButtonContainer，如果沒有我們等下幫你加）
   let actionContainer = document.getElementById('actionButtonContainer');
 
   if (selectedVal === "NEW") {
@@ -512,11 +513,8 @@ function onSelectGroupToEdit() {
       submitBtn.style.background = "#2563eb";
     }
     if (deleteBtn) deleteBtn.style.display = "none";
-    
-    // 確保商品編輯外框顯示
     if (editBox) editBox.style.display = "block";
     
-    // 直接把批次貼上的完整 HTML 塞進容器裡，並且把「建立按鈕」放在批次商品的下方！
     const productListContainer = document.getElementById('productListContainer');
     if (productListContainer) {
       productListContainer.innerHTML = `
@@ -527,11 +525,11 @@ function onSelectGroupToEdit() {
           <div id="batchMsg" style="font-size: 11px; margin: 4px 0;"></div>
         </div>
       `;
-    }
-
-    // 💡 關鍵：如果是新增模式，把動作按鈕區塊移動到 #productListContainer 的後面（也就是最下方）
-    if (actionContainer && productListContainer) {
-      productListContainer.parentNode.appendChild(actionContainer);
+      
+      // 只有在團務管理頁面才把按鈕移到批次商品下方
+      if (actionContainer) {
+        productListContainer.parentNode.appendChild(actionContainer);
+      }
     }
 
   } else {
@@ -553,20 +551,19 @@ function onSelectGroupToEdit() {
     if (deleteBtn) deleteBtn.style.display = "block";
     if (editBox) editBox.style.display = "block";
     
-    // 💡 編輯模式時，把按鈕區塊放回原本的位置（例如表單下方、商品列表上方）
-    let formElement = document.getElementById('newGroupName').closest('form') || document.getElementById('tab-groups');
-    if (actionContainer && formElement) {
-      // 放到商品編輯區塊的前面
+    // 編輯模式時，把按鈕區塊放回商品編輯區的前面
+    let formElement = document.getElementById('newGroupName')?.closest('form') || document.getElementById('tab-groups');
+    if (actionContainer && editBox && formElement) {
       formElement.insertBefore(actionContainer, editBox);
     }
 
-    // 載入該團務底下的商品
     if (typeof loadProductsForEdit === 'function' && group) {
       loadProductsForEdit(group["團務名稱"]);
     }
   }
 }
 window.onSelectGroupToEdit = onSelectGroupToEdit;
+    
 // 1. 切換分頁按鈕並更新樣式
 function switchGroupTab(tab) {
   currentGroupTab = tab;
