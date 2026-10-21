@@ -1034,7 +1034,6 @@ async function exportProductSummaryCSV() {
           adminDash.style.display = 'block';
           
           // 載入後台相關資料
-          if (typeof loadAllOrders === 'function') loadAllOrders(); 
           if (typeof loadOrderStats === 'function') loadOrderStats();
           if (typeof loadExportGroupOptions === 'function') loadExportGroupOptions();
           
@@ -1057,7 +1056,6 @@ window.addEventListener('hashchange', checkAdminHash);
       if (pass === "qingyuan" || typeof verifyAdminPass === "function" && verifyAdminPass(pass)) {
         document.getElementById('adminLoginBox').style.display = 'none';
         document.getElementById('adminDashboard').style.display = 'block';
-        if (typeof loadAllOrders === 'function') loadAllOrders();
       } else {
         // 如果原本是用全域變數或既有驗證，可以直接呼叫
         document.getElementById('adminLoginMsg').innerText = "密碼錯誤或請檢查驗證邏輯";
