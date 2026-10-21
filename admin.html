@@ -545,19 +545,18 @@ async function loadProductsForEdit(groupId) {
         html += `
           <div style="background: #1a1a1a; padding: 10px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #333;">
             <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
-              <!-- 💡 加上 flex: 2 與 min-width 讓商品名稱完整顯示 -->
-              <input type="text" id="prodName_${p.id}" value="${p.商品名稱 || ''}" placeholder="商品名稱" style="flex: 2; min-width: 120px; padding: 5px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+              <!-- 商品名稱、單價、分類 -->
+              <input type="text" id="prodName_${p.id}" value="${p.商品名稱 || ''}" placeholder="商品名稱" style="flex: 3; min-width: 120px; padding: 5px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; margin: 0;">
+              <input type="number" id="prodPrice_${p.id}" value="${p.單價 || 0}" placeholder="單價" style="flex: 1.2; min-width: 70px; padding: 5px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; margin: 0;">
+              <input type="text" id="prodCat_${p.id}" value="${p.商品分類 || '一般'}" placeholder="分類" style="flex: 1.2; min-width: 70px; padding: 5px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; margin: 0;">
               
-              <!-- 💡 單價與分類加上固定比例 -->
-              <input type="number" id="prodPrice_${p.id}" value="${p.單價 || 0}" placeholder="單價" style="flex: 1; min-width: 70px; padding: 5px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-              <input type="text" id="prodCat_${p.id}" value="${p.商品分類 || '一般'}" placeholder="分類" style="flex: 1; min-width: 70px; padding: 5px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-              
-              <button type="button" onclick="saveProduct('${p.id}')" style="background: #059669; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; flex-shrink: 0;" title="儲存修改">💾</button>
-              <button type="button" onclick="deleteProduct('${p.id}')" style="background: #dc2626; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; flex-shrink: 0;" title="刪除商品">🗑</button>
+              <!-- 💾 儲存與 🗑️ 刪除按鈕：強制鎖定固定寬高、絕對不准伸縮 -->
+              <button type="button" onclick="saveProduct('${p.id}')" style="background: #059669; color: white; border: none; padding: 0; border-radius: 4px; font-size: 13px; cursor: pointer; flex: 0 0 38px; width: 38px; height: 32px; min-width: 38px; flex-shrink: 0; margin: 0;" title="儲存修改">💾</button>
+              <button type="button" onclick="deleteProduct('${p.id}')" style="background: #dc2626; color: white; border: none; padding: 0; border-radius: 4px; font-size: 13px; cursor: pointer; flex: 0 0 38px; width: 38px; height: 32px; min-width: 38px; flex-shrink: 0; margin: 0;" title="刪除商品">🗑</button>
             </div>
             <div style="display: flex; gap: 6px; flex-direction: column;">
-              <input type="text" id="prodImg_${p.id}" value="${p.圖片網址 || ''}" placeholder="圖片網址 (URL)" style="padding: 5px; font-size: 11px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px;">
-              <textarea id="prodDesc_${p.id}" placeholder="商品說明..." style="padding: 5px; font-size: 11px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; resize: vertical; height: 40px;">${p.商品說明 || ''}</textarea>
+              <input type="text" id="prodImg_${p.id}" value="${p.圖片網址 || ''}" placeholder="圖片網址 (URL)" style="padding: 5px; font-size: 11px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; margin: 0;">
+              <textarea id="prodDesc_${p.id}" placeholder="商品說明..." style="padding: 5px; font-size: 11px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; resize: vertical; height: 40px; margin: 0;">${p.商品說明 || ''}</textarea>
             </div>
           </div>
         `;
