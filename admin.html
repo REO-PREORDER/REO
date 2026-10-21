@@ -210,17 +210,20 @@
     <label style="font-size: 12px; color: #ccc;">團務備註 (代購須知下方顯示的特有備註)</label>
     <textarea id="newGroupRemark" rows="3" placeholder="例如：⚠️ 可能砍單..." style="margin-top: 4px;"></textarea>
 
-    <!-- 🔘 動作按鈕區（儲存修改/建立新團 / 刪除團務） -->
-    <div style="display: flex; gap: 10px; margin-top: 10px;">
-      <button id="groupSubmitBtn" class="primary-btn" onclick="submitGroupForm()" style="background: #2563eb; flex: 2;">建立新團務</button>
-      <button id="groupDeleteBtn" onclick="deleteCurrentGroup()" style="display: none; background: #dc2626; color: white; border: none; border-radius: 6px; padding: 8px; cursor: pointer; font-size: 12px; font-weight: bold; flex: 1;">🗑️ 刪除團務(含商品)</button>
-    </div>
-    <p id="createGroupMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
-
-    <!-- 🛍️ 團務商品內容編輯區 (選擇編輯既有團務時自動顯示) -->
+   <!-- 🛍️ 團務商品內容編輯區 (選擇編輯既有團務時自動顯示) -->
     <div id="groupProductEditBox" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #555;">
       <h5 style="color: #f59e0b; margin-bottom: 10px;">🛍️ 編輯該團務商品內容</h5>
       <div id="productListContainer" style="display: flex; flex-direction: column; gap: 8px;">
+        <!-- 動態帶入商品項目清單 -->
+      </div>
+    </div>
+
+    <!-- 🔘 動作按鈕區（移至最下方：儲存修改/建立新團 / 刪除團務） -->
+    <div style="display: flex; gap: 10px; margin-top: 20px;">
+      <button id="groupSubmitBtn" class="primary-btn" onclick="submitGroupForm()" style="background: #2563eb; color: white; border: none; border-radius: 6px; padding: 12px; font-size: 14px; font-weight: bold; cursor: pointer; flex: 2;">建立新團務</button>
+      <button id="groupDeleteBtn" onclick="deleteCurrentGroup()" style="display: none; background: #dc2626; color: white; border: none; border-radius: 6px; padding: 12px; cursor: pointer; font-size: 14px; font-weight: bold; flex: 1;">🗑️ 刪除團務(含商品)</button>
+    </div>
+    <p id="createGroupMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
         <!-- 動態帶入商品項目清單 -->
       </div>
     </div>
@@ -353,7 +356,7 @@ async function submitGroupForm() {
 
   // 2. 檢查下方商品是否空白（強制要求必須同時用好商品才能建立）
   if (!batchText) {
-    alert("❌ 請在下方「批次貼上新增商品」欄位填入至少一項商品，才能建立新團務！");
+    alert("❌ 「批次貼上新增商品」欄位填入至少一項商品，才能建立新團務！");
     if (batchInput) batchInput.focus();
     return;
   }
