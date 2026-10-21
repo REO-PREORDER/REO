@@ -576,19 +576,22 @@ function switchAdminTab(tabName) {
     let btnEl = document.getElementById('btn-' + t);
     
     if (contentEl) {
-      contentEl.style.setProperty('display', (t === tabName) ? 'block' : 'none', 'important');
+      if (t === tabName) {
+        // 💡 強制設定為 block 且加上 important 確保不被覆蓋
+        contentEl.style.setProperty('display', 'block', 'important');
+        contentEl.style.setProperty('visibility', 'visible', 'important');
+      } else {
+        contentEl.style.setProperty('display', 'none', 'important');
+      }
     }
+    
     if (btnEl) {
       btnEl.style.background = (t === tabName) ? '#2563eb' : '#27272a';
       btnEl.style.color = (t === tabName) ? '#fff' : '#a1a1aa';
     }
   });
 
-  // 💡 當切換回團務管理分頁時，自動執行一次選單狀態判斷
-  if (tabName === 'groups' && typeof onSelectGroupToEdit === 'function') {
-    onSelectGroupToEdit();
-  }
-
+  // 切換到訂單時自動載入
   if (tabName === 'orders' && typeof loadAllOrders === 'function') {
     loadAllOrders();
   }
