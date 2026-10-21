@@ -370,27 +370,30 @@ let allGroupsData = []; // 暫存所有團務原始資料
 }
 window.switchAdminGroupTab = switchAdminGroupTab;
 
-// 2. 載入編輯團務下拉選單
+// 1. 載入編輯團務下拉選單
 async function loadGroupSelectForEdit() {
   const selectElem = document.getElementById('editGroupSelect');
   if (!selectElem) return;
+  
   try {
     const { data, error } = await db.from('groups').select('*').order('created_at', { ascending: false });
     if (error) throw error;
+    
+    // 把資料存到全域變數方便後續比對
     allGroupsData = data || [];
     
-    // 永遠在最上方保留「新增全新團務」選項
+    // 第一項固定放「新增全新團務」，接著動態帶入所有既有團務
     let html = `<option value="NEW">➕ 【新增全新團務】</option>`;
     allGroupsData.forEach(g => {
       html += `<option value="${g.id}">${g["團務名稱"]}</option>`;
     });
     selectElem.innerHTML = html;
   } catch (err) {
-    alert("載入團務失敗：" + err.message);
+    console.error("載入團務失敗：" + err.message);
   }
 }
 
-// 3. 選擇團務時自動帶入表單欄位與商品清單
+// 2. 當下拉選單切換時（自動判斷是要新增還是編輯）
 function onSelectGroupToEdit() {
   let selectedVal = document.getElementById('editGroupSelect').value;
   let submitBtn = document.getElementById('groupSubmitBtn');
@@ -398,25 +401,22 @@ function onSelectGroupToEdit() {
   let editBox = document.getElementById('groupProductEditBox');
 
   if (selectedVal === "NEW") {
-    // 🧹 切換到新增模式
-    currentGroupMode = "create";
-    clearGroupForm();
+    // 🧹 切換到新增模式：清空表單
+    document.getElementById('editingGroupId').value = "";
+    document.getElementById('newGroupName').value = "";
+    document.getElementById('newGroupImg').value = "";
+    document.getElementById('newGroupDeadline').value = "";
+    document.getElementById('newGroupPayment').value = "賣貨便貨到付款(不含運費)";
+    document.getElementById('newGroupRemark').value = "";
+    
     if (submitBtn) {
       submitBtn.innerText = "建立新團務";
       submitBtn.style.background = "#2563eb";
     }
     if (deleteBtn) deleteBtn.style.display = "none";
-    if (editBox) editBox.style.display = "none"; // 新增時還沒有商品可編輯，隱藏商品區
+    if (editBox) editBox.style.display = "none"; // 新增時還沒有商品可編輯
   } else {
-    // ✏️ 切換到編輯模式
-    currentGroupMode = "edit";
-    if (submitBtn) {
-      submitBtn.innerText = "💾 儲存修改內容";
-      submitBtn.style.background = "#10b981";
-    }
-    if (deleteBtn) deleteBtn.style.display = "block";
-    if (editBox) editBox.style.display = "block";
-
+    // ✏️ 切換到編輯模式：帶入該團務資料
     let group = allGroupsData.find(g => String(g.id) === String(selectedVal));
     if (group) {
       document.getElementById('editingGroupId').value = group.id;
@@ -426,85 +426,27 @@ function onSelectGroupToEdit() {
       document.getElementById('newGroupPayment').value = group["付款方式"] || "賣貨便貨到付款(不含運費)";
       document.getElementById('newGroupRemark').value = group["團務備註"] || "";
     }
+    
+    if (submitBtn) {
+      submitBtn.innerText = "💾 儲存修改內容";
+      submitBtn.style.background = "#10b981";
+    }
+    if (deleteBtn) deleteBtn.style.display = "block";
+    if (editBox) editBox.style.display = "block";
+
+    // 載入該團務底下的商品
     if (typeof loadProductsForEdit === 'function') {
-      loadProductsForEdit(selectedVal);
+      loadProductsForEdit(group["團務名稱"]);
     }
   }
 }
 
-// 4. 清空表單
-function clearGroupForm() {
-  document.getElementById('editingGroupId').value = "";
-  document.getElementById('newGroupName').value = "";
-  document.getElementById('newGroupImg').value = "";
-  document.getElementById('newGroupDeadline').value = "";
-  document.getElementById('newGroupPayment').value = "賣貨便貨到付款(不含運費)";
-  document.getElementById('newGroupRemark').value = "";
-}
-
-// 5. 統一提交表單
-async function submitGroupForm() {
-  let gName = document.getElementById('newGroupName')?.value.trim();
-  let gImg = document.getElementById('newGroupImg')?.value.trim();
-  let gDeadline = document.getElementById('newGroupDeadline')?.value.trim() || "未定";
-  let gPayment = document.getElementById('newGroupPayment')?.value.trim() || "賣貨便貨到付款(不含運費)";
-  let gRemark = document.getElementById('newGroupRemark')?.value.trim() || "";
-  let msgElem = document.getElementById('createGroupMsg');
-  let editingId = document.getElementById('editingGroupId')?.value;
-
-  if (!gName) {
-    alert("請填寫團務名稱！");
-    return;
+// 3. 網頁載入時自動執行載入下拉選單
+window.addEventListener('DOMContentLoaded', () => {
+  if (typeof loadGroupSelectForEdit === 'function') {
+    loadGroupSelectForEdit();
   }
-
-  if (msgElem) {
-    msgElem.style.color = "#aaa";
-    msgElem.innerText = currentGroupMode === 'create' ? "正在建立團務..." : "正在儲存修改...";
-  }
-
-  let payload = {
-    "團務名稱": gName,
-    "圖片": gImg,
-    "截單時間": gDeadline,
-    "團務備註": gRemark,
-    "付款方式": gPayment
-  };
-
-  try {
-    if (currentGroupMode === 'create') {
-      payload["isExpired"] = false;
-      const { error } = await db.from('groups').insert([payload]);
-      if (error) throw error;
-      alert(`✓ 成功建立團務：「${gName}」！`);
-    } else {
-      if (!editingId) {
-        alert("請先選擇要編輯的團務！");
-        return;
-      }
-      const { error } = await db.from('groups').update(payload).eq('id', editingId);
-      if (error) throw error;
-      alert(`✓ 團務「${gName}」已更新成功！`);
-    }
-
-    if (msgElem) {
-      msgElem.style.color = "#10b981";
-      msgElem.innerText = "✓ 操作成功！";
-    }
-    clearGroupForm();
-    if (typeof loadGroupList === 'function') await loadGroupList();
-    if (currentGroupMode === 'edit') await loadGroupSelectForEdit();
-
-  } catch (err) {
-    if (msgElem) {
-      msgElem.style.color = "#f87171";
-      msgElem.innerText = "操作失敗：" + err.message;
-    }
-    alert("操作失敗：" + err.message);
-  }
-}
-window.submitGroupForm = submitGroupForm;
-window.submitCreateGroup = submitGroupForm;
-  let currentGroupTab = 'active'; // 預設顯示開團中
+});
 
 // 1. 切換分頁按鈕並更新樣式
 function switchGroupTab(tab) {
