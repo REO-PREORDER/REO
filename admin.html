@@ -577,10 +577,12 @@ function switchAdminTab(tabName) {
     
     if (contentEl) {
       if (t === tabName) {
-        // 強制展開並拉回最上層顯示
-        contentEl.style.cssText = "display: block !important; visibility: visible !important; opacity: 1 !important;";
+        // 💡 強制暴力解開，確保該分頁完全展開並顯示
+        contentEl.style.setProperty('display', 'block', 'important');
+        contentEl.style.setProperty('visibility', 'visible', 'important');
+        contentEl.style.setProperty('opacity', '1', 'important');
       } else {
-        contentEl.style.cssText = "display: none !important;";
+        contentEl.style.setProperty('display', 'none', 'important');
       }
     }
     
@@ -590,11 +592,11 @@ function switchAdminTab(tabName) {
     }
   });
 
-  // 如果切換到訂單分頁，確保資料確實載入並強制讓表格顯示
+  // 💡 針對訂單分頁做雙重保險：強制確保表格容器顯示並觸發資料載入
   if (tabName === 'orders') {
     let tabOrders = document.getElementById('tab-orders');
     if (tabOrders) {
-      tabOrders.style.cssText = "display: block !important; visibility: visible !important; opacity: 1 !important;";
+      tabOrders.style.setProperty('display', 'block', 'important');
     }
     if (typeof loadAllOrders === 'function') {
       loadAllOrders();
