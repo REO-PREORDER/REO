@@ -328,7 +328,139 @@
   <script>
   let currentGroupMode = "create"; // 'create' 或 'edit'
 let allGroupsData = []; // 暫存所有團務原始資料
+// 🚀 同時建立新團務與批次寫入商品
+async function submitGroupForm() {
+  const selectVal = document.getElementById('editGroupSelect').value;
+  const isCreateMode = (selectVal === "NEW");
 
+  const groupNameInput = document.getElementById('newGroupName');
+  const groupImgInput = document.getElementById('newGroupImg');
+  const deadlineInput = document.getElementById('newGroupDeadline');
+  const paymentInput = document.getElementById('newGroupPayment');
+  const remarkInput = document.getElementById('newGroupRemark');
+  const msgElem = document.getElementById('createGroupMsg');
+
+  const groupName = groupNameInput ? groupNameInput.value.trim() : "";
+  const groupImg = groupImgInput ? groupImgInput.value.trim() : "";
+  const deadline = deadlineInput ? deadlineInput.value.trim() : "";
+  const payment = paymentInput ? paymentInput.value.trim() : "賣貨便貨到付款(不含運費)";
+  const remark = remarkInput ? remarkInput.value.trim() : "";
+
+  if (!groupName) {
+    alert("請填寫團務名稱！");
+    if (groupNameInput) groupNameInput.focus();
+    return;
+  }
+
+  if (isCreateMode) {
+    if (msgElem) msgElem.innerText = "正在建立團務與寫入商品...";
+
+    try {
+      // 1. 寫入 groups 資料表
+      const { data: newGroup, error: groupErr } = await db
+        .from('groups')
+        .insert([{
+          "團務名稱": groupName,
+          "圖片": groupImg,
+          "截單時間": deadline,
+          "付款方式": payment,
+          "團務備註": remark,
+          "isExpired": false
+        }])
+        .select();
+
+      if (groupErr) throw groupErr;
+
+      // 2. 讀取並解析下方「批次貼上新增商品」輸入框的內容
+      let batchInput = document.getElementById('batchProductsInput');
+      let rawText = batchInput ? batchInput.value.trim() : "";
+      let addedProductsCount = 0;
+
+      if (rawText) {
+        let lines = rawText.split('\n');
+        let newProducts = [];
+
+        for (let line of lines) {
+          line = line.trim();
+          if (!line) continue;
+          let parts = line.includes('\t') ? line.split('\t') : line.split(/\s+/);
+          parts = parts.map(p => p.trim()).filter(p => p !== "");
+
+          if (parts.length >= 3) {
+            let pCat = parts[0] || "一般";
+            let pName = parts[1] || "";
+            let pPrice = parseFloat(parts[2]) || 0;
+            let pImg = parts[3] || "";
+            let pDesc = parts.slice(4).join(" ");
+            
+            pImg = pImg.replace(/(\?|\&)\s+/g, '$1');
+
+            if (pName && !isNaN(pPrice)) {
+              newProducts.push({
+                "團務名稱": groupName,  // 綁定剛建立的新團務名稱
+                "商品分類": pCat,
+                "商品名稱": pName,
+                "單價": pPrice,
+                "圖片": typeof formatImageUrl === 'function' ? formatImageUrl(pImg) : pImg,
+                "商品說明": pDesc,
+                "isExpired": false
+              });
+            }
+          }
+        }
+
+        // 3. 批次寫入 products 資料表
+        if (newProducts.length > 0) {
+          const { error: prodErr } = await db.from('products').insert(newProducts);
+          if (prodErr) throw new Error("團務建立成功，但商品寫入失敗：" + prodErr.message);
+          addedProductsCount = newProducts.length;
+        }
+      }
+
+      alert(`🎉 成功建立新團務「${groupName}」！\n(同時自動新增了 ${addedProductsCount} 項商品)`);
+      location.reload(); // 重新整理頁面
+
+    } catch (err) {
+      console.error("建立新團務失敗：", err);
+      alert("❌ 建立失敗：" + err.message);
+      if (msgElem) msgElem.innerText = "";
+    }
+
+  } else {
+    // 編輯既有團務模式
+    const editingId = document.getElementById('editingGroupId').value;
+    if (!editingId) {
+      alert("找不到欲編輯的團務 ID！");
+      return;
+    }
+
+    if (!confirm(`確定要儲存「${groupName}」的修改內容嗎？`)) return;
+
+    try {
+      const { error } = await db
+        .from('groups')
+        .update({
+          "團務名稱": groupName,
+          "圖片": groupImg,
+          "截單時間": deadline,
+          "付款方式": payment,
+          "團務備註": remark
+        })
+        .eq('id', editingId);
+
+      if (error) throw error;
+
+      alert("💾 團務資料修改成功！");
+      if (typeof loadGroupSelectForEdit === 'function') {
+        loadGroupSelectForEdit();
+      }
+    } catch (err) {
+      console.error("更新團務失敗：", err);
+      alert("❌ 更新失敗：" + err.message);
+    }
+  }
+}
+window.submitGroupForm = submitGroupForm;
    function switchAdminGroupTab(mode) {
   currentGroupMode = mode;
   let btnCreate = document.getElementById('tabCreateGroupBtn');
