@@ -400,7 +400,7 @@ function onSelectGroupToEdit() {
   let deleteBtn = document.getElementById('groupDeleteBtn');
   let editBox = document.getElementById('groupProductEditBox');
 
-  if (selectedVal === "NEW") {
+if (selectedVal === "NEW") {
     // 🧹 切換到新增模式：清空表單
     document.getElementById('editingGroupId').value = "";
     document.getElementById('newGroupName').value = "";
@@ -414,19 +414,20 @@ function onSelectGroupToEdit() {
       submitBtn.style.background = "#2563eb";
     }
     if (deleteBtn) deleteBtn.style.display = "none";
-    if (editBox) editBox.style.display = "block"; // 新增時還沒有商品可編輯
+    if (editBox) editBox.style.display = "block"; // 顯示商品編輯區
+
     const productListContainer = document.getElementById('productListContainer');
     if (productListContainer) {
       productListContainer.innerHTML = `
-        <div style="background: #1a1a1a; padding: 12px; border-radius: 6px; border: 1px dashed #3b82f6;">
-          <label style="font-size: 12px; color: #60a5fa; font-weight: bold; display: block; margin-bottom: 6px;">
-            📦 批次貼上商品（新團務建立後，按下「建立新團務」會一併將以下商品寫入）：
-          </label>
-          <textarea id="batchProductsInput" rows="5" placeholder="請在此貼上商品資料，格式範例：&#10;分類名稱 | 商品名稱 | 價格 | 圖片網址" style="width: 100%; background: #222; color: #fff; border: 1px solid #444; padding: 8px; font-size: 12px; border-radius: 4px;"></textarea>
-          <p style="font-size: 11px; color: #888; margin-top: 4px;">提示：每行一個商品，欄位之間請用「 | 」分隔。</p>
+        <div style="background: #1e1e1e; border: 1px dashed #10b981; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+          <div style="color: #10b981; font-weight: bold; font-size: 12px; margin-bottom: 4px;">📦 批次貼上新增商品（每行一個，建立新團務時會一併寫入）</div>
+          <div style="color: #aaa; font-size: 11px; margin-bottom: 8px;">依序填寫：商品分類, 商品名稱, 單價, 圖片, 商品說明 (可用 Tab、逗號或空格分隔)</div>
+          <textarea id="batchProductsInput" placeholder="請在此貼上多行商品資料..." style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 70px; width: 100%; box-sizing: border-box;"></textarea>
+          <div id="batchMsg" style="font-size: 11px; margin: 4px 0;"></div>
         </div>
       `;
     }
+  }
   } else {
     // ✏️ 切換到編輯模式：帶入該團務資料
     let group = allGroupsData.find(g => String(g.id) === String(selectedVal));
