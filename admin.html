@@ -453,13 +453,14 @@ if (selectedVal === "NEW") {
   }
 }
 
-// 3. 網頁載入時自動執行載入下拉選單
-window.addEventListener('DOMContentLoaded', () => {
-  if (typeof loadGroupSelectForEdit === 'function') {
-    loadGroupSelectForEdit();
+// 讓後台一進來就預設點擊並顯示「團務管理工具」
+document.addEventListener('DOMContentLoaded', () => {
+  // 假設你的團務管理切換按鈕或分頁觸發函式叫做 switchTab('group') 或類似名稱
+  // 如果是直接用函式切換，可以呼叫對應的切換分頁函式：
+  if (typeof openTab === 'function') {
+    openTab('group'); // 請將 'group' 換成你程式碼中對應團務管理分頁的代號
   }
 });
-
 // 1. 切換分頁按鈕並更新樣式
 function switchGroupTab(tab) {
   currentGroupTab = tab;
