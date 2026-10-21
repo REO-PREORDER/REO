@@ -417,7 +417,15 @@ function onSelectGroupToEdit() {
     if (editBox) editBox.style.display = "block"; // 新增時還沒有商品可編輯
     const productListContainer = document.getElementById('productListContainer');
     if (productListContainer) {
-      productListContainer.innerHTML = '<p style="color: #888; font-size: 12px; text-align: center;">新團務建立後即可在此新增或批次貼上商品</p>';
+      productListContainer.innerHTML = `
+        <div style="background: #1a1a1a; padding: 12px; border-radius: 6px; border: 1px dashed #3b82f6;">
+          <label style="font-size: 12px; color: #60a5fa; font-weight: bold; display: block; margin-bottom: 6px;">
+            📦 批次貼上商品（新團務建立後，按下「建立新團務」會一併將以下商品寫入）：
+          </label>
+          <textarea id="batchProductsInput" rows="5" placeholder="請在此貼上商品資料，格式範例：&#10;分類名稱 | 商品名稱 | 價格 | 圖片網址" style="width: 100%; background: #222; color: #fff; border: 1px solid #444; padding: 8px; font-size: 12px; border-radius: 4px;"></textarea>
+          <p style="font-size: 11px; color: #888; margin-top: 4px;">提示：每行一個商品，欄位之間請用「 | 」分隔。</p>
+        </div>
+      `;
     }
   } else {
     // ✏️ 切換到編輯模式：帶入該團務資料
