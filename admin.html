@@ -182,7 +182,7 @@
     <!-- 整合後的團務選擇下拉選單（最上方加入新增選項） -->
     <div style="margin-bottom: 15px; background: #1a1a1a; padding: 12px; border-radius: 6px; border: 1px solid #3b82f6;">
       <label style="font-size: 13px; color: #60a5fa; font-weight: bold;">選擇操作模式 / 團務：</label>
-      <select id="editGroupSelect" onchange="onSelectGroupToEdit()" style="width: 100%; padding: 8px; margin-top: 6px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;">
+      <select id="editGroupSelect" onchange="()" style="width: 100%; padding: 8px; margin-top: 6px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;">
         <option value="NEW">➕ 【新增全新團務】</option>
         <!-- 既有團務會由 JS 動態帶入 -->
       </select>
@@ -400,7 +400,7 @@ function onSelectGroupToEdit() {
   let deleteBtn = document.getElementById('groupDeleteBtn');
   let editBox = document.getElementById('groupProductEditBox');
 
-if (selectedVal === "NEW") {
+  if (selectedVal === "NEW") {
     // 🧹 切換到新增模式：清空表單
     document.getElementById('editingGroupId').value = "";
     document.getElementById('newGroupName').value = "";
@@ -414,8 +414,11 @@ if (selectedVal === "NEW") {
       submitBtn.style.background = "#2563eb";
     }
     if (deleteBtn) deleteBtn.style.display = "none";
-    if (editBox) editBox.style.display = "block"; // 顯示商品編輯區
+    
+    // 💡 關鍵：確保新增模式下，下方商品編輯區塊是顯示的 (block)
+    if (editBox) editBox.style.display = "block"; 
 
+    // 💡 完整帶入你要求的批次新增介面與提示文字
     const productListContainer = document.getElementById('productListContainer');
     if (productListContainer) {
       productListContainer.innerHTML = `
@@ -447,7 +450,7 @@ if (selectedVal === "NEW") {
     if (editBox) editBox.style.display = "block";
 
     // 載入該團務底下的商品
-    if (typeof loadProductsForEdit === 'function') {
+    if (typeof loadProductsForEdit === 'function' && group) {
       loadProductsForEdit(group["團務名稱"]);
     }
   }
