@@ -179,16 +179,13 @@
   <!-- ========================================== -->
   <div id="tab-groups" class="admin-tab-content" style="display: block;">
     
-    <!-- 切換頁籤 -->
-    <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-      <button id="tabCreateGroupBtn" onclick="switchAdminGroupTab('create')" style="background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">➕ 新增團務</button>
-      <button id="tabEditGroupBtn" onclick="switchAdminGroupTab('edit')" style="background: #444; color: #ccc; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">✏️ 編輯既有團務</button>
-    </div>
-
-    <!-- 編輯模式專用：選擇團務下拉選單 -->
-    <div id="editGroupSelectBox" style="display: none; margin-bottom: 12px; background: #1a1a1a; padding: 10px; border-radius: 6px; border: 1px solid #3b82f6;">
-      <label style="font-size: 12px; color: #60a5fa; font-weight: bold;">請選擇要編輯的團務：</label>
-      <select id="editGroupSelect" onchange="onSelectGroupToEdit(); loadProductsForEdit(this.value);" style="width: 100%; padding: 6px; margin-top: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;"></select>
+    <!-- 整合後的團務選擇下拉選單（最上方加入新增選項） -->
+    <div style="margin-bottom: 15px; background: #1a1a1a; padding: 12px; border-radius: 6px; border: 1px solid #3b82f6;">
+      <label style="font-size: 13px; color: #60a5fa; font-weight: bold;">選擇操作模式 / 團務：</label>
+      <select id="editGroupSelect" onchange="onSelectGroupToEdit()" style="width: 100%; padding: 8px; margin-top: 6px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;">
+        <option value="NEW">➕ 【新增全新團務】</option>
+        <!-- 既有團務會由 JS 動態帶入 -->
+      </select>
     </div>
 
     <!-- 表單區域 -->
@@ -214,14 +211,14 @@
     <label style="font-size: 12px; color: #ccc;">團務備註 (代購須知下方顯示的特有備註)</label>
     <textarea id="newGroupRemark" rows="3" placeholder="例如：⚠️ 可能砍單..." style="margin-top: 4px;"></textarea>
 
-    <!-- 🔘 動作按鈕區（送出 / 刪除團務） -->
+    <!-- 🔘 動作按鈕區（儲存修改/建立新團 / 刪除團務） -->
     <div style="display: flex; gap: 10px; margin-top: 10px;">
       <button id="groupSubmitBtn" class="primary-btn" onclick="submitGroupForm()" style="background: #2563eb; flex: 2;">建立新團務</button>
       <button id="groupDeleteBtn" onclick="deleteCurrentGroup()" style="display: none; background: #dc2626; color: white; border: none; border-radius: 6px; padding: 8px; cursor: pointer; font-size: 12px; font-weight: bold; flex: 1;">🗑️ 刪除團務(含商品)</button>
     </div>
     <p id="createGroupMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
 
-    <!-- 🛍️ 團務商品內容編輯區 -->
+    <!-- 🛍️ 團務商品內容編輯區 (選擇編輯既有團務時自動顯示) -->
     <div id="groupProductEditBox" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #555;">
       <h5 style="color: #f59e0b; margin-bottom: 10px;">🛍️ 編輯該團務商品內容</h5>
       <div id="productListContainer" style="display: flex; flex-direction: column; gap: 8px;">
@@ -377,19 +374,17 @@ window.switchAdminGroupTab = switchAdminGroupTab;
 async function loadGroupSelectForEdit() {
   const selectElem = document.getElementById('editGroupSelect');
   if (!selectElem) return;
-  selectElem.innerHTML = "<option value=''>載入中...</option>";
   try {
     const { data, error } = await db.from('groups').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     allGroupsData = data || [];
-    if (allGroupsData.length === 0) {
-      selectElem.innerHTML = "<option value=''>尚無任何團務</option>";
-      return;
-    }
-    selectElem.innerHTML = "<option value=''>-- 請選擇欲編輯的團務 --</option>";
+    
+    // 永遠在最上方保留「新增全新團務」選項
+    let html = `<option value="NEW">➕ 【新增全新團務】</option>`;
     allGroupsData.forEach(g => {
-      selectElem.innerHTML += `<option value="${g.id}">${g["團務名稱"]}</option>`;
+      html += `<option value="${g.id}">${g["團務名稱"]}</option>`;
     });
+    selectElem.innerHTML = html;
   } catch (err) {
     alert("載入團務失敗：" + err.message);
   }
@@ -397,30 +392,45 @@ async function loadGroupSelectForEdit() {
 
 // 3. 選擇團務時自動帶入表單欄位與商品清單
 function onSelectGroupToEdit() {
-  let selectedId = document.getElementById('editGroupSelect').value;
-  if (!selectedId) {
+  let selectedVal = document.getElementById('editGroupSelect').value;
+  let submitBtn = document.getElementById('groupSubmitBtn');
+  let deleteBtn = document.getElementById('groupDeleteBtn');
+  let editBox = document.getElementById('groupProductEditBox');
+
+  if (selectedVal === "NEW") {
+    // 🧹 切換到新增模式
+    currentGroupMode = "create";
     clearGroupForm();
-    const container = document.getElementById('productListContainer');
-    if (container) container.innerHTML = "";
-    return;
-  }
-  let group = allGroupsData.find(g => String(g.id) === String(selectedId));
-  if (group) {
-    document.getElementById('editingGroupId').value = group.id;
-    document.getElementById('newGroupName').value = group["團務名稱"] || "";
-    document.getElementById('newGroupImg').value = group["圖片"] || "";
-    document.getElementById('newGroupDeadline').value = group["截單時間"] || "";
-    document.getElementById('newGroupPayment').value = group["付款方式"] || "賣貨便貨到付款(不含運費)";
-    document.getElementById('newGroupRemark').value = group["團務備註"] || "";
-  }
-  const editBox = document.getElementById('groupProductEditBox');
-  if (editBox) editBox.style.display = 'block';
-  
-  if (typeof loadProductsForEdit === 'function') {
-    loadProductsForEdit(selectedId);
+    if (submitBtn) {
+      submitBtn.innerText = "建立新團務";
+      submitBtn.style.background = "#2563eb";
+    }
+    if (deleteBtn) deleteBtn.style.display = "none";
+    if (editBox) editBox.style.display = "none"; // 新增時還沒有商品可編輯，隱藏商品區
+  } else {
+    // ✏️ 切換到編輯模式
+    currentGroupMode = "edit";
+    if (submitBtn) {
+      submitBtn.innerText = "💾 儲存修改內容";
+      submitBtn.style.background = "#10b981";
+    }
+    if (deleteBtn) deleteBtn.style.display = "block";
+    if (editBox) editBox.style.display = "block";
+
+    let group = allGroupsData.find(g => String(g.id) === String(selectedVal));
+    if (group) {
+      document.getElementById('editingGroupId').value = group.id;
+      document.getElementById('newGroupName').value = group["團務名稱"] || "";
+      document.getElementById('newGroupImg').value = group["圖片"] || "";
+      document.getElementById('newGroupDeadline').value = group["截單時間"] || "";
+      document.getElementById('newGroupPayment').value = group["付款方式"] || "賣貨便貨到付款(不含運費)";
+      document.getElementById('newGroupRemark').value = group["團務備註"] || "";
+    }
+    if (typeof loadProductsForEdit === 'function') {
+      loadProductsForEdit(selectedVal);
+    }
   }
 }
-window.onSelectGroupToEdit = onSelectGroupToEdit;
 
 // 4. 清空表單
 function clearGroupForm() {
