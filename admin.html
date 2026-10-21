@@ -577,7 +577,6 @@ function switchAdminTab(tabName) {
     
     if (contentEl) {
       if (t === tabName) {
-        // 💡 強制設定為 block 且加上 important 確保不被覆蓋
         contentEl.style.setProperty('display', 'block', 'important');
         contentEl.style.setProperty('visibility', 'visible', 'important');
       } else {
@@ -591,10 +590,17 @@ function switchAdminTab(tabName) {
     }
   });
 
-  // 切換到訂單時自動載入
-  if (tabName === 'orders' && typeof loadAllOrders === 'function') {
-    loadAllOrders();
+  // 💡 當切換到「所有訂單紀錄」時，確保表格被重新載入與強制顯示
+  if (tabName === 'orders') {
+    let tabOrders = document.getElementById('tab-orders');
+    if (tabOrders) {
+      tabOrders.style.setProperty('display', 'block', 'important');
+    }
+    if (typeof loadAllOrders === 'function') {
+      loadAllOrders();
+    }
   }
+
   if (tabName === 'splitBoard' && typeof loadSplitGroupOptions === 'function') {
     loadSplitGroupOptions();
   }
@@ -603,7 +609,6 @@ function switchAdminTab(tabName) {
   }
 }
 window.switchAdminTab = switchAdminTab;
-
 // ➕ 新增商品至當前選取的團務
 async function addProductToCurrentGroup() {
   const selectEl = document.getElementById('editGroupSelect');
