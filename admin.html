@@ -400,7 +400,7 @@ function onSelectGroupToEdit() {
   let deleteBtn = document.getElementById('groupDeleteBtn');
   let editBox = document.getElementById('groupProductEditBox');
 
-  if (selectedVal === "NEW") {
+if (selectedVal === "NEW") {
     // 🧹 切換到新增模式：清空表單
     document.getElementById('editingGroupId').value = "";
     document.getElementById('newGroupName').value = "";
@@ -415,22 +415,22 @@ function onSelectGroupToEdit() {
     }
     if (deleteBtn) deleteBtn.style.display = "none";
     
-    // 💡 關鍵：確保新增模式下，下方商品編輯區塊是顯示的 (block)
+    // 確保商品編輯外框顯示
     if (editBox) editBox.style.display = "block"; 
 
-    // 💡 完整帶入你要求的批次新增介面與提示文字
+    // 直接把批次貼上的完整 HTML 塞進容器裡
     const productListContainer = document.getElementById('productListContainer');
     if (productListContainer) {
       productListContainer.innerHTML = `
-        <div style="background: #1e1e1e; border: 1px dashed #10b981; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-          <div style="color: #10b981; font-weight: bold; font-size: 12px; margin-bottom: 4px;">📦 批次貼上新增商品（每行一個，建立新團務時會一併寫入）</div>
+        <div style="background: #1e1e1e; border: 1px dashed #10b981; padding: 12px; border-radius: 6px; margin-top: 15px;">
+          <div style="color: #10b981; font-weight: bold; font-size: 12px; margin-bottom: 4px;">📦 批次貼上新增商品（建立新團務時會一併寫入）</div>
           <div style="color: #aaa; font-size: 11px; margin-bottom: 8px;">依序填寫：商品分類, 商品名稱, 單價, 圖片, 商品說明 (可用 Tab、逗號或空格分隔)</div>
-          <textarea id="batchProductsInput" placeholder="請在此貼上多行商品資料..." style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 70px; width: 100%; box-sizing: border-box;"></textarea>
+          <textarea id="batchProductsInput" placeholder="請在此貼上多行商品資料..." style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 90px; width: 100%; box-sizing: border-box;"></textarea>
           <div id="batchMsg" style="font-size: 11px; margin: 4px 0;"></div>
         </div>
       `;
     }
-  } else {
+  }else {
     // ✏️ 切換到編輯模式：帶入該團務資料
     let group = allGroupsData.find(g => String(g.id) === String(selectedVal));
     if (group) {
