@@ -1458,7 +1458,7 @@ function renderOrdersTable(orders) {
   // 💡 強制確保訂單分頁容器是顯示的，避免因為 display: none 導致渲染失敗
   const tabOrders = document.getElementById('tab-orders');
   if (tabOrders) {
-    tabOrders.style.display = 'none';
+    tabOrders.style.display = 'block';
   }
 
   const tbody = document.getElementById('allOrdersTbody');
