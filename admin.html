@@ -320,9 +320,11 @@
   <div id="tab-export" class="admin-tab-content" style="display: none;">
   <h4 style="color: #f59e0b; margin-bottom: 10px; text-align: center;">📤 匯出訂單資料</h4>
   <div style="background: #252525; padding: 15px; border-radius: 8px;">
-    <label style="font-size: 12px; color: #ccc;">選擇要匯出的團務：</label>
-    <select id="exportGroupSelect" style="width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;"></select>
-    
+   <label style="font-size: 12px; color: #ccc;">選擇要匯出的團務：</label>
+    <input type="text" id="exportGroupSelect" list="exportGroupOptions" placeholder="🔍 輸入關鍵字搜尋團務..." style="width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; box-sizing: border-box;">
+    <datalist id="exportGroupOptions">
+      <option value="-- 匯出全部團務資料 --">
+    </datalist>
     <div style="display: flex; gap: 10px;">
       <button onclick="exportBuyerOrdersCSV()" style="background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">📥 匯出 CSV (Excel)</button>
 <button onclick="exportProductSummaryCSV()" style="background: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">📊 匯出採購總數表</button>
@@ -884,23 +886,23 @@ function downloadCSV(filename, csvContent) {
   document.body.removeChild(link);
 }
 
-// 載入匯出區塊的團務下拉選單
+// 載入匯出區塊的團務搜尋建議清單
 async function loadExportGroupOptions() {
-  const selectElem = document.getElementById('exportGroupSelect');
-  if (!selectElem) return;
+  const datalistElem = document.getElementById('exportGroupOptionsList');
+  if (!datalistElem) return;
 
   try {
     const { data: groups, error } = await db.from('groups').select('*').order('created_at', { ascending: false });
     if (error) throw error;
 
-    let html = `<option value="ALL">-- 匯出全部團務資料 --</option>`;
+    let html = `<option value="-- 匯出全部團務資料 --">`;
     (groups || []).forEach(g => {
       const gName = g["團務名稱"] || '';
-      // 確保團名中的雙引號不會破壞 HTML 結構
-      const safeName = gName.replace(/"/g, '&quot;');
-      html += `<option value="${safeName}">${gName}</option>`;
+      if (gName) {
+        html += `<option value="${gName}">`;
+      }
     });
-    selectElem.innerHTML = html;
+    datalistElem.innerHTML = html;
   } catch (err) {
     console.error("載入匯出團務選單失敗：", err);
   }
