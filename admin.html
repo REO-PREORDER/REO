@@ -681,7 +681,7 @@ async function saveProduct(prodId) {
       商品名稱: newName, 
       單價: newPrice, 
       商品分類: newCategory,
-      圖片網址: newImg,
+      圖片: newImg,        // ✔️ 對應資料庫正確的欄位名稱
       商品說明: newDesc
     })
     .eq('id', prodId);
@@ -689,7 +689,7 @@ async function saveProduct(prodId) {
   if (error) {
     alert("更新失敗：" + error.message);
   } else {
-    alert("商品修改成功！");
+    alert("儲存成功！");
   }
 }
 window.saveProduct = saveProduct;
