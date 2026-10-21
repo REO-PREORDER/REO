@@ -569,7 +569,6 @@ async function loadProductsForEdit(groupId) {
 window.loadProductsForEdit = loadProductsForEdit;
 
 function switchAdminTab(tabName) {
-  // 💡 在這裡把 'splitBoard' 補進來！
   const tabs = ['groups', 'orders', 'splitBoard', 'export'];
 
   tabs.forEach(t => {
@@ -577,28 +576,25 @@ function switchAdminTab(tabName) {
     let btnEl = document.getElementById('btn-' + t);
     
     if (contentEl) {
-      if (t === tabName) {
-        contentEl.style.setProperty('display', 'block', 'important');
-      } else {
-        contentEl.style.setProperty('display', 'none', 'important');
-      }
+      contentEl.style.setProperty('display', (t === tabName) ? 'block' : 'none', 'important');
     }
-    
     if (btnEl) {
       btnEl.style.background = (t === tabName) ? '#2563eb' : '#27272a';
       btnEl.style.color = (t === tabName) ? '#fff' : '#a1a1aa';
     }
   });
 
+  // 💡 當切換回團務管理分頁時，自動執行一次選單狀態判斷
+  if (tabName === 'groups' && typeof onSelectGroupToEdit === 'function') {
+    onSelectGroupToEdit();
+  }
+
   if (tabName === 'orders' && typeof loadAllOrders === 'function') {
     loadAllOrders();
   }
-
-  // 💡 同時補上這一行：當切換到 splitBoard 時，自動去載入下拉選單選項
   if (tabName === 'splitBoard' && typeof loadSplitGroupOptions === 'function') {
     loadSplitGroupOptions();
   }
-
   if (tabName === 'export' && typeof loadExportGroupOptions === 'function') {
     loadExportGroupOptions();
   }
@@ -718,9 +714,13 @@ window.deleteProduct = deleteProduct;
   let currentSurplusProducts = [];
   let groupsData = [];
 
- window.addEventListener('DOMContentLoaded', () => { 
+window.addEventListener('DOMContentLoaded', async () => { 
   if (typeof loadGroupSelectForEdit === 'function') {
-    loadGroupSelectForEdit();
+    await loadGroupSelectForEdit();
+  }
+  // 💡 讓網頁一載入完畢，就立刻觸發一次選單判斷，把新增商品的輸入框帶出來！
+  if (typeof onSelectGroupToEdit === 'function') {
+    onSelectGroupToEdit();
   }
 });
 
