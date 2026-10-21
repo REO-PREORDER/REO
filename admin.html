@@ -418,6 +418,7 @@ function onSelectGroupToEdit() {
     const productListContainer = document.getElementById('productListContainer');
     if (productListContainer) {
       productListContainer.innerHTML = '<p style="color: #888; font-size: 12px; text-align: center;">新團務建立後即可在此新增或批次貼上商品</p>';
+    }
   } else {
     // ✏️ 切換到編輯模式：帶入該團務資料
     let group = allGroupsData.find(g => String(g.id) === String(selectedVal));
