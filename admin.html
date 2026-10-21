@@ -577,10 +577,10 @@ function switchAdminTab(tabName) {
     
     if (contentEl) {
       if (t === tabName) {
-        contentEl.style.setProperty('display', 'block', 'important');
-        contentEl.style.setProperty('visibility', 'visible', 'important');
+        // 強制展開並拉回最上層顯示
+        contentEl.style.cssText = "display: block !important; visibility: visible !important; opacity: 1 !important;";
       } else {
-        contentEl.style.setProperty('display', 'none', 'important');
+        contentEl.style.cssText = "display: none !important;";
       }
     }
     
@@ -590,11 +590,11 @@ function switchAdminTab(tabName) {
     }
   });
 
-  // 💡 當切換到「所有訂單紀錄」時，確保表格被重新載入與強制顯示
+  // 如果切換到訂單分頁，確保資料確實載入並強制讓表格顯示
   if (tabName === 'orders') {
     let tabOrders = document.getElementById('tab-orders');
     if (tabOrders) {
-      tabOrders.style.setProperty('display', 'block', 'important');
+      tabOrders.style.cssText = "display: block !important; visibility: visible !important; opacity: 1 !important;";
     }
     if (typeof loadAllOrders === 'function') {
       loadAllOrders();
@@ -609,6 +609,7 @@ function switchAdminTab(tabName) {
   }
 }
 window.switchAdminTab = switchAdminTab;
+    
 // ➕ 新增商品至當前選取的團務
 async function addProductToCurrentGroup() {
   const selectEl = document.getElementById('editGroupSelect');
