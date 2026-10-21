@@ -414,7 +414,7 @@ function onSelectGroupToEdit() {
       submitBtn.style.background = "#2563eb";
     }
     if (deleteBtn) deleteBtn.style.display = "none";
-    if (editBox) editBox.style.display = "none"; // 新增時還沒有商品可編輯
+    if (editBox) editBox.style.display = "block"; // 新增時還沒有商品可編輯
   } else {
     // ✏️ 切換到編輯模式：帶入該團務資料
     let group = allGroupsData.find(g => String(g.id) === String(selectedVal));
