@@ -218,12 +218,12 @@
       </div>
     </div>
 
-    <!-- 🔘 動作按鈕區（移至最下方：儲存修改/建立新團 / 刪除團務） -->
-    <div style="display: flex; gap: 10px; margin-top: 20px;">
-      <button id="groupSubmitBtn" class="primary-btn" onclick="submitGroupForm()" style="background: #2563eb; color: white; border: none; border-radius: 6px; padding: 12px; font-size: 14px; font-weight: bold; cursor: pointer; flex: 2;">建立新團務</button>
-      <button id="groupDeleteBtn" onclick="deleteCurrentGroup()" style="display: none; background: #dc2626; color: white; border: none; border-radius: 6px; padding: 12px; cursor: pointer; font-size: 14px; font-weight: bold; flex: 1;">🗑️ 刪除團務(含商品)</button>
-    </div>
-    <p id="createGroupMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
+    <!-- 🔘 動作按鈕區（儲存修改/建立新團 / 刪除團務） -->
+<div id="actionButtonContainer" style="display: flex; gap: 10px; margin-top: 20px;">
+  <button id="groupSubmitBtn" class="primary-btn" onclick="submitGroupForm()" style="background: #2563eb; color: white; border: none; border-radius: 6px; padding: 12px; font-size: 14px; font-weight: bold; cursor: pointer; flex: 2;">建立新團務</button>
+  <button id="groupDeleteBtn" onclick="deleteCurrentGroup()" style="display: none; background: #dc2626; color: white; border: none; border-radius: 6px; padding: 12px; cursor: pointer; font-size: 14px; font-weight: bold; flex: 1;">🗑️ 刪除團務(含商品)</button>
+</div>
+<p id="createGroupMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
         <!-- 動態帶入商品項目清單 -->
       </div>
     </div>
@@ -494,8 +494,11 @@ function onSelectGroupToEdit() {
   let submitBtn = document.getElementById('groupSubmitBtn');
   let deleteBtn = document.getElementById('groupDeleteBtn');
   let editBox = document.getElementById('groupProductEditBox');
+  
+  // 取得動作按鈕的外層容器（假設它的 id 是 actionButtonContainer，如果沒有我們等下幫你加）
+  let actionContainer = document.getElementById('actionButtonContainer');
 
-if (selectedVal === "NEW") {
+  if (selectedVal === "NEW") {
     // 🧹 切換到新增模式：清空表單
     document.getElementById('editingGroupId').value = "";
     document.getElementById('newGroupName').value = "";
@@ -511,9 +514,9 @@ if (selectedVal === "NEW") {
     if (deleteBtn) deleteBtn.style.display = "none";
     
     // 確保商品編輯外框顯示
-    if (editBox) editBox.style.display = "block"; 
-
-    // 直接把批次貼上的完整 HTML 塞進容器裡
+    if (editBox) editBox.style.display = "block";
+    
+    // 直接把批次貼上的完整 HTML 塞進容器裡，並且把「建立按鈕」放在批次商品的下方！
     const productListContainer = document.getElementById('productListContainer');
     if (productListContainer) {
       productListContainer.innerHTML = `
@@ -525,7 +528,13 @@ if (selectedVal === "NEW") {
         </div>
       `;
     }
-  }else {
+
+    // 💡 關鍵：如果是新增模式，把動作按鈕區塊移動到 #productListContainer 的後面（也就是最下方）
+    if (actionContainer && productListContainer) {
+      productListContainer.parentNode.appendChild(actionContainer);
+    }
+
+  } else {
     // ✏️ 切換到編輯模式：帶入該團務資料
     let group = allGroupsData.find(g => String(g.id) === String(selectedVal));
     if (group) {
@@ -543,6 +552,13 @@ if (selectedVal === "NEW") {
     }
     if (deleteBtn) deleteBtn.style.display = "block";
     if (editBox) editBox.style.display = "block";
+    
+    // 💡 編輯模式時，把按鈕區塊放回原本的位置（例如表單下方、商品列表上方）
+    let formElement = document.getElementById('newGroupName').closest('form') || document.getElementById('tab-groups');
+    if (actionContainer && formElement) {
+      // 放到商品編輯區塊的前面
+      formElement.insertBefore(actionContainer, editBox);
+    }
 
     // 載入該團務底下的商品
     if (typeof loadProductsForEdit === 'function' && group) {
@@ -550,15 +566,7 @@ if (selectedVal === "NEW") {
     }
   }
 }
-
-// 讓後台一進來就預設點擊並顯示「團務管理工具」
-document.addEventListener('DOMContentLoaded', () => {
-  // 假設你的團務管理切換按鈕或分頁觸發函式叫做 switchTab('group') 或類似名稱
-  // 如果是直接用函式切換，可以呼叫對應的切換分頁函式：
-  if (typeof openTab === 'function') {
-    openTab('group'); // 請將 'group' 換成你程式碼中對應團務管理分頁的代號
-  }
-});
+window.onSelectGroupToEdit = onSelectGroupToEdit;
 // 1. 切換分頁按鈕並更新樣式
 function switchGroupTab(tab) {
   currentGroupTab = tab;
