@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  process.env.SUPABASE_URL || '你的SUPABASE_URL', 
-  process.env.SUPABASE_ANON_KEY || '你的SUPABASE_ANON_KEY'
+  process.env.SUPABASE_URL || 'https://kpvlemwmgehusbievyqj.supabase.co', 
+  process.env.SUPABASE_ANON_KEY || 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo'
 );
 
 export default async function handler(req, res) {
