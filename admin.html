@@ -358,11 +358,10 @@ async function submitGroupForm() {
   }
 
   // 2. 檢查下方商品是否空白（強制要求必須同時用好商品才能建立）
-  if (!batchText) {
-    alert("❌ 「批次貼上新增商品」欄位填入至少一項商品，才能建立新團務！");
-    if (batchInput) batchInput.focus();
-    return;
-  }
+ if (!isEditMode && !batchProductsInput.value.trim()) {
+  alert("「批次貼上新增商品」欄位填入至少一項商品，才能建立新團務！");
+  return;
+}
 
   try {
     // 3. 先寫入 groups 資料表
