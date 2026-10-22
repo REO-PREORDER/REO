@@ -7,8 +7,9 @@ export default async function handler(req, res) {
   let title = "REO代購 - 預購填單";
   let image = "https://kpvlemwmgehusbievyqj.supabase.co/storage/v1/object/public/images/HVIqacTbkAAQIVT.jpg";
 
-  try {
-    if (id && process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+  // 確保環境變數存在才去連線，避免直接崩潰
+  if (id && process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+    try {
       const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
       const { data, error } = await supabase
         .from('groups')
@@ -32,10 +33,9 @@ export default async function handler(req, res) {
           }
         }
       }
+    } catch (err) {
+      console.error("Supabase fetch error:", err);
     }
-  } catch (err) {
-    // 就算資料庫連線失敗，也不會報 500，會安全使用預設圖與標題
-    console.error(err);
   }
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
