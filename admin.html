@@ -866,15 +866,20 @@ window.addEventListener('DOMContentLoaded', async () => {
         selectedGroupName = gData["團務名稱"];
         if (activeGroupTitle) activeGroupTitle.innerText = selectedGroupName;
 
-        // 更新分享預覽圖片與標題 (OG Tags)
+        // 立即強制設定標題與封面
         document.title = `${selectedGroupName} - REO代購 預購填單`;
-        const metaTitle = document.getElementById('metaOgTitle');
-        if (metaTitle) metaTitle.setAttribute('content', `${selectedGroupName} - REO代購 預購填單`);
-
+        
         const groupImage = formatImageUrl(gData["圖片"] || "");
-        const metaImage = document.getElementById('metaOgImage');
-        if (metaImage && groupImage) {
-          metaImage.setAttribute('content', groupImage);
+        
+        // 直接動態建立或修改 og:image
+        let metaImage = document.getElementById('metaOgImage');
+        if (!metaImage) {
+          metaImage = document.createElement('meta');
+          metaImage.setAttribute('property', 'og:image');
+          metaImage.id = 'metaOgImage';
+          document.head.appendChild(metaImage);
+        }
+        metaImage.setAttribute('content', groupImage);
         }
 
         const metaUrl = document.getElementById('metaOgUrl');
