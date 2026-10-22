@@ -1,29 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL || 'https://kpvlemwmgehusbievyqj.supabase.co', 
-  process.env.SUPABASE_ANON_KEY || 'sb_publishable_793taIIHtCXRa3JtzkdcRg_Q18IjaWo'
-);
-
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, `https://${req.headers.host}`);
   const id = searchParams.get('id');
 
+  // 預設的標題與圖片
   let title = "REO代購 - 預購填單";
-  let image = "https://你的預設Logo圖片網址.png";
+  let image = "https://reo-pre-order.com.tw/logo.png"; // 可以換成你的預設圖片網址
 
-  if (id) {
-    const { data, error } = await supabase
-      .from('groups')
-      .select('name, image')
-      .eq('id', id)
-      .single();
-
-    if (data) {
-      title = `${data.name} - REO代購`;
-      if (data.image) image = data.image;
-    }
-  }
+  // 如果你有需要針對特定 id 給予不同標題，也可以在這裡用簡單的判斷式處理
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.status(200).send(`
