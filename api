@@ -1,0 +1,49 @@
+// api/og.js
+import { createClient } from '@supabase/supabase-js';
+
+// 初始化你的 Supabase 連線 (請換成你專案的環境變數或直接帶入)
+const supabase = createClient(
+  process.env.SUPABASE_URL || '你的SUPABASE_URL', 
+  process.env.SUPABASE_ANON_KEY || '你的SUPABASE_ANON_KEY'
+);
+
+export default async function handler(req, res) {
+  const { searchParams } = new URL(req.url, `https://${req.headers.host}`);
+  const id = searchParams.get('id');
+
+  let title = "REO代購 - 預購填單";
+  let image = "https://你的預設Logo圖片網址.png";
+
+  if (id) {
+    // 從 Supabase 的 groups 資料表抓取該筆團務的名稱與圖片
+    const { data, error } = await supabase
+      .from('groups')
+      .select('name, image')
+      .eq('id', id)
+      .single();
+
+    if (data) {
+      title = `${data.name} - REO代購`;
+      if (data.image) image = data.image;
+    }
+  }
+
+  // 回傳一個簡單的 HTML，專門給 LINE / FB 的機器人爬蟲讀取 OGP 標籤
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.status(200).send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>${title}</title>
+        <meta property="og:title" content="${title}">
+        <meta property="og:image" content="${image}">
+        <meta property="og:description" content="點擊進入 REO 代購頁面參與預購！">
+        <meta http-equiv="refresh" content="0;url=/?id=${id || ''}">
+      </head>
+      <body>
+        <script>window.location.href = "/?id=${id || ''}";</script>
+      </body>
+    </html>
+  `);
+}
