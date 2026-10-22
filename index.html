@@ -1275,9 +1275,16 @@ async function selectGroup(groupName, isExpired) {
   const groupId = currentGroupObj ? currentGroupObj.id : "";
   const groupImage = currentGroupObj ? (currentGroupObj["圖片"] || "") : "";
 
-  // 2. 🔗 將網址改為短網址形式（例如 ?id=31）
-  const newUrl = groupId ? `/item?id=${groupId}` : `${window.location.pathname}?group=${encodeURIComponent(groupName)}`;
-history.pushState({ group: groupName }, '', newUrl);
+  // 2. 🔗 將網址改為短網址形式（例如 /item?id=31）
+  let newUrl;
+  if (groupId) {
+      newUrl = `/item?id=${groupId}`;
+  } else if (groupName) {
+      newUrl = `${window.location.pathname}?group=${encodeURIComponent(groupName)}`;
+  } else {
+      newUrl = window.location.pathname;
+  }
+  history.pushState({ group: groupName }, '', newUrl);
 
   // 3. 🖼️ 【動態更新 LINE / FB 分享預覽標籤 (OG Tags)】
   document.title = `${groupName} - REO代購 預購填單`;
