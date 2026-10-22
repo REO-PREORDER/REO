@@ -1196,9 +1196,11 @@ async function exportProductSummaryCSV() {
 // 🔐 管理員後台控制（支援 sessionStorage 保持登入狀態）
 function checkAdminHash() {
   const adminDash = document.getElementById('adminDashboard');
+  const adminLoginBox = document.getElementById('adminLoginBox');
   
   // 1. 如果本分頁已經驗證過密碼，直接顯示後台
   if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
+    if (adminLoginBox) adminLoginBox.style.display = 'none';
     if (adminDash) {
       adminDash.style.display = 'block';
       // 載入後台相關資料
@@ -1215,6 +1217,8 @@ function checkAdminHash() {
 
   // 2. 如果網址帶有 #admin 且尚未登入，才跳出密碼提示
   if (window.location.hash === '#admin') {
+    // 預設先隱藏登入框，直接用 prompt
+    if (adminLoginBox) adminLoginBox.style.display = 'none';
     const pwd = prompt("🔐 請輸入管理員密碼：");
     if (pwd === "qingyuan") {
       sessionStorage.setItem('isAdminLoggedIn', 'true');
@@ -1232,13 +1236,25 @@ function checkAdminHash() {
       }
     } else if (pwd !== null) {
       alert("❌ 密碼錯誤！");
+      if (adminLoginBox) adminLoginBox.style.display = 'block';
+      if (adminDash) adminDash.style.display = 'none';
     }
+  } else {
+    // 如果沒帶 #admin，顯示登入按鈕框
+    if (adminLoginBox) adminLoginBox.style.display = 'block';
+    if (adminDash) adminDash.style.display = 'none';
   }
 }
+
 // 監聽網址 Hash 變化與頁面載入
-window.addEventListener('DOMContentLoaded', checkAdminHash);
+window.addEventListener('DOMContentLoaded', () => {
+  checkAdminHash();
+  // 🟢 確保後台一開好，直接強迫呼叫一次下拉選單載入函式！
+  if (typeof loadGroupSelectForEdit === 'function') {
+    loadGroupSelectForEdit();
+  }
+});
 window.addEventListener('hashchange', checkAdminHash);
-    
     // 簡單的密碼驗證 (與您原本的相呼應)
     function checkAdminPassword() {
       const pass = document.getElementById('adminPasswordInput').value;
