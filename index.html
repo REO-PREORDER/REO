@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>REO代購 預購填單</title>
-  <!-- 👇 請把這幾行加在 style 的上方 👇 -->
-  <meta property="og:title" content="REO代購 預購填單">
-  <meta property="og:description" content="REO代購 預購填單">
-  <meta property="og:image" content="https://lh3.googleusercontent.com/d/14jlZ-Ez6aQUoiw7kjBUEPkLRPhdCRbFP">
-  <meta property="og:url" content="https://reo-pre-order.com.tw">
+  <!-- 🌐 動態 LINE / FB 分享預覽專用的 Open Graph 標籤 -->
+  <meta property="og:title" id="metaOgTitle" content="REO代購 預購填單">
+  <meta property="og:description" id="metaOgDesc" content="點擊進入查看商品詳情並填寫預購單">
+  <meta property="og:image" id="metaOgImage" content="https://lh3.googleusercontent.com/d/14jlZ-Ez6aQUoiw7kjBUEPkLRPhdCRbFP">
+  <meta property="og:url" id="metaOgUrl" content="https://reo-pre-order.com.tw/">
   <meta property="og:type" content="website">
   <!-- 👆 ---------------------------------- 👆 -->
 
@@ -1248,7 +1248,7 @@ async function exportProductSummaryCSV() {
     }
   }
 
- async function selectGroup(groupName, isExpired) {
+async function selectGroup(groupName, isExpired) {
   if (isExpired) { 
     alert("此團務已結單，無法再進行預購！"); 
     return; 
@@ -1259,11 +1259,30 @@ async function exportProductSummaryCSV() {
   document.getElementById('productOrderView').style.display = 'block';
   document.getElementById('activeGroupTitle').innerText = groupName;
 
-  // 🔗 使用 pushState，在瀏覽器歷史中新增紀錄，這樣按上一頁才會生效
-  const newUrl = `${window.location.pathname}?group=${encodeURIComponent(groupName)}`;
+  // 1. 找出當前團務的物件（取得其 id 與圖片網址）
+  let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
+  const groupId = currentGroupObj ? currentGroupObj.id : "";
+  const groupImage = currentGroupObj ? (currentGroupObj["圖片"] || "") : "";
+
+  // 2. 🔗 將網址改為短網址形式（例如 ?id=31）
+  const newUrl = groupId ? `${window.location.pathname}?id=${groupId}` : `${window.location.pathname}?group=${encodeURIComponent(groupName)}`;
   history.pushState({ group: groupName }, '', newUrl);
 
-  let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
+  // 3. 🖼️ 【動態更新 LINE / FB 分享預覽標籤 (OG Tags)】
+  document.title = `${groupName} - REO代購 預購填單`;
+  
+  const metaTitle = document.getElementById('metaOgTitle');
+  if (metaTitle) metaTitle.setAttribute('content', `${groupName} - REO代購 預購填單`);
+
+  const metaImage = document.getElementById('metaOgImage');
+  if (metaImage && groupImage) {
+    metaImage.setAttribute('content', groupImage); // 自動帶入該團務的封面圖片
+  }
+
+  const metaUrl = document.getElementById('metaOgUrl');
+  if (metaUrl) metaUrl.setAttribute('content', window.location.href);
+
+  // 4. 帶入備註與載入商品
   let remarkText = (currentGroupObj && currentGroupObj["團務備註"]) ? currentGroupObj["團務備註"] : "本團務無特殊備註事項。";
   document.getElementById('activeGroupRemark').innerText = remarkText;
 
