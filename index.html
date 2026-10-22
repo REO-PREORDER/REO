@@ -1,6 +1,25 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+  <script>
+  // 當頁面載入時，自動從網址列抓取 ?id= 參數
+  const urlParams = new URLSearchParams(window.location.search);
+  const itemId = urlParams.get('id');
+
+  if (itemId) {
+    // 動態修改網頁標題與 LINE 預覽圖 (可以先用預設或從 Supabase 讀取)
+    document.title = `REO代購 - 預購填單 #${itemId}`;
+    
+    // 設定 LINE 抓取的 og:image 封面圖
+    let metaImage = document.querySelector('meta[property="og:image"]');
+    if (!metaImage) {
+      metaImage = document.createElement('meta');
+      metaImage.setAttribute('property', 'og:image');
+      document.head.appendChild(metaImage);
+    }
+    metaImage.setAttribute('content', 'https://kpvlemwmgehusbievyqj.supabase.co/storage/v1/object/public/images/HVIqacTbkAAQIVT.jpg');
+  }
+</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>REO代購 預購填單</title>
