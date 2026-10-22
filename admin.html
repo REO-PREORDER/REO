@@ -832,6 +832,22 @@ window.deleteProduct = deleteProduct;
   let groupsData = [];
 
 window.addEventListener('DOMContentLoaded', async () => {
+  // 1. 先執行後台登入驗證
+  if (typeof checkAdminHash === 'function') {
+    checkAdminHash();
+  }
+
+  // 2. 🟢 關鍵：一進後台就立刻載入所有團務進下拉選單
+  if (typeof loadGroupSelectForEdit === 'function') {
+    await loadGroupSelectForEdit();
+  }
+
+  // 3. 🟢 關鍵：強制觸發一次，讓預設的「新增全新團務」與「批次上架商品」欄位直接顯示出來！
+  if (typeof onSelectGroupToEdit === 'function') {
+    onSelectGroupToEdit();
+  }
+
+  // 4. 原本處理網址特定團務跳轉的邏輯（保留不動）
   const urlParams = new URLSearchParams(window.location.search);
   const targetIdFromUrl = urlParams.get('id');
   const targetGroupFromUrl = urlParams.get('group');
@@ -847,15 +863,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     try {
       let gData = null;
-      
-      // 1. 透過 id 查詢
       if (targetIdFromUrl) {
         const { data, error } = await db.from('groups').select('*').eq('id', Number(targetIdFromUrl)).single();
         if (error) throw error;
         gData = data;
-      } 
-      // 2. 備用：透過團務名稱查詢
-      else if (targetGroupFromUrl) {
+      } else if (targetGroupFromUrl) {
         const { data, error } = await db.from('groups').select('*').eq('團務名稱', targetGroupFromUrl).single();
         if (error) throw error;
         gData = data;
@@ -864,13 +876,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (gData) {
         selectedGroupName = gData["團務名稱"];
         if (activeGroupTitle) activeGroupTitle.innerText = selectedGroupName;
-
-        // 立即強制設定標題與封面
         document.title = `${selectedGroupName} - REO代購 預購填單`;
         
         const groupImage = formatImageUrl(gData["圖片"] || "");
-        
-        // 直接動態建立或修改 og:image
         let metaImage = document.getElementById('metaOgImage');
         if (!metaImage) {
           metaImage = document.createElement('meta');
@@ -883,14 +891,12 @@ window.addEventListener('DOMContentLoaded', async () => {
         const metaUrl = document.getElementById('metaOgUrl');
         if (metaUrl) metaUrl.setAttribute('content', window.location.href);
 
-        // 帶入備註
         let remarkText = gData["團務備註"] ? gData["團務備註"] : "本團務無特殊備註事項。";
         if (activeGroupRemark) activeGroupRemark.innerText = remarkText;
 
         orderQuantities = {};
         activeCategory = "全部";
 
-        // 3. 載入該團務的商品
         if (typeof loadProducts === 'function') {
           await loadProducts(selectedGroupName);
         }
@@ -904,10 +910,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (typeof loadGroupList === 'function') {
         await loadGroupList();
       }
-    }
-  } else {
-    if (typeof loadGroupList === 'function') {
-      await loadGroupList();
     }
   }
 });
