@@ -879,7 +879,6 @@ window.addEventListener('DOMContentLoaded', async () => {
           document.head.appendChild(metaImage);
         }
         metaImage.setAttribute('content', groupImage);
-        }
 
         const metaUrl = document.getElementById('metaOgUrl');
         if (metaUrl) metaUrl.setAttribute('content', window.location.href);
@@ -891,7 +890,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         orderQuantities = {};
         activeCategory = "全部";
 
-// 3. 載入該團務的商品
+        // 3. 載入該團務的商品
         if (typeof loadProducts === 'function') {
           await loadProducts(selectedGroupName);
         }
