@@ -832,16 +832,84 @@ window.deleteProduct = deleteProduct;
   let currentSurplusProducts = [];
   let groupsData = [];
 
-window.addEventListener('DOMContentLoaded', async () => { 
-  if (typeof loadGroupSelectForEdit === 'function') {
-    await loadGroupSelectForEdit();
-  }
-  // 💡 讓網頁一載入完畢，就立刻觸發一次選單判斷，把新增商品的輸入框帶出來！
-  if (typeof onSelectGroupToEdit === 'function') {
-    onSelectGroupToEdit();
+window.addEventListener('DOMContentLoaded', async () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetIdFromUrl = urlParams.get('id');
+  const targetGroupFromUrl = urlParams.get('group');
+
+  if (targetIdFromUrl || targetGroupFromUrl) {
+    const groupListView = document.getElementById('groupListView');
+    const productOrderView = document.getElementById('productOrderView');
+    const activeGroupTitle = document.getElementById('activeGroupTitle');
+    const activeGroupRemark = document.getElementById('activeGroupRemark');
+
+    if (groupListView) groupListView.style.display = 'none';
+    if (productOrderView) productOrderView.style.display = 'block';
+
+    try {
+      let gData = null;
+      
+      // 1. 透過 id 查詢（強制將 id 轉為數字，避免型態不符導致查詢不到）
+      if (targetIdFromUrl) {
+        const { data, error } = await db.from('groups').select('*').eq('id', Number(targetIdFromUrl)).single();
+        if (error) throw error;
+        gData = data;
+      } 
+      // 2. 備用：透過團務名稱查詢
+      else if (targetGroupFromUrl) {
+        const { data, error } = await db.from('groups').select('*').eq('團務名稱', targetGroupFromUrl).single();
+        if (error) throw error;
+        gData = data;
+      }
+
+      if (gData) {
+        selectedGroupName = gData["團務名稱"];
+        if (activeGroupTitle) activeGroupTitle.innerText = selectedGroupName;
+
+        // 更新分享預覽圖片與標題 (OG Tags)
+        document.title = `${selectedGroupName} - REO代購 預購填單`;
+        const metaTitle = document.getElementById('metaOgTitle');
+        if (metaTitle) metaTitle.setAttribute('content', `${selectedGroupName} - REO代購 預購填單`);
+
+        const groupImage = formatImageUrl(gData["圖片"] || "");
+        const metaImage = document.getElementById('metaOgImage');
+        if (metaImage && groupImage) {
+          metaImage.setAttribute('content', groupImage);
+        }
+
+        const metaUrl = document.getElementById('metaOgUrl');
+        if (metaUrl) metaUrl.setAttribute('content', window.location.href);
+
+        // 帶入備註
+        let remarkText = gData["團務備註"] ? gData["團務備註"] : "本團務無特殊備註事項。";
+        if (activeGroupRemark) activeGroupRemark.innerText = remarkText;
+
+        orderQuantities = {};
+        activeCategory = "全部";
+
+        // 3. 載入該團務的商品
+        if (typeof loadProducts === 'function') {
+          await loadProducts(selectedGroupName);
+        }
+      } else {
+        throw new Error("找不到對應的團務資料");
+      }
+    } catch (e) {
+      console.error("載入指定團務失敗：", e);
+      // 只有在真的找不到資料時，才退回首頁列表
+      if (groupListView) groupListView.style.display = 'block';
+      if (productOrderView) productOrderView.style.display = 'none';
+      if (typeof loadGroupList === 'function') {
+        await loadGroupList();
+      }
+    }
+  } else {
+    // 只有完全沒有帶參數時，才載入首頁團務列表
+    if (typeof loadGroupList === 'function') {
+      await loadGroupList();
+    }
   }
 });
-
 // 發送 Email 通知 Worker（自動防呆：若漏掉 subject 會自動補上預設主旨）
 async function sendPreOrderEmail(emailData) {
     try {
