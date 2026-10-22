@@ -848,7 +848,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     try {
       let gData = null;
       
-      // 1. 透過 id 查詢（強制將 id 轉為數字，避免型態不符導致查詢不到）
+      // 1. 透過 id 查詢
       if (targetIdFromUrl) {
         const { data, error } = await db.from('groups').select('*').eq('id', Number(targetIdFromUrl)).single();
         if (error) throw error;
@@ -899,7 +899,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     } catch (e) {
       console.error("載入指定團務失敗：", e);
-      // 只有在真的找不到資料時，才退回首頁列表
       if (groupListView) groupListView.style.display = 'block';
       if (productOrderView) productOrderView.style.display = 'none';
       if (typeof loadGroupList === 'function') {
@@ -907,7 +906,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     }
   } else {
-    // 只有完全沒有帶參數時，才載入首頁團務列表
     if (typeof loadGroupList === 'function') {
       await loadGroupList();
     }
