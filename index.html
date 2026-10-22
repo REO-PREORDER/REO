@@ -1276,8 +1276,8 @@ async function selectGroup(groupName, isExpired) {
   const groupImage = currentGroupObj ? (currentGroupObj["圖片"] || "") : "";
 
   // 2. 🔗 將網址改為短網址形式（例如 ?id=31）
-  const newUrl = groupId ? `${window.location.pathname}?id=${groupId}` : `${window.location.pathname}?group=${encodeURIComponent(groupName)}`;
-  history.pushState({ group: groupName }, '', newUrl);
+  const newUrl = groupId ? `/item?id=${groupId}` : `${window.location.pathname}?group=${encodeURIComponent(groupName)}`;
+history.pushState({ group: groupName }, '', newUrl);
 
   // 3. 🖼️ 【動態更新 LINE / FB 分享預覽標籤 (OG Tags)】
   document.title = `${groupName} - REO代購 預購填單`;
