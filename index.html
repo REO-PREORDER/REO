@@ -1294,10 +1294,10 @@ async function selectGroup(groupName, isExpired) {
   const groupId = currentGroupObj ? currentGroupObj.id : "";
   const groupImage = currentGroupObj ? (currentGroupObj["圖片"] || "") : "";
 
-  // 2. 🔗 將網址改為短網址形式（例如 /item?id=31）
+  // 2. 🔗 將網址改為純參數形式（/?id=31）
   let newUrl;
   if (groupId) {
-      newUrl = `/item?id=${groupId}`;
+      newUrl = `/?id=${groupId}`;
   } else if (groupName) {
       newUrl = `${window.location.pathname}?group=${encodeURIComponent(groupName)}`;
   } else {
