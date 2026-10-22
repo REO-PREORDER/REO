@@ -334,14 +334,19 @@
   <script>
   let currentGroupMode = "create"; // 'create' 或 'edit'
 let allGroupsData = []; // 暫存所有團務原始資料
-// 🚀 同時建立新團務與批次寫入商品
+    
+// 🚀 建立新團務或儲存編輯內容
 async function submitGroupForm() {
+  const editingIdInput = document.getElementById('editingGroupId');
   const groupNameInput = document.getElementById('newGroupName');
   const groupImgInput = document.getElementById('newGroupImg');
   const deadlineInput = document.getElementById('newGroupDeadline');
   const paymentInput = document.getElementById('newGroupPayment');
   const remarkInput = document.getElementById('newGroupRemark');
   const batchInput = document.getElementById('batchProductsInput'); // 下方批次商品輸入框
+
+  const editingId = editingIdInput ? editingIdInput.value.trim() : "";
+  const isEditMode = Boolean(editingId); // 判斷目前是否為編輯模式
 
   const groupName = groupNameInput ? groupNameInput.value.trim() : "";
   const groupImg = groupImgInput ? groupImgInput.value.trim() : "";
@@ -357,74 +362,133 @@ async function submitGroupForm() {
     return;
   }
 
-  // 2. 檢查下方商品是否空白（強制要求必須同時用好商品才能建立）
- if (!isEditMode && !batchProductsInput.value.trim()) {
-  alert("「批次貼上新增商品」欄位填入至少一項商品，才能建立新團務！");
-  return;
-}
+  // 2. 只有在「新增模式」下，才強制要求必須填寫批次商品
+  if (!isEditMode && !batchText) {
+    alert("「批次貼上新增商品」欄位填入至少一項商品，才能建立新團務！");
+    if (batchInput) batchInput.focus();
+    return;
+  }
 
   try {
-    // 3. 先寫入 groups 資料表
-    const { data: newGroup, error: groupErr } = await db
-      .from('groups')
-      .insert([{
-        "團務名稱": groupName,
-        "圖片": groupImg,
-        "截單時間": deadline,
-        "付款方式": payment,
-        "團務備註": remark,
-        "isExpired": false
-      }])
-      .select();
+    if (isEditMode) {
+      // 📝 編輯模式：更新現有 groups 資料
+      const { error: updateErr } = await db
+        .from('groups')
+        .update({
+          "團務名稱": groupName,
+          "圖片": groupImg,
+          "截單時間": deadline,
+          "付款方式": payment,
+          "團務備註": remark
+        })
+        .eq('id', Number(editingId));
 
-    if (groupErr) throw groupErr;
+      if (updateErr) throw updateErr;
 
-    // 4. 解析下方批次商品
-    let lines = batchText.split('\n');
-    let newProducts = [];
+      // 如果編輯時剛好有在批次欄位貼東西，也可以順便幫忙追加商品（選填）
+      if (batchText) {
+        let lines = batchText.split('\n');
+        let newProducts = [];
 
-    for (let line of lines) {
-      line = line.trim();
-      if (!line) continue;
-      let parts = line.includes('\t') ? line.split('\t') : line.split(/\s+/);
-      parts = parts.map(p => p.trim()).filter(p => p !== "");
+        for (let line of lines) {
+          line = line.trim();
+          if (!line) continue;
+          let parts = line.includes('\t') ? line.split('\t') : line.split(/\s+/);
+          parts = parts.map(p => p.trim()).filter(p => p !== "");
 
-      if (parts.length >= 3) {
-        let pCat = parts[0] || "一般";
-        let pName = parts[1] || "";
-        let pPrice = parseFloat(parts[2]) || 0;
-        let pImg = parts[3] || "";
-        let pDesc = parts.slice(4).join(" ");
+          if (parts.length >= 3) {
+            let pCat = parts[0] || "一般";
+            let pName = parts[1] || "";
+            let pPrice = parseFloat(parts[2]) || 0;
+            let pImg = parts[3] || "";
+            let pDesc = parts.slice(4).join(" ");
 
-        if (pName && !isNaN(pPrice)) {
-          newProducts.push({
-            "團務名稱": groupName, // 綁定新建立的團務
-            "商品分類": pCat,
-            "商品名稱": pName,
-            "單價": pPrice,
-            "圖片": pImg,
-            "商品說明": pDesc,
-            "isExpired": false
-          });
+            if (pName && !isNaN(pPrice)) {
+              newProducts.push({
+                "團務名稱": groupName,
+                "商品分類": pCat,
+                "商品名稱": pName,
+                "單價": pPrice,
+                "圖片": pImg,
+                "商品說明": pDesc,
+                "isExpired": false
+              });
+            }
+          }
+        }
+
+        if (newProducts.length > 0) {
+          const { error: prodErr } = await db.from('products').insert(newProducts);
+          if (prodErr) throw new Error("團務修改成功，但追加商品失敗：" + prodErr.message);
         }
       }
+
+      alert(`💾 成功儲存團務「${groupName}」的修改內容！`);
+      location.reload();
+
+    } else {
+      // ➕ 新增模式：寫入新 groups 資料
+      const { data: newGroup, error: groupErr } = await db
+        .from('groups')
+        .insert([{
+          "團務名稱": groupName,
+          "圖片": groupImg,
+          "截單時間": deadline,
+          "付款方式": payment,
+          "團務備註": remark,
+          "isExpired": false
+        }])
+        .select();
+
+      if (groupErr) throw groupErr;
+
+      // 解析批次商品
+      let lines = batchText.split('\n');
+      let newProducts = [];
+
+      for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        let parts = line.includes('\t') ? line.split('\t') : line.split(/\s+/);
+        parts = parts.map(p => p.trim()).filter(p => p !== "");
+
+        if (parts.length >= 3) {
+          let pCat = parts[0] || "一般";
+          let pName = parts[1] || "";
+          let pPrice = parseFloat(parts[2]) || 0;
+          let pImg = parts[3] || "";
+          let pDesc = parts.slice(4).join(" ");
+
+          if (pName && !isNaN(pPrice)) {
+            newProducts.push({
+              "團務名稱": groupName,
+              "商品分類": pCat,
+              "商品名稱": pName,
+              "單價": pPrice,
+              "圖片": pImg,
+              "商品說明": pDesc,
+              "isExpired": false
+            });
+          }
+        }
+      }
+
+      if (newProducts.length === 0) {
+        alert("❌ 格式有誤！批次商品至少需要包含「分類、名稱、單價」，請檢查後再試一次。");
+        return;
+      }
+
+      // 批次寫入 products 資料表
+      const { error: prodErr } = await db.from('products').insert(newProducts);
+      if (prodErr) throw new Error("團務建立成功，但商品寫入失敗：" + prodErr.message);
+
+      alert(`🎉 成功建立新團務「${groupName}」並同時新增了 ${newProducts.length} 項商品！`);
+      location.reload();
     }
-
-    if (newProducts.length === 0) {
-      alert("❌ 格式有誤！批次商品至少需要包含「分類、名稱、單價」，請檢查後再試一次。");
-      return;
-    }
-
-    // 5. 批次寫入 products 資料表
-    const { error: prodErr } = await db.from('products').insert(newProducts);
-    if (prodErr) throw new Error("團務建立成功，但商品寫入失敗：" + prodErr.message);
-
-    alert(`🎉 成功建立新團務「${groupName}」並同時新增了 ${newProducts.length} 項商品！`);
-    location.reload();
 
   } catch (err) {
-    console.error("建立失敗：", err);
-    alert("❌ 建立失敗：" + err.message);
+    console.error("操作失敗：", err);
+    alert("❌ 操作失敗：" + err.message);
   }
 }
    function switchAdminGroupTab(mode) {
