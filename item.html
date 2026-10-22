@@ -1,0 +1,10 @@
+<script>
+  // 抓取網址的 id 參數
+  const urlParams = new URLSearchParams(window.location.search);
+  const itemId = urlParams.get('id');
+
+  if (itemId) {
+    // 這裡可以寫你原本讀取該 id 團務並顯示畫面的邏輯
+    console.log("目前讀取的團務 ID:", itemId);
+  }
+</script>
