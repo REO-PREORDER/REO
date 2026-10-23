@@ -545,7 +545,7 @@ async function loadGroupManageList() {
 }
 window.loadGroupManageList = loadGroupManageList;
 
-// --- ⚙️ 1. 渲染團務管理表格（支援圖片放大至 120px、直接在列表內展開商品與編輯） ---
+// --- ⚙️ 1. 渲染團務管理表格（訂單數可點擊直接查看該團訂單） ---
 function renderGroupManageTable() {
     const tbody = document.getElementById('groupManageTbody');
     if (!tbody) return;
@@ -571,12 +571,17 @@ function renderGroupManageTable() {
         let count = g.orderCount;
         let safeName = gName.replace(/'/g, "\\'");
 
+        // 💡 讓訂單數變成可點擊的按鈕/連結，點擊時直接跳轉並篩選該團訂單
+        let countDisplay = count > 0 
+            ? `<a href="javascript:void(0);" onclick="jumpToOrdersForGroup('${safeName}')" style="color: #38bdf8; font-weight: bold; font-size: 15px; text-decoration: underline; cursor: pointer;" title="點擊查看此團訂單">${count}</a>` 
+            : `<span style="color: #888; font-size: 15px;">0</span>`;
+
         html += `
             <tr style="border-bottom: 1px solid #333;" id="group-row-${g.id}">
                 <td style="padding: 12px;"><img src="${imgUrl}" style="width: 120px; height: 120px; object-fit: contain; background: #111; border-radius: 8px; display: block;"></td>
                 <td style="padding: 12px; color: #fff; font-weight: bold; font-size: 15px;">${gName}</td>
                 <td style="padding: 12px; color: #f59e0b; font-size: 13px;">${deadline}</td>
-                <td style="padding: 12px; text-align: center; color: #38bdf8; font-weight: bold; font-size: 15px;">${count}</td>
+                <td style="padding: 12px; text-align: center;">${countDisplay}</td>
                 <td style="padding: 12px; text-align: center;">
                     <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
                         <button onclick="toggleInlineEdit('${g.id}')" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">✏️ 編輯團務</button>
@@ -595,6 +600,21 @@ function renderGroupManageTable() {
     tbody.innerHTML = html;
 }
 window.renderGroupManageTable = renderGroupManageTable;
+
+// 🔗 點擊訂單數時觸發的跳轉與篩選函式（如果還沒貼過，順便貼在下方）
+function jumpToOrdersForGroup(groupName) {
+    switchAdminTab('orders'); // 切換到所有訂單紀錄分頁
+    setTimeout(() => {
+        const groupSelect = document.getElementById('filterGroupSelect');
+        if (groupSelect) {
+            groupSelect.value = groupName;
+            if (typeof filterOrders === 'function') {
+                filterOrders();
+            }
+        }
+    }, 200);
+}
+window.jumpToOrdersForGroup = jumpToOrdersForGroup;
 
 // --- ⚙️ 2. 直接在表格內展開/收合「編輯團務」表單 ---
 function toggleInlineEdit(groupId) {
