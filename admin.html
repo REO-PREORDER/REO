@@ -601,7 +601,7 @@ function renderGroupManageTable() {
 }
 window.renderGroupManageTable = renderGroupManageTable;
 
-// --- 📋 直接在表格內展開/收合「該團訂單清單」（完美包含餘量認領訂單） ---
+// --- 📋 直接在表格內展開/收合「該團訂單清單」（完美支援純名稱的餘量認領） ---
 async function toggleInlineOrders(groupId, groupName) {
     let container = document.getElementById(`inline-edit-container-${groupId}`);
     let contentBox = document.getElementById(`inline-edit-content-${groupId}`);
@@ -612,22 +612,42 @@ async function toggleInlineOrders(groupId, groupName) {
         return;
     }
 
-    // 關閉其他可能展開的視窗
     document.querySelectorAll('[id^="inline-edit-container-"]').forEach(el => el.style.display = 'none');
 
     container.style.display = 'table-row';
     contentBox.innerHTML = `<div style="color: #aaa; text-align: center; padding: 20px;">載入「${groupName}」及其餘量訂單中...</div>`;
 
     try {
-        // 💡 為了把一般預購訂單與該團的「餘量認領」訂單一起抓出來，我們直接抓取全部訂單再用程式過濾
-        const { data: allOrders, error } = await db.from('orders').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
+        const [ordersRes, productsRes] = await Promise.all([
+            db.from('orders').select('*').order('created_at', { ascending: false }),
+            db.from('products').select('*').eq('團務名稱', groupName)
+        ]);
 
-        // 篩選出屬於這個團務的訂單（包含含有該團名的餘量認領訂單）
-        const orders = (allOrders || []).filter(o => {
+        if (ordersRes.error) throw ordersRes.error;
+        let allOrders = ordersRes.ordersRes ? ordersRes.ordersRes : (ordersRes.data || []);
+        let groupProducts = productsRes.data || [];
+
+        // 建立該團所有商品名稱的集合（純名稱，例如「贊卡」、「恩琴」）
+        let productNames = new Set(groupProducts.map(p => String(p['商品名稱'] || '').trim()));
+
+        // 智慧篩選：團名相符，或訂單內容包含該團任何商品名稱（支援餘量純名稱）
+        const orders = allOrders.filter(o => {
             let oGroup = String(o['團務名稱'] || '').trim();
             let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
-            return oGroup === groupName || cleanGroup === groupName;
+            if (oGroup === groupName || cleanGroup === groupName) return true;
+
+            let items = o['訂單內容'];
+            if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
+            if (Array.isArray(items)) {
+                return items.some(item => {
+                    let itemName = String(item.name || item['商品名稱'] || '').trim();
+                    for (let pName of productNames) {
+                        if (pName && (itemName === pName || itemName.includes(pName))) return true;
+                    }
+                    return false;
+                });
+            }
+            return false;
         });
 
         let html = `
@@ -667,9 +687,7 @@ async function toggleInlineOrders(groupId, groupName) {
 
                 let itemsText = "";
                 let items = o["訂單內容"];
-                if (typeof items === "string") {
-                    try { items = JSON.parse(items); } catch (e) {}
-                }
+                if (typeof items === "string") { try { items = JSON.parse(items); } catch (e) {} }
                 if (Array.isArray(items)) {
                     itemsText = items.map(i => `${i.name || i['商品名稱']} x ${i.qty || i['數量']} ($${i.price || 0})`).join("<br>");
                 } else {
@@ -705,6 +723,7 @@ async function toggleInlineOrders(groupId, groupName) {
     }
 }
 window.toggleInlineOrders = toggleInlineOrders;
+    
 // 🔗 點擊訂單數時觸發的跳轉與篩選函式（如果還沒貼過，順便貼在下方）
 function jumpToOrdersForGroup(groupName) {
     switchAdminTab('orders'); // 切換到所有訂單紀錄分頁
