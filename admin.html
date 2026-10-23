@@ -830,9 +830,10 @@ function openProductEditModal(groupName) {
 }
 window.openProductEditModal = openProductEditModal;
 
-// 5. 匯出指定團務的名單或總表 (修正欄位對應至正確的「訂單內容」)
+// 5. 匯出指定團務的名單或總表 (修正欄位對應)
 async function exportGroupSpecificCSV(groupName, type) {
     try {
+        // 從資料庫抓取該團務的所有訂單
         const { data: orders, error } = await db.from('orders').select('*').eq('團務名稱', groupName);
         
         if (error) throw error;
@@ -842,8 +843,10 @@ async function exportGroupSpecificCSV(groupName, type) {
         }
 
         if (type === 'buyer') {
+            // 匯出買家喊單名單
             exportToCSV(orders, `${groupName}_買家喊單名單.csv`);
         } else if (type === 'summary') {
+            // 匯出商品統計總表
             exportSummaryCSV(groupName, orders);
         }
     } catch (err) {
@@ -853,7 +856,53 @@ async function exportGroupSpecificCSV(groupName, type) {
 }
 window.exportGroupSpecificCSV = exportGroupSpecificCSV;
 
-// 簡易 CSV 匯出輔助函式
+// 📊 統計總表 CSV 匯出邏輯（正確解析 `訂單內容` jsonb 欄位）
+async function exportSummaryCSV(groupName, orders) {
+    let summary = {};
+    
+    orders.forEach(o => {
+        // 如果訂單已取消，則不列入總表統計
+        let status = String(o['處理狀態'] || '').trim();
+        if (status === '已取消' || status === 'pending') return;
+        
+        // 抓取 Supabase 的「訂單內容」欄位 (支援 jsonb 陣列或字串)
+        let itemsRaw = o['訂單內容'];
+        let items = [];
+
+        try {
+            if (typeof itemsRaw === 'string') {
+                items = JSON.parse(itemsRaw || '[]');
+            } else if (Array.isArray(itemsRaw)) {
+                items = itemsRaw;
+            }
+        } catch (e) {
+            console.error("解析訂單內容 JSON 失敗：", e);
+            items = [];
+        }
+
+        // 累計各商品總數
+        items.forEach(item => {
+            let pName = item['name'] || item['商品名稱'] || '未知商品';
+            let qty = Number(item['qty'] || item['數量'] || 1);
+            summary[pName] = (summary[pName] || 0) + qty;
+        });
+    });
+
+    let summaryArray = Object.keys(summary).map(pName => ({
+        '商品名稱': pName,
+        '總訂購數量': summary[pName]
+    }));
+
+    if (summaryArray.length === 0) {
+        alert(`「${groupName}」目前沒有有效的有效訂單可供統計！`);
+        return;
+    }
+
+    exportToCSV(summaryArray, `${groupName}_商品統計總表.csv`);
+}
+window.exportSummaryCSV = exportSummaryCSV;
+
+// 簡易 CSV 匯出輔助函式 (自動加 UTF-8 BOM 避免 Excel 亂碼)
 function exportToCSV(dataArray, filename) {
     if (!dataArray.length) return;
     let keys = Object.keys(dataArray[0]);
@@ -873,7 +922,8 @@ function exportToCSV(dataArray, filename) {
     link.download = filename;
     link.click();
 }
-
+window.exportToCSV = exportToCSV;
+    
 // 📊 超強相容版：統計總表 CSV 匯出邏輯
 async function exportSummaryCSV(groupName, orders) {
     let summary = {};
