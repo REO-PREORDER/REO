@@ -517,15 +517,19 @@ async function loadGroupManageList() {
         let groups = groupsRes.data || [];
         let orders = ordersRes.data || [];
 
-        // 計算各團務有效訂單數
-        let orderCounts = {};
-        orders.forEach(o => {
-            if (o['處理狀態'] !== '已取消') {
-                let gName = o['團務名稱'] || '未分類';
-                orderCounts[gName] = (orderCounts[gName] || 0) + 1;
-            }
-        });
+       // 計算每個團的訂單數（包含一般預購與餘量認領）
+cachedGroupsList.forEach(g => {
+    let gName = g['團務名稱'] || '';
+    
+    // 過濾出屬於這個團的所有訂單（包含餘量認領）
+    let matchedOrders = (allOrders || []).filter(o => {
+        let oGroup = String(o['團務名稱'] || '').trim();
+        let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
+        return oGroup === gName || cleanGroup === gName;
+    });
 
+    g.orderCount = matchedOrders.length;
+});
         // ⏱️ 依照截單時間由近到遠排序 (時間越近越前面，沒填的排後面)
         groups.sort((a, b) => {
             let timeA = a['截單時間'] ? new Date(a['截單時間']).getTime() : 8640000000000;
