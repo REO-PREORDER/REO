@@ -635,14 +635,14 @@ window.openImageModal = openImageModal;
 function renderGroupsList() {
   const container = document.getElementById('groupCardsContainer');
   if (!container) return;
-// --- 🔥 動態顯示今日新上架團務 (共用既有的 searchInput，避免重複宣告) ---
+// --- 🔥 動態顯示今日新上架團務 (直接共用原有的搜尋關鍵字變數) ---
   const todaySection = document.getElementById('today-groups-section');
   const todayContainer = document.getElementById('today-groups-container');
   
-  // 直接抓取搜尋框的值來判斷是否有在搜尋
-  const keyword = searchInput ? searchInput.value.trim() : "";
+  // 假設原本的變數叫 keyword，如果沒有的話就透過 DOM 抓取
+  const currentKeyword = typeof keyword !== 'undefined' ? keyword : (document.getElementById('groupSearchInput')?.value.trim().toLowerCase() || "");
 
-  if (todaySection && todayContainer && Array.isArray(groupsData) && keyword === "") {
+  if (todaySection && todayContainer && Array.isArray(groupsData) && currentKeyword === "") {
     try {
       const todayStr = new Date().toISOString().split('T')[0];
       const todayGroups = groupsData.filter(item => {
