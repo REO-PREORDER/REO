@@ -601,7 +601,7 @@ function renderGroupManageTable() {
 }
 window.renderGroupManageTable = renderGroupManageTable;
 
-// --- 📋 直接在表格內展開/收合「該團訂單清單」 ---
+// --- 📋 直接在表格內展開/收合「該團訂單清單」（完美包含餘量認領訂單） ---
 async function toggleInlineOrders(groupId, groupName) {
     let container = document.getElementById(`inline-edit-container-${groupId}`);
     let contentBox = document.getElementById(`inline-edit-content-${groupId}`);
@@ -616,21 +616,29 @@ async function toggleInlineOrders(groupId, groupName) {
     document.querySelectorAll('[id^="inline-edit-container-"]').forEach(el => el.style.display = 'none');
 
     container.style.display = 'table-row';
-    contentBox.innerHTML = `<div style="color: #aaa; text-align: center; padding: 20px;">載入「${groupName}」的訂單中...</div>`;
+    contentBox.innerHTML = `<div style="color: #aaa; text-align: center; padding: 20px;">載入「${groupName}」及其餘量訂單中...</div>`;
 
     try {
-        const { data: orders, error } = await db.from('orders').select('*').eq('團務名稱', groupName).order('created_at', { ascending: false });
+        // 💡 為了把一般預購訂單與該團的「餘量認領」訂單一起抓出來，我們直接抓取全部訂單再用程式過濾
+        const { data: allOrders, error } = await db.from('orders').select('*').order('created_at', { ascending: false });
         if (error) throw error;
+
+        // 篩選出屬於這個團務的訂單（包含含有該團名的餘量認領訂單）
+        const orders = (allOrders || []).filter(o => {
+            let oGroup = String(o['團務名稱'] || '').trim();
+            let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
+            return oGroup === groupName || cleanGroup === groupName;
+        });
 
         let html = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h4 style="color: #38bdf8; margin: 0;">📋 「${groupName}」的訂單列表</h4>
+                <h4 style="color: #38bdf8; margin: 0;">📋 「${groupName}」的訂單列表（含餘量認領）</h4>
                 <button onclick="document.getElementById('inline-edit-container-${groupId}').style.display='none'" style="background: #555; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;">✕ 關閉</button>
             </div>
         `;
 
         if (!orders || orders.length === 0) {
-            html += `<p style="color: #888; font-size: 12px;">此團目前沒有任何訂單紀錄。</p>`;
+            html += `<p style="color: #888; font-size: 12px;">此團目前沒有任何訂單紀錄（包含餘量認領）。</p>`;
         } else {
             html += `
                 <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
@@ -640,6 +648,7 @@ async function toggleInlineOrders(groupId, groupName) {
                                 <th style="padding: 8px;">訂單編號</th>
                                 <th style="padding: 8px;">時間</th>
                                 <th style="padding: 8px;">買家姓名</th>
+                                <th style="padding: 8px;">訂單類型</th>
                                 <th style="padding: 8px;">商品明細</th>
                                 <th style="padding: 8px;">總金額</th>
                                 <th style="padding: 8px;">狀態</th>
@@ -650,6 +659,12 @@ async function toggleInlineOrders(groupId, groupName) {
             `;
 
             orders.forEach(o => {
+                let oGroup = String(o['團務名稱'] || '');
+                let isSurplus = oGroup.includes("餘量認領") || String(o['備註'] || '').includes("餘量認領");
+                let typeBadge = isSurplus 
+                    ? `<span style="background: #059669; color: #fff; padding: 2px 4px; border-radius: 3px; font-size: 10px;">餘量認領</span>` 
+                    : `<span style="background: #2563eb; color: #fff; padding: 2px 4px; border-radius: 3px; font-size: 10px;">一般預購</span>`;
+
                 let itemsText = "";
                 let items = o["訂單內容"];
                 if (typeof items === "string") {
@@ -668,6 +683,7 @@ async function toggleInlineOrders(groupId, groupName) {
                         <td style="padding: 8px; color: #38bdf8; font-weight: bold;">#${o.id}</td>
                         <td style="padding: 8px; color: #aaa; white-space: nowrap;">${o.created_at ? new Date(o.created_at).toLocaleString() : ''}</td>
                         <td style="padding: 8px; color: #fff; font-weight: bold;">${o["買家名稱"] || ''}</td>
+                        <td style="padding: 8px;">${typeBadge}</td>
                         <td style="padding: 8px; color: #ddd; line-height: 1.4;">${itemsText}</td>
                         <td style="padding: 8px; color: #f87171; font-weight: bold;">$${o["總金額"] || 0}</td>
                         <td style="padding: 8px; font-weight: bold; color: ${statusColor};">${o["處理狀態"] || '待確認'}</td>
@@ -689,7 +705,6 @@ async function toggleInlineOrders(groupId, groupName) {
     }
 }
 window.toggleInlineOrders = toggleInlineOrders;
-
 // 🔗 點擊訂單數時觸發的跳轉與篩選函式（如果還沒貼過，順便貼在下方）
 function jumpToOrdersForGroup(groupName) {
     switchAdminTab('orders'); // 切換到所有訂單紀錄分頁
