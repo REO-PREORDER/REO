@@ -601,7 +601,7 @@ function renderGroupManageTable() {
 }
 window.renderGroupManageTable = renderGroupManageTable;
 
-// --- 📋 直接在表格內展開/收合「該團訂單清單」（完美支援純名稱的餘量認領） ---
+// --- 📋 直接在表格內展開/收合「該團訂單清單」（完美對應純商品名稱與分類） ---
 async function toggleInlineOrders(groupId, groupName) {
     let container = document.getElementById(`inline-edit-container-${groupId}`);
     let contentBox = document.getElementById(`inline-edit-content-${groupId}`);
@@ -624,13 +624,13 @@ async function toggleInlineOrders(groupId, groupName) {
         ]);
 
         if (ordersRes.error) throw ordersRes.error;
-        let allOrders = ordersRes.ordersRes ? ordersRes.ordersRes : (ordersRes.data || []);
+        let allOrders = ordersRes.data || [];
         let groupProducts = productsRes.data || [];
 
-        // 建立該團所有商品名稱的集合（純名稱，例如「贊卡」、「恩琴」）
+        // 建立該團所有商品名稱的乾淨集合（例如：「贊卡」、「恩琴」等）
         let productNames = new Set(groupProducts.map(p => String(p['商品名稱'] || '').trim()));
 
-        // 智慧篩選：團名相符，或訂單內容包含該團任何商品名稱（支援餘量純名稱）
+        // 智慧篩選：團名相符，或者訂單內有任何商品名稱包含或符合該團的商品
         const orders = allOrders.filter(o => {
             let oGroup = String(o['團務名稱'] || '').trim();
             let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
