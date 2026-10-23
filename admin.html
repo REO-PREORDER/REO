@@ -669,14 +669,21 @@ async function toggleInlineOrders(groupId, groupName) {
                     ? `<span style="background: #059669; color: #fff; padding: 2px 4px; border-radius: 3px; font-size: 10px;">餘量認領</span>` 
                     : `<span style="background: #2563eb; color: #fff; padding: 2px 4px; border-radius: 3px; font-size: 10px;">一般預購</span>`;
 
-                let itemsText = "";
-                let items = o["訂單內容"];
-                if (typeof items === "string") { try { items = JSON.parse(items); } catch (e) {} }
-                if (Array.isArray(items)) {
-                    itemsText = items.map(i => `${i.name || i['商品名稱']} x ${i.qty || i['數量']} ($${i.price || 0})`).join("<br>");
-                } else {
-                    itemsText = "無明細";
-                }
+               // 在 toggleInlineOrders 裡面解析商品明細的地方，改成這段：
+let itemsText = "";
+let items = o["訂單內容"];
+if (typeof items === "string") { try { items = JSON.parse(items); } catch (e) {} }
+
+if (Array.isArray(items)) {
+    itemsText = items.map(i => {
+        let iCat = i.category || i['商品分類'] || '';
+        let iName = i.name || i['商品名稱'] || '';
+        let prefix = iCat ? `[${iCat}] ` : '';
+        return `${prefix}${iName} x ${i.qty || i['數量']} ($${i.price || 0})`;
+    }).join("<br>");
+} else {
+    itemsText = "無明細";
+}
 
                 let statusColor = o["處理狀態"] === "已取消" ? "#ef4444" : "#10b981";
 
@@ -957,8 +964,8 @@ function openProductEditModal(groupName) {
     alert(`準備管理團務「${groupName}」的商品。`);
 }
 window.openProductEditModal = openProductEditModal;
-
-// 📊 終極強化版：商品統計總表 CSV 匯出邏輯
+    
+// 📊 終極強化版：商品統計總表 CSV 匯出邏輯（完美支援分類與餘量自動合併）
 async function exportSummaryCSV(groupName, orders) {
     let summary = {};
     
@@ -995,7 +1002,12 @@ async function exportSummaryCSV(groupName, orders) {
 
         if (Array.isArray(items)) {
             items.forEach(item => {
-                let pName = item['name'] || item['商品名稱'] || item['商品'] || item['title'] || '未知商品';
+                let iCat = item.category || item['商品分類'] || '';
+                let iName = item.name || item['商品名稱'] || item['商品'] || item['title'] || '未知商品';
+                
+                // 💡 組合帶有分類的商品名稱（例如：[立牌] 贊卡），如果本來就帶有中括號則直接使用
+                let pName = (iCat && !iName.startsWith('[')) ? `[${iCat}] ${iName}` : iName;
+                
                 let qty = Number(item['qty'] || item['數量'] || item['q'] || item['quantity'] || 1);
                 
                 if (pName && !isNaN(qty)) {
