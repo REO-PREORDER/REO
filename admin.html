@@ -513,7 +513,9 @@ function switchAdminTab(tabName) {
 }
 window.switchAdminTab = switchAdminTab;
 
-// --- 載入團務管理列表（依截單時間近到遠排序） ---
+// --- ⚙️ 團務管理相關完整核心邏輯 ---
+
+// 1. 載入團務管理列表（依截單時間近到遠排序）
 let cachedGroupsList = [];
 async function loadGroupManageList() {
     try {
@@ -552,8 +554,9 @@ async function loadGroupManageList() {
         console.error("載入團務列表失敗：", err);
     }
 }
+window.loadGroupManageList = loadGroupManageList;
 
-// --- 渲染團務管理表格（支援即時搜尋） ---
+// 2. 渲染團務管理表格（圖片放大到 70px，支援即時搜尋）
 function renderGroupManageTable() {
     const tbody = document.getElementById('groupManageTbody');
     if (!tbody) return;
@@ -578,36 +581,127 @@ function renderGroupManageTable() {
         let deadline = g['截單時間'] || '未定';
         let count = g.orderCount;
 
-        // 將原本的 width: 40px; height: 40px; 改大
-html += `
-    <tr style="border-bottom: 1px solid #333;">
-        <td style="padding: 8px;"><img src="${imgUrl}" style="width: 70px; height: 70px; object-fit: contain; background: #111; border-radius: 4px; display: block;"></td>
-        <td style="padding: 8px; color: #fff; font-weight: bold;">${gName}</td>
-        <td style="padding: 8px; color: #f59e0b; font-size: 12px;">${deadline}</td>
-        <td style="padding: 8px; text-align: center; color: #38bdf8; font-weight: bold;">${count}</td>
-        <td style="padding: 8px; text-align: center;">
-            <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                <button onclick="openGroupEditModal('${gName}')" style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏️ 編輯</button>
-                <button onclick="openProductEditModal('${gName}')" style="background: #8b5cf6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">🛍️ 商品</button>
-                <button onclick="exportGroupSpecificCSV('${gName}', 'buyer')" style="background: #059669; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">📥 名單</button>
-                <button onclick="exportGroupSpecificCSV('${gName}', 'summary')" style="background: #d97706; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">📊 總表</button>
-            </div>
-        </td>
-    </tr>
-`;
+        html += `
+            <tr style="border-bottom: 1px solid #333;">
+                <td style="padding: 10px;"><img src="${imgUrl}" style="width: 70px; height: 70px; object-fit: contain; background: #111; border-radius: 6px; display: block;"></td>
+                <td style="padding: 10px; color: #fff; font-weight: bold; font-size: 14px;">${gName}</td>
+                <td style="padding: 10px; color: #f59e0b; font-size: 13px;">${deadline}</td>
+                <td style="padding: 10px; text-align: center; color: #38bdf8; font-weight: bold; font-size: 14px;">${count}</td>
+                <td style="padding: 10px; text-align: center;">
+                    <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="openGroupEditModal('${gName.replace(/'/g, "\\'")}')" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">✏️ 編輯</button>
+                        <button onclick="openProductEditModal('${gName.replace(/'/g, "\\'")}')" style="background: #8b5cf6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">🛍️ 商品</button>
+                        <button onclick="exportGroupSpecificCSV('${gName.replace(/'/g, "\\'")}', 'buyer')" style="background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">📥 名單</button>
+                        <button onclick="exportGroupSpecificCSV('${gName.replace(/'/g, "\\'")}', 'summary')" style="background: #d97706; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">📊 總表</button>
+                    </div>
+                </td>
+            </tr>
+        `;
     });
     tbody.innerHTML = html;
 }
 window.renderGroupManageTable = renderGroupManageTable;
-    // --- 🛠️ 點擊快捷操作的對應處理函式 ---
 
-// 1. 編輯團務跳窗 / 動作
+// 3. 點擊「編輯團務」按鈕
 function openGroupEditModal(groupName) {
-    // 這裡可以直接帶入你原本修改團務的邏輯，或者跳轉至對應的編輯區域
-    alert("準備編輯團務：" + groupName);
-    // 如果你原本有編輯團務的 modal 或切換頁面，可以在這邊呼叫
+    switchAdminTab('create');
+    let target = cachedGroupsList.find(g => g['團務名稱'] === groupName);
+    if (target) {
+        document.getElementById('editingGroupId').value = target.id;
+        document.getElementById('newGroupName').value = target['團務名稱'] || '';
+        document.getElementById('newGroupImg').value = target['圖片'] || '';
+        document.getElementById('newGroupDeadline').value = target['截單時間'] || '';
+        document.getElementById('newGroupPayment').value = target['付款方式'] || '';
+        document.getElementById('newGroupRemark').value = target['團務備註'] || '';
+    }
 }
 window.openGroupEditModal = openGroupEditModal;
+
+// 4. 點擊「編輯商品」按鈕
+function openProductEditModal(groupName) {
+    // 假設你有商品管理分頁或對應跳窗，可在此切換或彈出提示
+    alert(`準備管理團務「${groupName}」的商品。`);
+}
+window.openProductEditModal = openProductEditModal;
+
+// 5. 匯出指定團務的名單或總表 (修正欄位對應至正確的「訂單內容」)
+async function exportGroupSpecificCSV(groupName, type) {
+    try {
+        const { data: orders, error } = await db.from('orders').select('*').eq('團務名稱', groupName);
+        
+        if (error) throw error;
+        if (!orders || orders.length === 0) {
+            alert(`「${groupName}」目前沒有任何訂單記錄！`);
+            return;
+        }
+
+        if (type === 'buyer') {
+            exportToCSV(orders, `${groupName}_買家喊單名單.csv`);
+        } else if (type === 'summary') {
+            exportSummaryCSV(groupName, orders);
+        }
+    } catch (err) {
+        console.error("匯出失敗：", err);
+        alert("匯出過程發生錯誤：" + err.message);
+    }
+}
+window.exportGroupSpecificCSV = exportGroupSpecificCSV;
+
+// 簡易 CSV 匯出輔助函式
+function exportToCSV(dataArray, filename) {
+    if (!dataArray.length) return;
+    let keys = Object.keys(dataArray[0]);
+    let csvContent = "\uFEFF" + keys.join(",") + "\n";
+    
+    dataArray.forEach(row => {
+        let values = keys.map(k => {
+            let val = row[k] !== null && row[k] !== undefined ? String(row[k]) : "";
+            return `"${val.replace(/"/g, '""')}"`;
+        });
+        csvContent += values.join(",") + "\n";
+    });
+
+    let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+}
+
+// 統計總表 CSV 匯出 (正確解析 `訂單內容` JSON欄位)
+async function exportSummaryCSV(groupName, orders) {
+    let summary = {};
+    orders.forEach(o => {
+        if (o['處理狀態'] === '已取消') return;
+        
+        // 💡 修正：對應資料庫欄位「訂單內容」
+        let itemsRaw = o['訂單內容'];
+        let items = [];
+        try {
+            items = typeof itemsRaw === 'string' ? JSON.parse(itemsRaw || '[]') : (itemsRaw || []);
+        } catch (e) {
+            items = [];
+        }
+
+        items.forEach(item => {
+            let pName = item['name'] || item['商品名稱'] || '未知商品';
+            let qty = Number(item['qty'] || item['數量'] || 1);
+            summary[pName] = (summary[pName] || 0) + qty;
+        });
+    });
+
+    let summaryArray = Object.keys(summary).map(pName => ({
+        '商品名稱': pName,
+        '總訂購數量': summary[pName]
+    }));
+
+    if (summaryArray.length === 0) {
+        alert("此團無有效的商品明細可統計");
+        return;
+    }
+
+    exportToCSV(summaryArray, `${groupName}_商品統計總表.csv`);
+}
 
 // 2. 編輯商品跳窗 / 動作
 function openProductEditModal(groupName) {
