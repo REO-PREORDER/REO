@@ -165,72 +165,74 @@
     <div style="margin: 15px auto 0 auto; width: 98%; max-width: 100%; text-align: left; padding: 0 15px;"> 
       <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
 
-      <!-- 💡 分頁切換按鈕列 -->
-      <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
-        <!-- 請注意：你上面的按鈕 onclick 呼叫的是 forceSwitchTab，但下方 JS 定義的是 switchAdminTab，記得一併確認按鈕 onclick 呼叫的函數名稱是否正確 -->
-        <button onclick="switchAdminTab('groups')" id="btn-groups" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理工具</button>
-        <button onclick="switchAdminTab('orders')" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
-        <button onclick="switchAdminTab('splitBoard')" id="btn-splitBoard" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📦 拆團方格看板</button>
-        <button onclick="switchAdminTab('export')" id="btn-export" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📊 匯出訂單資料</button>
-      </div>
-
-  <!-- ========================================== -->
-  <!-- 📦 1. 團務管理工具分頁 (id="tab-groups") -->
-  <!-- ========================================== -->
-  <div id="tab-groups" class="admin-tab-content" style="display: block;">
-    
-    <!-- 整合後的團務選擇下拉選單（最上方加入新增選項） -->
-    <div style="margin-bottom: 15px; background: #1a1a1a; padding: 12px; border-radius: 6px; border: 1px solid #3b82f6;">
-      <label style="font-size: 13px; color: #60a5fa; font-weight: bold;">選擇操作模式 / 團務：</label>
-<select id="editGroupSelect" onchange="onSelectGroupToEdit()" style="width: 100%; padding: 8px; margin-top: 6px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 13px;">        <option value="NEW">➕ 【新增全新團務】</option>
-        <!-- 既有團務會由 JS 動態帶入 -->
-      </select>
-    </div>
-
-    <!-- 表單區域 -->
-    <input type="hidden" id="editingGroupId" value="">
-    
-    <label style="font-size: 12px; color: #ccc;">團務名稱 *</label>
-    <input type="text" id="newGroupName" placeholder="例如：銀魂- 萬代 閃徽 - 1月預購" style="margin-top: 4px;">
-
-    <label style="font-size: 12px; color: #ccc;">團務圖片網址 (可貼 Google Drive 連結或一般圖片網址)</label>
-    <input type="text" id="newGroupImg" placeholder="https://..." style="margin-top: 4px;">
-
-    <div style="display: flex; gap: 10px;">
-      <div style="flex: 1;">
-        <label style="font-size: 12px; color: #ccc;">截單時間</label>
-        <input type="text" id="newGroupDeadline" placeholder="例如：10/7 18:00" style="margin-top: 4px;">
-      </div>
-      <div style="flex: 1;">
-        <label style="font-size: 12px; color: #ccc;">付款方式</label>
-        <input type="text" id="newGroupPayment" placeholder="例如：賣貨便貨到付款(不含運費)" value="賣貨便貨到付款(不含運費)" style="margin-top: 4px;">
-      </div>
-    </div>
-
-    <label style="font-size: 12px; color: #ccc;">團務備註 (代購須知下方顯示的特有備註)</label>
-    <textarea id="newGroupRemark" rows="3" placeholder="例如：⚠️ 可能砍單..." style="margin-top: 4px;"></textarea>
-
-   <!-- 🛍️ 團務商品內容編輯區 (選擇編輯既有團務時自動顯示) -->
-    <div id="groupProductEditBox" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #555;">
-      <h5 style="color: #f59e0b; margin-bottom: 10px;">🛍️ 編輯該團務商品內容</h5>
-      <div id="productListContainer" style="display: flex; flex-direction: column; gap: 8px;">
-        <!-- 動態帶入商品項目清單 -->
-      </div>
-    </div>
-
-    <!-- 🔘 動作按鈕區（儲存修改/建立新團 / 刪除團務） -->
-<div id="actionButtonContainer" style="display: flex; gap: 10px; margin-top: 20px;">
-  <button id="groupSubmitBtn" class="primary-btn" onclick="submitGroupForm()" style="background: #2563eb; color: white; border: none; border-radius: 6px; padding: 12px; font-size: 14px; font-weight: bold; cursor: pointer; flex: 2;">建立新團務</button>
-  <button id="groupDeleteBtn" onclick="deleteCurrentGroup()" style="display: none; background: #dc2626; color: white; border: none; border-radius: 6px; padding: 12px; cursor: pointer; font-size: 14px; font-weight: bold; flex: 1;">🗑️ 刪除團務(含商品)</button>
+<!-- 💡 上方分頁切換按鈕列 -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
+    <button onclick="switchAdminTab('create')" id="btn-create" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">➕ 上架新團務</button>
+    <button onclick="switchAdminTab('groups')" id="btn-groups" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理</button>
+    <button onclick="switchAdminTab('splitBoard')" id="btn-splitBoard" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📦 拆團看板</button>
 </div>
-<p id="createGroupMsg" style="margin-top: 8px; font-size: 12px; text-align: center;"></p>
-        <!-- 動態帶入商品項目清單 -->
-      </div>
+
+<!-- ========================================== -->
+<!-- ➕ 1. 上架新團務分頁 (id="tab-create") -->
+<!-- ========================================== -->
+<div id="tab-create" class="admin-tab-content" style="display: block;">
+    <h4 style="color: #60a5fa; margin-bottom: 15px;">➕ 新增全新團務與商品</h4>
+    <div style="background: #18181b; padding: 20px; border-radius: 8px; border: 1px solid #27272a;">
+        <label style="font-size: 12px; color: #ccc;">團務名稱 *</label>
+        <input type="text" id="newGroupName" placeholder="例如：銀魂- 萬代 閃徽 - 1月預購" style="margin-top: 4px; margin-bottom: 10px;">
+        
+        <label style="font-size: 12px; color: #ccc;">團務圖片網址</label>
+        <input type="text" id="newGroupImg" placeholder="https://..." style="margin-top: 4px; margin-bottom: 10px;">
+        
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <div style="flex: 1;">
+                <label style="font-size: 12px; color: #ccc;">截單時間</label>
+                <input type="text" id="newGroupDeadline" placeholder="例如：2026/11/5 18:00" style="margin-top: 4px;">
+            </div>
+            <div style="flex: 1;">
+                <label style="font-size: 12px; color: #ccc;">付款方式</label>
+                <input type="text" id="newGroupPayment" value="賣貨便貨到付款(不含運費)" style="margin-top: 4px;">
+            </div>
+        </div>
+        
+        <label style="font-size: 12px; color: #ccc;">團務備註</label>
+        <textarea id="newGroupRemark" rows="2" placeholder="例如：⚠️ 可能砍單..." style="margin-top: 4px; margin-bottom: 15px; width: 100%; box-sizing: border-box; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 8px;"></textarea>
+
+        <div style="margin-top: 15px; border-top: 1px dashed #444; padding-top: 15px;">
+            <div style="color: #10b981; font-weight: bold; font-size: 13px; margin-bottom: 4px;">📦 批次貼上新增商品</div>
+            <div style="color: #aaa; font-size: 11px; margin-bottom: 8px;">依序填寫：商品分類, 商品名稱, 單價, 圖片, 商品說明 (可用 Tab 或空格分隔)</div>
+            <textarea id="batchProductsInput" placeholder="請在此貼上多行商品資料..." style="height: 120px; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 6px; padding: 10px; width: 100%; box-sizing: border-box;"></textarea>
+        </div>
+
+        <button onclick="submitNewGroupAndProducts()" style="background: #2563eb; color: white; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 20px;">🚀 確認建立新團務與商品</button>
     </div>
+</div>
 
-  </div> <!-- ⬅️ 這裡完美關閉 tab-groups 區塊！ -->
-
-  <hr style="border: 0; border-top: 1px dashed #444; margin: 20px 0;">
+<!-- ========================================== -->
+<!-- ⚙️ 2. 團務管理分頁 (id="tab-groups") -->
+<!-- ========================================== -->
+<div id="tab-groups" class="admin-tab-content" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+        <h4 style="color: #3b82f6; margin: 0;">⚙️ 團務管理列表 (依截單時間排序)</h4>
+        <input type="text" id="searchGroupManageInput" placeholder="🔍 搜尋團務名稱..." oninput="renderGroupManageTable()" style="width: 250px; padding: 6px 12px; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 6px; font-size: 13px;">
+    </div>
+    
+    <div style="background: #18181b; border-radius: 8px; border: 1px solid #27272a; overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #e5e7eb; min-width: 700px;">
+            <thead>
+                <tr style="background: #27272a; text-align: left; border-bottom: 2px solid #444;">
+                    <th style="padding: 10px 12px; width: 60px;">圖檔</th>
+                    <th style="padding: 10px 12px;">團名</th>
+                    <th style="padding: 10px 12px; width: 140px;">截單時間</th>
+                    <th style="padding: 10px 12px; width: 70px; text-align: center;">訂單數</th>
+                    <th style="padding: 10px 12px; width: 260px; text-align: center;">快捷操作</th>
+                </tr>
+            </thead>
+            <tbody id="groupManageTbody">
+                <!-- 動態載入 -->
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <!-- 📋 所有訂單紀錄區塊 (寬螢幕與自動換行優化版) -->
@@ -738,49 +740,114 @@ async function loadProductsForEdit(groupId) {
 }
 window.loadProductsForEdit = loadProductsForEdit;
 
+// --- 分頁切換控制 ---
 function switchAdminTab(tabName) {
-  const tabs = ['groups', 'orders', 'splitBoard', 'export'];
+    const tabs = ['create', 'groups', 'splitBoard'];
+    tabs.forEach(t => {
+        let contentEl = document.getElementById('tab-' + t);
+        let btnEl = document.getElementById('btn-' + t);
+        if (contentEl) {
+            contentEl.style.display = (t === tabName) ? 'block' : 'none';
+        }
+        if (btnEl) {
+            btnEl.style.background = (t === tabName) ? '#2563eb' : '#27272a';
+            btnEl.style.color = (t === tabName) ? '#fff' : '#a1a1aa';
+        }
+    });
 
-  tabs.forEach(t => {
-    let contentEl = document.getElementById('tab-' + t);
-    let btnEl = document.getElementById('btn-' + t);
-    
-    if (contentEl) {
-      if (t === tabName) {
-        // 💡 強制暴力解開，確保該分頁完全展開並顯示
-        contentEl.style.setProperty('display', 'block', 'important');
-        contentEl.style.setProperty('visibility', 'visible', 'important');
-        contentEl.style.setProperty('opacity', '1', 'important');
-      } else {
-        contentEl.style.setProperty('display', 'none', 'important');
-      }
+    if (tabName === 'groups') {
+        loadGroupManageList();
+    } else if (tabName === 'splitBoard' && typeof loadSplitGroupOptions === 'function') {
+        loadSplitGroupOptions();
     }
-    
-    if (btnEl) {
-      btnEl.style.background = (t === tabName) ? '#2563eb' : '#27272a';
-      btnEl.style.color = (t === tabName) ? '#fff' : '#a1a1aa';
-    }
-  });
-
-  // 💡 針對訂單分頁做雙重保險：強制確保表格容器顯示並觸發資料載入
-  if (tabName === 'orders') {
-    let tabOrders = document.getElementById('tab-orders');
-    if (tabOrders) {
-      tabOrders.style.setProperty('display', 'block', 'important');
-    }
-    if (typeof loadAllOrders === 'function') {
-      loadAllOrders();
-    }
-  }
-
-  if (tabName === 'splitBoard' && typeof loadSplitGroupOptions === 'function') {
-    loadSplitGroupOptions();
-  }
-  if (tabName === 'export' && typeof loadExportGroupOptions === 'function') {
-    loadExportGroupOptions();
-  }
 }
 window.switchAdminTab = switchAdminTab;
+
+// --- 載入團務管理列表（依截單時間近到遠排序） ---
+let cachedGroupsList = [];
+async function loadGroupManageList() {
+    try {
+        const [groupsRes, ordersRes] = await Promise.all([
+            db.from('groups').select('*'),
+            db.from('orders').select('團務名稱, 處理狀態')
+        ]);
+        
+        if (groupsRes.error) throw groupsRes.error;
+        let groups = groupsRes.data || [];
+        let orders = ordersRes.data || [];
+
+        // 計算各團務有效訂單數
+        let orderCounts = {};
+        orders.forEach(o => {
+            if (o['處理狀態'] !== '已取消') {
+                let gName = o['團務名稱'] || '未分類';
+                orderCounts[gName] = (orderCounts[gName] || 0) + 1;
+            }
+        });
+
+        // ⏱️ 依照截單時間由近到遠排序 (時間越近越前面，沒填的排後面)
+        groups.sort((a, b) => {
+            let timeA = a['截單時間'] ? new Date(a['截單時間']).getTime() : 8640000000000;
+            let timeB = b['截單時間'] ? new Date(b['截單時間']).getTime() : 8640000000000;
+            return timeA - timeB;
+        });
+
+        cachedGroupsList = groups.map(g => ({
+            ...g,
+            orderCount: orderCounts[g['團務名稱']] || 0
+        }));
+
+        renderGroupManageTable();
+    } catch (err) {
+        console.error("載入團務列表失敗：", err);
+    }
+}
+
+// --- 渲染團務管理表格（支援即時搜尋） ---
+function renderGroupManageTable() {
+    const tbody = document.getElementById('groupManageTbody');
+    if (!tbody) return;
+
+    const searchInput = document.getElementById('searchGroupManageInput');
+    const keyword = searchInput ? searchInput.value.trim().toLowerCase() : "";
+
+    let filtered = cachedGroupsList.filter(g => {
+        let name = g['團務名稱'] || '';
+        return name.toLowerCase().includes(keyword);
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan='5' style='text-align:center; padding:20px; color:#888;'>沒有找到符合的團務</td></tr>`;
+        return;
+    }
+
+    let html = "";
+    filtered.forEach(g => {
+        let gName = g['團務名稱'] || '';
+        let imgUrl = typeof formatImageUrl === 'function' ? formatImageUrl(g['圖片']) : (g['圖片'] || '');
+        let deadline = g['截單時間'] || '未定';
+        let count = g.orderCount;
+
+        html += `
+            <tr style="border-bottom: 1px solid #333;">
+                <td style="padding: 8px;"><img src="${imgUrl}" style="width: 40px; height: 40px; object-fit: contain; background: #111; border-radius: 4px; display: block;"></td>
+                <td style="padding: 8px; color: #fff; font-weight: bold;">${gName}</td>
+                <td style="padding: 8px; color: #f59e0b; font-size: 12px;">${deadline}</td>
+                <td style="padding: 8px; text-align: center; color: #38bdf8; font-weight: bold;">${count}</td>
+                <td style="padding: 8px; text-align: center;">
+                    <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="openGroupEditModal('${gName}')" style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏️ 編輯</button>
+                        <button onclick="openProductEditModal('${gName}')" style="background: #8b5cf6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">🛍️ 商品</button>
+                        <button onclick="exportGroupSpecificCSV('${gName}', 'buyer')" style="background: #059669; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">📥 名單</button>
+                        <button onclick="exportGroupSpecificCSV('${gName}', 'summary')" style="background: #d97706; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">📊 總表</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
+}
+window.renderGroupManageTable = renderGroupManageTable;
     
 // ➕ 新增商品至當前選取的團務
 async function addProductToCurrentGroup() {
