@@ -139,6 +139,15 @@
 <div style="margin-bottom: 12px;">
   <input type="text" id="groupSearchInput" placeholder="🔍 搜尋團務名稱..." oninput="filterGroupsList()" style="width: 100%; padding: 8px 12px; background: #252525; border: 1px solid #444; color: white; border-radius: 6px; font-size: 13px;">
 </div>
+      <!-- 🔥 今日新上架專區 -->
+<div id="today-groups-section" style="display: none; margin-bottom: 20px; background: #1e1e1e; padding: 15px; border-radius: 8px; border: 1px solid #333;">
+    <h3 style="color: #fff; font-size: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+        🔥 今日新上架團務
+    </h3>
+    <div id="today-groups-container" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: thin;">
+        <!-- JavaScript 會自動把今天上架的品項塞進這裡 -->
+    </div>
+</div>
       <div id="groupCardsContainer">載入團務列表中...</div>
     </div>
 
@@ -626,6 +635,32 @@ window.openImageModal = openImageModal;
 function renderGroupsList() {
   const container = document.getElementById('groupCardsContainer');
   if (!container) return;
+  // --- 🔥 動態顯示今日新上架團務 ---
+  const todaySection = document.getElementById('today-groups-section');
+  const todayContainer = document.getElementById('today-groups-container');
+  if (todaySection && todayContainer && groupsData) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayGroups = groupsData.filter(item => {
+      if (!item.created_at) return false;
+      return item.created_at.startsWith(todayStr);
+    });
+
+    if (todayGroups.length > 0) {
+      todaySection.style.display = 'block';
+      todayContainer.innerHTML = todayGroups.map(item => {
+        let title = item["團務名稱"] || "";
+        let img = formatImageUrl(item["圖片"] || "");
+        return `
+          <div onclick="selectGroup('${title.replace(/'/g, "\\'")}', ${item["isExpired"] || false})" style="min-width: 110px; max-width: 110px; background: #2a2a2a; padding: 8px; border-radius: 6px; text-align: center; cursor: pointer; flex-shrink: 0;">
+              <img src="${img || ''}" style="width: 95px; height: 95px; object-fit: cover; border-radius: 4px; background: #111;">
+              <p style="color: #fff; font-size: 11px; margin-top: 6px; margin-bottom: 0; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3;">${title}</p>
+          </div>
+        `;
+      }).join('');
+    } else {
+      todaySection.style.display = 'none';
+    }
+  }
 
   // 💡 設定容器為兩欄網格 (Grid) 佈局
   container.style.display = "grid";
