@@ -856,17 +856,18 @@ async function exportGroupSpecificCSV(groupName, type) {
 }
 window.exportGroupSpecificCSV = exportGroupSpecificCSV;
 
-// 📊 統計總表 CSV 匯出邏輯（正確解析 `訂單內容` jsonb 欄位）
+// 📊 終極強化版：商品統計總表 CSV 匯出邏輯
 async function exportSummaryCSV(groupName, orders) {
     let summary = {};
     
     orders.forEach(o => {
-        // 如果訂單已取消，則不列入總表統計
-        let status = String(o['處理狀態'] || '').trim();
-        if (status === '已取消' || status === 'pending') return;
+        let status = String(o['處理狀態'] || o['status'] || '').trim();
         
-        // 抓取 Supabase 的「訂單內容」欄位 (支援 jsonb 陣列或字串)
-        let itemsRaw = o['訂單內容'];
+        // 嚴格限定：只統計「已成立」與「已變更」
+        if (status !== '已成立' && status !== '已變更') return;
+        
+        // 抓取 Supabase 的訂單內容 (同時相容各種可能的欄位代碼名稱)
+        let itemsRaw = o['訂單內容'] !== undefined ? o['訂單內容'] : o['商品明細'];
         let items = [];
 
         try {
@@ -874,18 +875,25 @@ async function exportSummaryCSV(groupName, orders) {
                 items = JSON.parse(itemsRaw || '[]');
             } else if (Array.isArray(itemsRaw)) {
                 items = itemsRaw;
+            } else if (itemsRaw && typeof itemsRaw === 'object') {
+                items = [itemsRaw];
             }
         } catch (e) {
-            console.error("解析訂單內容 JSON 失敗：", e);
+            console.error("解析訂單內容代碼失敗：", e, itemsRaw);
             items = [];
         }
 
-        // 累計各商品總數
-        items.forEach(item => {
-            let pName = item['name'] || item['商品名稱'] || '未知商品';
-            let qty = Number(item['qty'] || item['數量'] || 1);
-            summary[pName] = (summary[pName] || 0) + qty;
-        });
+        // 逐項累計商品數量（支援各種常見的代碼 key 值）
+        if (Array.isArray(items)) {
+            items.forEach(item => {
+                let pName = item['name'] || item['商品名稱'] || item['商品'] || item['title'] || '未知商品';
+                let qty = Number(item['qty'] || item['數量'] || item['q'] || item['quantity'] || 1);
+                
+                if (pName && !isNaN(qty)) {
+                    summary[pName] = (summary[pName] || 0) + qty;
+                }
+            });
+        }
     });
 
     let summaryArray = Object.keys(summary).map(pName => ({
@@ -894,7 +902,7 @@ async function exportSummaryCSV(groupName, orders) {
     }));
 
     if (summaryArray.length === 0) {
-        alert(`「${groupName}」目前沒有有效的有效訂單可供統計！`);
+        alert(`「${groupName}」找不到任何「已成立」或「已變更」的有效商品明細可供統計！`);
         return;
     }
 
