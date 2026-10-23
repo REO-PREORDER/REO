@@ -137,7 +137,7 @@
 </div>
       <!-- 搜尋輸入框 -->
 <div style="margin-bottom: 12px;">
-  <input type="text" id="groupSearchInput" placeholder="🔍 搜尋團務名稱..." oninput="filterGroupsList()" style="width: 100%; padding: 8px 12px; background: #252525; border: 1px solid #444; color: white; border-radius: 6px; font-size: 13px;">
+  <input type="text" id="groupSearchInput" placeholder="🔍 搜尋團務名稱..." oninput="filterGroupsList(); renderTodayGroups();" style="width: 100%; padding: 8px 12px; background: #252525; border: 1px solid #444; color: white; border-radius: 6px; font-size: 13px;">
 </div>
       <!-- 🔥 今日新上架專區 -->
 <div id="today-groups-section" style="display: none; margin-bottom: 20px; background: #1e1e1e; padding: 15px; border-radius: 8px; border: 1px solid #333;">
@@ -631,7 +631,7 @@ function openImageModal(imgUrl, event) {
 }
 window.openImageModal = openImageModal;
 
-  // --- 🔥 獨立執行的今日新上架渲染邏輯 ---
+ // --- 🔥 獨立執行的今日新上架渲染邏輯 ---
 async function renderTodayGroups() {
     const todaySection = document.getElementById('today-groups-section');
     const todayContainer = document.getElementById('today-groups-container');
@@ -641,18 +641,17 @@ async function renderTodayGroups() {
     const searchInput = document.getElementById('groupSearchInput');
     const keyword = searchInput ? searchInput.value.trim() : "";
     
-    // 如果正在搜尋，就直接隱藏今日新上架
+    // 如果正在搜尋，就直接隱藏今日新上架並終止
     if (keyword !== "") {
         todaySection.style.display = 'none';
         return;
     }
 
     try {
-        // 如果 groupsData 已經有資料，直接使用；沒有的話就從 Supabase 撈一次
         let dataToUse = (typeof groupsData !== 'undefined' && Array.isArray(groupsData) && groupsData.length > 0) ? groupsData : null;
         
-        if (!dataToUse && typeof supabaseClient !== 'undefined') {
-            const { data, error } = await supabaseClient.from('groups').select('*');
+        if (!dataToUse && typeof db !== 'undefined') {
+            const { data, error } = await db.from('groups').select('*');
             if (!error && data) dataToUse = data;
         }
 
@@ -661,7 +660,6 @@ async function renderTodayGroups() {
             return;
         }
 
-        // 比對今天日期 (YYYY-MM-DD)
         const todayStr = new Date().toISOString().split('T')[0];
         const todayGroups = dataToUse.filter(item => {
             if (!item || !item.created_at) return false;
@@ -701,9 +699,9 @@ async function renderTodayGroups() {
     }
 }
 
-// 當原本的團務載入完成後，自動呼叫這支獨立函式
+// 頁面載入後自動執行一次
 window.addEventListener('load', () => {
-    setTimeout(renderTodayGroups, 1000); // 延遲一秒等主程式跑完再執行
+    setTimeout(renderTodayGroups, 1000);
 });
   
 // 2. 負責過濾, 排序並顯示團務 (一排兩個、直立式大圖卡片)
