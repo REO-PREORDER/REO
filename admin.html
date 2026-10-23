@@ -874,38 +874,43 @@ function exportToCSV(dataArray, filename) {
     link.click();
 }
 
-// 統計總表 CSV 匯出邏輯（正確解析資料庫的「訂單內容」）
+// 📊 超強相容版：統計總表 CSV 匯出邏輯
 async function exportSummaryCSV(groupName, orders) {
     let summary = {};
     
     orders.forEach(o => {
+        // 如果訂單已取消，則跳過
         if (o['處理狀態'] === '已取消') return;
         
-        // 優先抓取資料庫正確的欄位「訂單內容」，若沒有則抓「商品明細」
-        let itemsRaw = o['訂單內容'] !== undefined ? o['訂單內容'] : o['商品明細'];
+        // 同時尋找所有可能的明細欄位名稱
+        let itemsRaw = o['訂單內容'] !== undefined ? o['訂單內容'] : (o['商品明細'] !== undefined ? o['商品明細'] : null);
         let items = [];
 
+        if (!itemsRaw) return;
+
         try {
+            // 如果是字串，嘗試進行 JSON 解析
             if (typeof itemsRaw === 'string') {
-                items = JSON.parse(itemsRaw || '[]');
+                items = JSON.parse(itemsRaw);
             } else if (Array.isArray(itemsRaw)) {
                 items = itemsRaw;
-            } else if (itemsRaw && typeof itemsRaw === 'object') {
-                // 如果是物件格式（例如 { "商品A": 2 }）
+            } else if (typeof itemsRaw === 'object') {
+                // 如果是物件格式（例如 { "商品名稱": 數量 }）
                 for (let [prodName, qty] of Object.entries(itemsRaw)) {
                     summary[prodName] = (summary[prodName] || 0) + Number(qty);
                 }
                 return;
             }
         } catch (e) {
+            console.error("解析商品明細失敗：", e);
             items = [];
         }
 
-        // 如果解析出來是陣列格式（例如 [{ name: '商品A', qty: 2 }]）
+        // 如果解析出來是陣列格式（例如 [{ name: '商品', qty: 2 }, ...]）
         if (Array.isArray(items)) {
             items.forEach(item => {
-                let pName = item['name'] || item['商品名稱'] || item['商品'] || '未知商品';
-                let qty = Number(item['qty'] || item['數量'] || item['q'] || 1);
+                let pName = item['name'] || item['商品名稱'] || item['商品'] || item['title'] || '未知商品';
+                let qty = Number(item['qty'] || item['數量'] || item['q'] || item['quantity'] || 1);
                 summary[pName] = (summary[pName] || 0) + qty;
             });
         }
@@ -917,7 +922,7 @@ async function exportSummaryCSV(groupName, orders) {
     }));
 
     if (summaryArray.length === 0) {
-        alert("此團無有效的商品明細可統計");
+        alert(`「${groupName}」找不到任何有效的商品明細可供統計！`);
         return;
     }
 
