@@ -635,15 +635,13 @@ window.openImageModal = openImageModal;
 function renderGroupsList() {
   const container = document.getElementById('groupCardsContainer');
   if (!container) return;
-// --- 🔥 動態顯示今日新上架團務 (搜尋時自動隱藏) ---
+// --- 🔥 動態顯示今日新上架團務 (共用既有的 searchInput，避免重複宣告) ---
   const todaySection = document.getElementById('today-groups-section');
   const todayContainer = document.getElementById('today-groups-container');
   
-  // 取得目前搜尋框的關鍵字
-  const searchInput = document.getElementById('groupSearchInput');
+  // 直接抓取搜尋框的值來判斷是否有在搜尋
   const keyword = searchInput ? searchInput.value.trim() : "";
 
-  // 只有在「沒有搜尋關鍵字」且「有今天新上架」時才顯示
   if (todaySection && todayContainer && Array.isArray(groupsData) && keyword === "") {
     try {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -684,7 +682,6 @@ function renderGroupsList() {
       if (todaySection) todaySection.style.display = 'none';
     }
   } else {
-    // 只要有打字搜尋，就直接隱藏今日新上架區塊
     if (todaySection) todaySection.style.display = 'none';
   }
   // 💡 設定容器為兩欄網格 (Grid) 佈局
