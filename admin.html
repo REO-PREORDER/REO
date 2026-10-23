@@ -958,20 +958,39 @@ window.openProductEditModal = openProductEditModal;
 async function exportSummaryCSV(groupName, orders) {
     let summary = {};
     
-    // 如果傳進來的 orders 不是該團全部（或是只傳局部），我們同樣做一次過濾確保完整
-    const targetOrders = (orders || []).filter(o => {
-        let oGroup = String(o['團務名稱'] || '').trim();
-        let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
-        return oGroup === groupName || cleanGroup === groupName;
-    });
+    // 如果沒有傳入 orders，自動幫忙抓取該團及對應餘量訂單
+    let targetOrders = orders;
+    if (!targetOrders) {
+        const { data: allOrders } = await db.from('orders').select('*');
+        const { data: groupProducts } = await db.from('products').select('*').eq('團務名稱', groupName);
+        let productNames = new Set((groupProducts || []).map(p => p['商品名稱'] || ''));
+
+        targetOrders = (allOrders || []).filter(o => {
+            let oGroup = String(o['團務名稱'] || '').trim();
+            let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
+            if (oGroup === groupName || cleanGroup === groupName) return true;
+
+            let items = o['訂單內容'];
+            if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
+            if (Array.isArray(items)) {
+                return items.some(item => {
+                    let itemName = item.name || item['商品名稱'] || '';
+                    for (let pName of productNames) {
+                        if (pName && itemName.includes(pName)) return true;
+                    }
+                    return false;
+                });
+            }
+            return false;
+        });
+    }
 
     targetOrders.forEach(o => {
         let status = String(o['處理狀態'] || o['status'] || '').trim();
         
-        // ❌ 嚴格篩選：只有狀態是「已成立」或「已變更」的訂單才列入統計，其餘一律排除
+        // 嚴格限定：只統計「已成立」與「已變更」
         if (status !== '已成立' && status !== '已變更') return;
         
-        // 抓取 Supabase 的「訂單內容」欄位 (支援陣列或 JSON 字串)
         let itemsRaw = o['訂單內容'] !== undefined ? o['訂單內容'] : o['商品明細'];
         let items = [];
 
@@ -984,13 +1003,12 @@ async function exportSummaryCSV(groupName, orders) {
                 items = [itemsRaw];
             }
         } catch (e) {
-            console.error("解析訂單內容 JSON 失敗：", e);
             items = [];
         }
 
-        // 累計各商品總數（支援各種常見的 key 值）
         if (Array.isArray(items)) {
             items.forEach(item => {
+                // 完整保留包含分類的商品名稱（例如：[立牌] 恩琴）
                 let pName = item['name'] || item['商品名稱'] || item['商品'] || item['title'] || '未知商品';
                 let qty = Number(item['qty'] || item['數量'] || item['q'] || item['quantity'] || 1);
                 
@@ -1058,16 +1076,45 @@ window.openProductEditModal = openProductEditModal;
 // 3. 匯出指定團務的名單或總表 (CSV)
 async function exportGroupSpecificCSV(groupName, type) {
     try {
-        // 💡 為了把該團的所有預購與餘量認領訂單都抓出來，先撈出全部訂單再用程式過濾
-        const { data: allOrders, error } = await db.from('orders').select('*');
+        // 同時撈出所有訂單與該團的所有商品
+        const [ordersRes, productsRes] = await Promise.all([
+            db.from('orders').select('*'),
+            db.from('products').select('*').eq('團務名稱', groupName)
+        ]);
         
-        if (error) throw error;
-        
-        // 篩選出屬於該團的訂單（包含含有該團名的餘量認領訂單）
-        const orders = (allOrders || []).filter(o => {
+        if (ordersRes.error) throw ordersRes.error;
+        let allOrders = ordersRes.data || [];
+        let groupProducts = productsRes.data || [];
+
+        // 建立該團所有商品名稱的集合（用於精準對照）
+        let productNames = new Set(groupProducts.map(p => p['商品名稱'] || ''));
+
+        // 智慧篩選：只要訂單的團務名稱相符（或含餘量認領），或者訂單明細裡包含該團的商品，全部抓出來
+        const orders = allOrders.filter(o => {
             let oGroup = String(o['團務名稱'] || '').trim();
             let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
-            return oGroup === groupName || cleanGroup === groupName;
+            
+            // 條件 1：團務名稱相符
+            if (oGroup === groupName || cleanGroup === groupName) return true;
+
+            // 條件 2：檢查訂單內容中的商品名稱是否屬於該團的商品
+            let items = o['訂單內容'];
+            if (typeof items === 'string') {
+                try { items = JSON.parse(items); } catch(e) { items = []; }
+            }
+            if (Array.isArray(items)) {
+                let hasMatch = items.some(item => {
+                    let itemName = item.name || item['商品名稱'] || '';
+                    // 只要商品名稱有對到該團商品，或明細裡包含該團商品名稱，就視為該團訂單
+                    for (let pName of productNames) {
+                        if (pName && itemName.includes(pName)) return true;
+                    }
+                    return false;
+                });
+                if (hasMatch) return true;
+            }
+
+            return false;
         });
 
         if (!orders || orders.length === 0) {
@@ -1076,10 +1123,8 @@ async function exportGroupSpecificCSV(groupName, type) {
         }
 
         if (type === 'buyer') {
-            // 匯出買家喊單名單 (含餘量認領)
             exportToCSV(orders, `${groupName}_買家喊單名單(含餘量).csv`);
         } else if (type === 'summary') {
-            // 匯出商品統計總表 (含餘量)
             exportSummaryCSV(groupName, orders);
         }
     } catch (err) {
