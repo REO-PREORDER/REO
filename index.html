@@ -631,59 +631,86 @@ function openImageModal(imgUrl, event) {
 }
 window.openImageModal = openImageModal;
 
+  // --- 🔥 獨立執行的今日新上架渲染邏輯 ---
+async function renderTodayGroups() {
+    const todaySection = document.getElementById('today-groups-section');
+    const todayContainer = document.getElementById('today-groups-container');
+    if (!todaySection || !todayContainer) return;
+
+    // 檢查是否有搜尋框正在輸入
+    const searchInput = document.getElementById('groupSearchInput');
+    const keyword = searchInput ? searchInput.value.trim() : "";
+    
+    // 如果正在搜尋，就直接隱藏今日新上架
+    if (keyword !== "") {
+        todaySection.style.display = 'none';
+        return;
+    }
+
+    try {
+        // 如果 groupsData 已經有資料，直接使用；沒有的話就從 Supabase 撈一次
+        let dataToUse = (typeof groupsData !== 'undefined' && Array.isArray(groupsData) && groupsData.length > 0) ? groupsData : null;
+        
+        if (!dataToUse && typeof supabaseClient !== 'undefined') {
+            const { data, error } = await supabaseClient.from('groups').select('*');
+            if (!error && data) dataToUse = data;
+        }
+
+        if (!dataToUse) {
+            todaySection.style.display = 'none';
+            return;
+        }
+
+        // 比對今天日期 (YYYY-MM-DD)
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayGroups = dataToUse.filter(item => {
+            if (!item || !item.created_at) return false;
+            return String(item.created_at).startsWith(todayStr);
+        });
+
+        if (todayGroups.length > 0) {
+            todaySection.style.display = 'block';
+            todayContainer.innerHTML = todayGroups.map(item => {
+                let title = item["團務名稱"] || "";
+                let img = typeof formatImageUrl === 'function' ? formatImageUrl(item["圖片"] || "") : (item["圖片"] || "");
+                let deadline = item["截單時間"] || "未定";
+                let paymentMethod = item["付款方式"] || "未設定";
+                let isExpired = item["isExpired"] || false;
+                let statusBadge = isExpired ? '<span style="color:#f87171;">已結單</span>' : '<span style="color:#4ade80;">開團中</span>';
+
+                return `
+                  <div onclick="selectGroup('${title.replace(/'/g, "\\'")}', ${isExpired})" style="min-width: 200px; max-width: 200px; background: #242424; padding: 10px; border-radius: 8px; border: 1px solid #333; cursor: pointer; flex-shrink: 0; display: flex; flex-direction: column; justify-content: space-between;">
+                      <div>
+                        <img src="${img || ''}" style="width: 100%; height: 100px; object-fit: contain; background: #111; border-radius: 4px; display: block;">
+                        <div style="font-weight: bold; color: #fff; font-size: 13px; margin-top: 8px; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${title}</div>
+                        <div style="font-size: 11px; margin-bottom: 4px;">${statusBadge} <span style="color: #aaa;">截單：${deadline}</span></div>
+                        <div style="font-size: 11px; color: #60a5fa;">付款方式：${paymentMethod}</div>
+                      </div>
+                      <div style="text-align: right; color: #888; font-size: 11px; margin-top: 6px;">
+                        點擊查看 ➔
+                      </div>
+                  </div>
+                `;
+            }).join('');
+        } else {
+            todaySection.style.display = 'none';
+        }
+    } catch (err) {
+        console.error("渲染今日新上架發生錯誤:", err);
+        todaySection.style.display = 'none';
+    }
+}
+
+// 當原本的團務載入完成後，自動呼叫這支獨立函式
+window.addEventListener('load', () => {
+    setTimeout(renderTodayGroups, 1000); // 延遲一秒等主程式跑完再執行
+});
+  
 // 2. 負責過濾, 排序並顯示團務 (一排兩個、直立式大圖卡片)
 function renderGroupsList() {
   const container = document.getElementById('groupCardsContainer');
   if (!container) return;
-// --- 🔥 動態顯示今日新上架團務 (直接共用原有的搜尋關鍵字變數) ---
-  const todaySection = document.getElementById('today-groups-section');
-  const todayContainer = document.getElementById('today-groups-container');
-  
-  // 假設原本的變數叫 keyword，如果沒有的話就透過 DOM 抓取
-  const currentKeyword = typeof keyword !== 'undefined' ? keyword : (document.getElementById('groupSearchInput')?.value.trim().toLowerCase() || "");
 
-  if (todaySection && todayContainer && Array.isArray(groupsData) && currentKeyword === "") {
-    try {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const todayGroups = groupsData.filter(item => {
-        if (!item || !item.created_at) return false;
-        return String(item.created_at).startsWith(todayStr);
-      });
-
-      if (todayGroups.length > 0) {
-        todaySection.style.display = 'block';
-        todayContainer.innerHTML = todayGroups.map(item => {
-          let title = item["團務名稱"] || "";
-          let img = formatImageUrl(item["圖片"] || "");
-          let deadline = item["截單時間"] || "未定";
-          let paymentMethod = item["付款方式"] || "未設定";
-          let isExpired = item["isExpired"] || false;
-          let statusBadge = isExpired ? '<span style="color:#f87171;">已結單</span>' : '<span style="color:#4ade80;">開團中</span>';
-
-          return `
-            <div onclick="selectGroup('${title.replace(/'/g, "\\'")}', ${isExpired})" style="min-width: 200px; max-width: 200px; background: #242424; padding: 10px; border-radius: 8px; border: 1px solid #333; cursor: pointer; flex-shrink: 0; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                  <img src="${img || ''}" style="width: 100%; height: 100px; object-fit: contain; background: #111; border-radius: 4px; display: block;">
-                  <div style="font-weight: bold; color: #fff; font-size: 13px; margin-top: 8px; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${title}</div>
-                  <div style="font-size: 11px; margin-bottom: 4px;">${statusBadge} <span style="color: #aaa;">截單：${deadline}</span></div>
-                  <div style="font-size: 11px; color: #60a5fa;">付款方式：${paymentMethod}</div>
-                </div>
-                <div style="text-align: right; color: #888; font-size: 11px; margin-top: 6px;">
-                  點擊查看 ➔
-                </div>
-            </div>
-          `;
-        }).join('');
-      } else {
-        todaySection.style.display = 'none';
-      }
-    } catch (e) {
-      console.error("今日新上架渲染錯誤:", e);
-      if (todaySection) todaySection.style.display = 'none';
-    }
-  } else {
-    if (todaySection) todaySection.style.display = 'none';
-  }
   // 💡 設定容器為兩欄網格 (Grid) 佈局
   container.style.display = "grid";
   container.style.gridTemplateColumns = "repeat(2, 1fr)";
