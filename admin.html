@@ -601,7 +601,7 @@ function renderGroupManageTable() {
 }
 window.renderGroupManageTable = renderGroupManageTable;
 
-// --- 📋 直接在表格內展開/收合「該團訂單清單」（精準過濾，絕不亂抓其他團） ---
+// --- 📋 直接在表格內展開/收合「該團訂單清單」（安全精準版） ---
 async function toggleInlineOrders(groupId, groupName) {
     let container = document.getElementById(`inline-edit-container-${groupId}`);
     let contentBox = document.getElementById(`inline-edit-content-${groupId}`);
@@ -618,40 +618,19 @@ async function toggleInlineOrders(groupId, groupName) {
     contentBox.innerHTML = `<div style="color: #aaa; text-align: center; padding: 20px;">載入「${groupName}」及其餘量訂單中...</div>`;
 
     try {
-        const [ordersRes, productsRes] = await Promise.all([
-            db.from('orders').select('*').order('created_at', { ascending: false }),
-            db.from('products').select('*').eq('團務名稱', groupName)
-        ]);
+        // 直接撈出所有訂單
+        const { data: allOrders, error } = await db.from('orders').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
 
-        if (ordersRes.error) throw ordersRes.error;
-        let allOrders = ordersRes.data || [];
-        let groupProducts = productsRes.data || [];
-
-        // 建立該團所有商品名稱的精準集合（必須要有商品名稱才比對）
-        let productNames = new Set(groupProducts.map(p => String(p['商品名稱'] || '').trim()).filter(Boolean));
-
-        // 嚴格篩選：只抓屬於這個團的訂單
-        const orders = allOrders.filter(o => {
+        // 嚴格過濾：只抓取團名吻合，或是包含該團名稱的訂單（支援一般預購與餘量認領）
+        const orders = (allOrders || []).filter(o => {
             let oGroup = String(o['團務名稱'] || '').trim();
             let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
             
-            // 條件 1：團務名稱直接吻合（包含一般預購與該團的餘量認領標籤）
+            // 只要團務名稱完全一樣，或者拔掉括號後一樣，或者訂單備註有寫該團名稱，就納入
             if (oGroup === groupName || cleanGroup === groupName) return true;
+            if (oGroup.includes(groupName) || groupName.includes(cleanGroup)) return true;
 
-            // 條件 2：如果團名不同，檢查訂單內容是否包含「該團的特定商品」（防止抓到無關的團）
-            if (productNames.size > 0) {
-                let items = o['訂單內容'];
-                if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
-                if (Array.isArray(items)) {
-                    return items.some(item => {
-                        let itemName = String(item.name || item['商品名稱'] || '').trim();
-                        for (let pName of productNames) {
-                            if (pName && (itemName === pName || itemName.includes(pName))) return true;
-                        }
-                        return false;
-                    });
-                }
-            }
             return false;
         });
 
@@ -728,6 +707,7 @@ async function toggleInlineOrders(groupId, groupName) {
     }
 }
 window.toggleInlineOrders = toggleInlineOrders;
+
     
 // 🔗 點擊訂單數時觸發的跳轉與篩選函式（如果還沒貼過，順便貼在下方）
 function jumpToOrdersForGroup(groupName) {
@@ -985,27 +965,11 @@ async function exportSummaryCSV(groupName, orders) {
     let targetOrders = orders;
     if (!targetOrders) {
         const { data: allOrders } = await db.from('orders').select('*');
-        const { data: groupProducts } = await db.from('products').select('*').eq('團務名稱', groupName);
-        let productNames = new Set((groupProducts || []).map(p => String(p['商品名稱'] || '').trim()).filter(Boolean));
-
         targetOrders = (allOrders || []).filter(o => {
             let oGroup = String(o['團務名稱'] || '').trim();
             let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
             if (oGroup === groupName || cleanGroup === groupName) return true;
-
-            if (productNames.size > 0) {
-                let items = o['訂單內容'];
-                if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
-                if (Array.isArray(items)) {
-                    return items.some(item => {
-                        let itemName = String(item.name || item['商品名稱'] || '').trim();
-                        for (let pName of productNames) {
-                            if (pName && (itemName === pName || itemName.includes(pName))) return true;
-                        }
-                        return false;
-                    });
-                }
-            }
+            if (oGroup.includes(groupName) || groupName.includes(cleanGroup)) return true;
             return false;
         });
     }
@@ -1098,34 +1062,14 @@ window.openProductEditModal = openProductEditModal;
 // 3. 匯出指定團務的名單或總表 (CSV)
 async function exportGroupSpecificCSV(groupName, type) {
     try {
-        const [ordersRes, productsRes] = await Promise.all([
-            db.from('orders').select('*'),
-            db.from('products').select('*').eq('團務名稱', groupName)
-        ]);
-        
-        if (ordersRes.error) throw ordersRes.error;
-        let allOrders = ordersRes.data || [];
-        let groupProducts = productsRes.data || [];
-        let productNames = new Set(groupProducts.map(p => String(p['商品名稱'] || '').trim()).filter(Boolean));
+        const { data: allOrders, error } = await db.from('orders').select('*');
+        if (error) throw error;
 
-        const orders = allOrders.filter(o => {
+        const orders = (allOrders || []).filter(o => {
             let oGroup = String(o['團務名稱'] || '').trim();
             let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
             if (oGroup === groupName || cleanGroup === groupName) return true;
-
-            if (productNames.size > 0) {
-                let items = o['訂單內容'];
-                if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
-                if (Array.isArray(items)) {
-                    return items.some(item => {
-                        let itemName = String(item.name || item['商品名稱'] || '').trim();
-                        for (let pName of productNames) {
-                            if (pName && (itemName === pName || itemName.includes(pName))) return true;
-                        }
-                        return false;
-                    });
-                }
-            }
+            if (oGroup.includes(groupName) || groupName.includes(cleanGroup)) return true;
             return false;
         });
 
