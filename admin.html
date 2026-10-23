@@ -999,7 +999,7 @@ async function exportSummaryCSV(groupName, orders) {
     let summary = {};
     orders.forEach(o => {
         if (o['處理狀態'] === '已取消') return;
-        let items = typeof o['商品明細'] === 'string' ? JSON.parse(o['商品明細'] || '{}') : (o['商品明細'] || {});
+        let items = typeof o['訂單內容'] === 'string' ? JSON.parse(o['商品明細'] || '{}') : (o['商品明細'] || {});
         for (let [prodName, qty] of Object.entries(items)) {
             summary[prodName] = (summary[prodName] || 0) + Number(qty);
         }
