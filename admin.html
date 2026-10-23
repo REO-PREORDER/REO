@@ -166,9 +166,10 @@
       <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
 
 <!-- 💡 上方分頁切換按鈕列 -->
-<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px;">
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #3f3f46; padding-bottom: 12px; flex-wrap: wrap;">
     <button onclick="switchAdminTab('create')" id="btn-create" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">➕ 上架新團務</button>
     <button onclick="switchAdminTab('groups')" id="btn-groups" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">⚙️ 團務管理</button>
+    <button onclick="switchAdminTab('orders')" id="btn-orders" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📋 所有訂單紀錄</button>
     <button onclick="switchAdminTab('splitBoard')" id="btn-splitBoard" style="background: #27272a; color: #a1a1aa; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;">📦 拆團看板</button>
 </div>
 
@@ -492,7 +493,7 @@ window.openGroupEditModal = openGroupEditModal;
 
 // --- 分頁切換控制 ---
 function switchAdminTab(tabName) {
-    const tabs = ['create', 'groups', 'splitBoard'];
+    const tabs = ['create', 'groups', 'orders', 'splitBoard'];
     tabs.forEach(t => {
         let contentEl = document.getElementById('tab-' + t);
         let btnEl = document.getElementById('btn-' + t);
@@ -507,6 +508,8 @@ function switchAdminTab(tabName) {
 
     if (tabName === 'groups') {
         loadGroupManageList();
+    } else if (tabName === 'orders') {
+        if (typeof loadAllOrders === 'function') loadAllOrders();
     } else if (tabName === 'splitBoard' && typeof loadSplitGroupOptions === 'function') {
         loadSplitGroupOptions();
     }
