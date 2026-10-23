@@ -689,7 +689,7 @@ async function saveInlineGroup(groupId) {
 }
 window.saveInlineGroup = saveInlineGroup;
 
-// --- ⚙️ 3. 直接在表格內展開/收合「管理商品」清單 ---
+// --- 🛍️ 直接在表格內展開/收合「管理商品」清單（含圖片網址與固定大小按鈕） ---
 async function toggleInlineProducts(groupId, groupName) {
     let container = document.getElementById(`inline-edit-container-${groupId}`);
     let contentBox = document.getElementById(`inline-edit-content-${groupId}`);
@@ -713,13 +713,16 @@ async function toggleInlineProducts(groupId, groupName) {
         let html = `
             <h4 style="color: #8b5cf6; margin-top: 0; margin-bottom: 12px;">🛍️ 管理商品：${groupName}</h4>
             
-            <!-- 單項新增小表單 -->
+            <!-- 單項新增小表單（含圖片網址輸入框） -->
             <div style="background: #1e1e24; padding: 12px; border-radius: 6px; border: 1px dashed #8b5cf6; margin-bottom: 15px;">
                 <div style="font-weight: bold; color: #a78bfa; font-size: 12px; margin-bottom: 6px;">➕ 新增單一商品</div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
                     <input type="text" id="inline_p_name_${groupId}" placeholder="商品名稱" style="flex: 2; padding: 6px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
                     <input type="number" id="inline_p_price_${groupId}" placeholder="單價" style="flex: 1; padding: 6px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
                     <input type="text" id="inline_p_cat_${groupId}" placeholder="分類 (預設:一般)" value="一般" style="flex: 1; padding: 6px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <input type="text" id="inline_p_img_${groupId}" placeholder="圖片網址 (URL)" style="width: 100%; padding: 6px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; box-sizing: border-box;">
                 </div>
                 <button onclick="addSingleProductInline('${groupId}', '${groupName.replace(/'/g, "\\'")}')" style="background: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold;">確認新增商品</button>
             </div>
@@ -732,12 +735,19 @@ async function toggleInlineProducts(groupId, groupName) {
         } else {
             products.forEach(p => {
                 html += `
-                    <div style="background: #1a1a1e; padding: 10px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #333; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <input type="text" id="ip_name_${p.id}" value="${p.商品名稱 || ''}" style="flex: 3; padding: 5px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px;">
-                        <input type="number" id="ip_price_${p.id}" value="${p.單價 || 0}" style="flex: 1; padding: 5px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px;">
-                        <input type="text" id="ip_cat_${p.id}" value="${p.商品分類 || '一般'}" style="flex: 1; padding: 5px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px;">
-                        <button onclick="saveInlineProduct('${p.id}')" style="background: #059669; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;" title="儲存修改">💾</button>
-                        <button onclick="deleteInlineProduct('${p.id}', '${groupId}', '${groupName.replace(/'/g, "\\'")}')" style="background: #dc2626; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;" title="刪除商品">🗑️</button>
+                    <div style="background: #1a1a1e; padding: 10px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #333;">
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px;">
+                            <input type="text" id="ip_name_${p.id}" value="${p.商品名稱 || ''}" placeholder="商品名稱" style="flex: 3; padding: 6px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px;">
+                            <input type="number" id="ip_price_${p.id}" value="${p.單價 || 0}" placeholder="單價" style="flex: 1; padding: 6px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px;">
+                            <input type="text" id="ip_cat_${p.id}" value="${p.商品分類 || '一般'}" placeholder="分類" style="flex: 1; padding: 6px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px;">
+                            
+                            <!-- 🔒 強制鎖定固定寬高的儲存與刪除按鈕 -->
+                            <button type="button" onclick="saveInlineProduct('${p.id}')" style="background: #059669; color: white; border: none; padding: 0; border-radius: 4px; font-size: 14px; cursor: pointer; flex: 0 0 40px; width: 40px; height: 34px; min-width: 40px; flex-shrink: 0;" title="儲存修改">💾</button>
+                            <button type="button" onclick="deleteInlineProduct('${p.id}', '${groupId}', '${groupName.replace(/'/g, "\\'")}')" style="background: #dc2626; color: white; border: none; padding: 0; border-radius: 4px; font-size: 14px; cursor: pointer; flex: 0 0 40px; width: 40px; height: 34px; min-width: 40px; flex-shrink: 0;" title="刪除商品">🗑️</button>
+                        </div>
+                        <div>
+                            <input type="text" id="ip_img_${p.id}" value="${p.圖片 || ''}" placeholder="圖片網址 (URL)" style="width: 100%; padding: 5px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 11px; box-sizing: border-box;">
+                        </div>
                     </div>
                 `;
             });
@@ -750,11 +760,12 @@ async function toggleInlineProducts(groupId, groupName) {
 }
 window.toggleInlineProducts = toggleInlineProducts;
 
-// 儲存單一商品的修改
+// 儲存單一商品的修改（包含圖片網址）
 async function saveInlineProduct(prodId) {
     let name = document.getElementById(`ip_name_${prodId}`).value.trim();
     let price = parseFloat(document.getElementById(`ip_price_${prodId}`).value) || 0;
     let category = document.getElementById(`ip_cat_${prodId}`).value.trim();
+    let img = document.getElementById(`ip_img_${prodId}`).value.trim();
 
     if (!name) {
         alert("商品名稱不能為空！");
@@ -765,7 +776,8 @@ async function saveInlineProduct(prodId) {
         const { error } = await db.from('products').update({
             "商品名稱": name,
             "單價": price,
-            "商品分類": category
+            "商品分類": category,
+            "圖片": img
         }).eq('id', prodId);
 
         if (error) throw error;
@@ -776,24 +788,12 @@ async function saveInlineProduct(prodId) {
 }
 window.saveInlineProduct = saveInlineProduct;
 
-// 刪除商品
-async function deleteInlineProduct(prodId, groupId, groupName) {
-    if (!confirm("確定要刪除這個商品嗎？")) return;
-    try {
-        const { error } = await db.from('products').delete().eq('id', prodId);
-        if (error) throw error;
-        toggleInlineProducts(groupId, groupName); // 重新整理商品清單
-    } catch (err) {
-        alert("刪除失敗：" + err.message);
-    }
-}
-window.deleteInlineProduct = deleteInlineProduct;
-
-// 直接在行內新增商品
+// 直接在行內新增商品（包含圖片網址）
 async function addSingleProductInline(groupId, groupName) {
     let name = document.getElementById(`inline_p_name_${groupId}`).value.trim();
     let price = parseFloat(document.getElementById(`inline_p_price_${groupId}`).value) || 0;
     let category = document.getElementById(`inline_p_cat_${groupId}`).value.trim() || '一般';
+    let img = document.getElementById(`inline_p_img_${groupId}`).value.trim();
 
     if (!name || isNaN(price)) {
         alert("請填寫完整的商品名稱與正確單價！");
@@ -806,6 +806,7 @@ async function addSingleProductInline(groupId, groupName) {
             "商品名稱": name,
             "單價": price,
             "商品分類": category,
+            "圖片": img,
             "isExpired": false
         }]);
 
@@ -817,7 +818,7 @@ async function addSingleProductInline(groupId, groupName) {
     }
 }
 window.addSingleProductInline = addSingleProductInline;
-
+    
 // 3. 點擊「編輯團務」按鈕
 function openGroupEditModal(groupName) {
     switchAdminTab('create');
