@@ -932,61 +932,7 @@ function exportToCSV(dataArray, filename) {
 }
 window.exportToCSV = exportToCSV;
     
-// 📊 超強相容版：統計總表 CSV 匯出邏輯
-async function exportSummaryCSV(groupName, orders) {
-    let summary = {};
-    
-    orders.forEach(o => {
-        // 如果訂單已取消，則跳過
-        if (o['處理狀態'] === '已取消') return;
-        
-        // 同時尋找所有可能的明細欄位名稱
-        let itemsRaw = o['訂單內容'] !== undefined ? o['訂單內容'] : (o['商品明細'] !== undefined ? o['商品明細'] : null);
-        let items = [];
 
-        if (!itemsRaw) return;
-
-        try {
-            // 如果是字串，嘗試進行 JSON 解析
-            if (typeof itemsRaw === 'string') {
-                items = JSON.parse(itemsRaw);
-            } else if (Array.isArray(itemsRaw)) {
-                items = itemsRaw;
-            } else if (typeof itemsRaw === 'object') {
-                // 如果是物件格式（例如 { "商品名稱": 數量 }）
-                for (let [prodName, qty] of Object.entries(itemsRaw)) {
-                    summary[prodName] = (summary[prodName] || 0) + Number(qty);
-                }
-                return;
-            }
-        } catch (e) {
-            console.error("解析商品明細失敗：", e);
-            items = [];
-        }
-
-        // 如果解析出來是陣列格式（例如 [{ name: '商品', qty: 2 }, ...]）
-        if (Array.isArray(items)) {
-            items.forEach(item => {
-                let pName = item['name'] || item['商品名稱'] || item['商品'] || item['title'] || '未知商品';
-                let qty = Number(item['qty'] || item['數量'] || item['q'] || item['quantity'] || 1);
-                summary[pName] = (summary[pName] || 0) + qty;
-            });
-        }
-    });
-
-    let summaryArray = Object.keys(summary).map(pName => ({
-        '商品名稱': pName,
-        '總訂購數量': summary[pName]
-    }));
-
-    if (summaryArray.length === 0) {
-        alert(`「${groupName}」找不到任何有效的商品明細可供統計！`);
-        return;
-    }
-
-    exportToCSV(summaryArray, `${groupName}_商品統計總表.csv`);
-}
-window.exportSummaryCSV = exportSummaryCSV;
 // 2. 編輯商品跳窗 / 動作
 function openProductEditModal(groupName) {
     // 自動幫你切換到商品編輯區，並把對應的團務選單切過去
@@ -1051,30 +997,6 @@ function exportToCSV(dataArray, filename) {
     link.click();
 }
 
-// 統計總表 CSV 匯出邏輯
-async function exportSummaryCSV(groupName, orders) {
-    // 抓取該團對應的商品資料來統計
-    let summary = {};
-    orders.forEach(o => {
-        if (o['處理狀態'] === '已取消') return;
-        let items = typeof o['訂單內容'] === 'string' ? JSON.parse(o['商品明細'] || '{}') : (o['商品明細'] || {});
-        for (let [prodName, qty] of Object.entries(items)) {
-            summary[prodName] = (summary[prodName] || 0) + Number(qty);
-        }
-    });
-
-    let summaryArray = Object.keys(summary).map(pName => ({
-        '商品名稱': pName,
-        '總訂購數量': summary[pName]
-    }));
-
-    if (summaryArray.length === 0) {
-        alert("此團無有效的商品明細可統計");
-        return;
-    }
-
-    exportToCSV(summaryArray, `${groupName}_商品統計總表.csv`);
-}
 // ➕ 新增商品至當前選取的團務
 async function addProductToCurrentGroup() {
   const selectEl = document.getElementById('editGroupSelect');
