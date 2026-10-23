@@ -345,10 +345,10 @@ async function submitGroupForm() {
   const deadlineInput = document.getElementById('newGroupDeadline');
   const paymentInput = document.getElementById('newGroupPayment');
   const remarkInput = document.getElementById('newGroupRemark');
-  const batchInput = document.getElementById('batchProductsInput'); // 下方批次商品輸入框
+  const batchInput = document.getElementById('batchProductsInput'); // 批次商品輸入框
 
   const editingId = editingIdInput ? editingIdInput.value.trim() : "";
-  const isEditMode = Boolean(editingId); // 判斷目前是否為編輯模式
+  const isEditMode = Boolean(editingId);
 
   const groupName = groupNameInput ? groupNameInput.value.trim() : "";
   const groupImg = groupImgInput ? groupImgInput.value.trim() : "";
@@ -386,44 +386,6 @@ async function submitGroupForm() {
         .eq('id', Number(editingId));
 
       if (updateErr) throw updateErr;
-
-      // 如果編輯時剛好有在批次欄位貼東西，也可以順便幫忙追加商品（選填）
-      if (batchText) {
-        let lines = batchText.split('\n');
-        let newProducts = [];
-
-        for (let line of lines) {
-          line = line.trim();
-          if (!line) continue;
-          let parts = line.includes('\t') ? line.split('\t') : line.split(/\s+/);
-          parts = parts.map(p => p.trim()).filter(p => p !== "");
-
-          if (parts.length >= 3) {
-            let pCat = parts[0] || "一般";
-            let pName = parts[1] || "";
-            let pPrice = parseFloat(parts[2]) || 0;
-            let pImg = parts[3] || "";
-            let pDesc = parts.slice(4).join(" ");
-
-            if (pName && !isNaN(pPrice)) {
-              newProducts.push({
-                "團務名稱": groupName,
-                "商品分類": pCat,
-                "商品名稱": pName,
-                "單價": pPrice,
-                "圖片": pImg,
-                "商品說明": pDesc,
-                "isExpired": false
-              });
-            }
-          }
-        }
-
-        if (newProducts.length > 0) {
-          const { error: prodErr } = await db.from('products').insert(newProducts);
-          if (prodErr) throw new Error("團務修改成功，但追加商品失敗：" + prodErr.message);
-        }
-      }
 
       alert(`💾 成功儲存團務「${groupName}」的修改內容！`);
       location.reload();
@@ -493,252 +455,40 @@ async function submitGroupForm() {
     alert("❌ 操作失敗：" + err.message);
   }
 }
-   function switchAdminGroupTab(mode) {
-  currentGroupMode = mode;
-  let btnCreate = document.getElementById('tabCreateGroupBtn');
-  let btnEdit = document.getElementById('tabEditGroupBtn');
-  let selectBox = document.getElementById('editGroupSelectBox');
-  let submitBtn = document.getElementById('groupSubmitBtn');
-  let msgElem = document.getElementById('createGroupMsg');
-  let deleteBtn = document.getElementById('groupDeleteBtn');
-  let productEditBox = document.getElementById('groupProductEditBox');
-
-  if (msgElem) msgElem.innerText = "";
-
-  if (mode === 'create') {
-    btnCreate.style.background = "#2563eb";
-    btnCreate.style.color = "#fff";
-    btnEdit.style.background = "#444";
-    btnEdit.style.color = "#ccc";
-    selectBox.style.display = "none";
-    submitBtn.innerText = "建立新團務";
-    submitBtn.style.background = "#2563eb";
-    if (deleteBtn) deleteBtn.style.display = "none";
-    if (productEditBox) productEditBox.style.display = "none";
-    clearGroupForm();
-  } else {
-    btnEdit.style.background = "#2563eb";
-    btnEdit.style.color = "#fff";
-    btnCreate.style.background = "#444";
-    btnCreate.style.color = "#ccc";
-    selectBox.style.display = "block";
-    if (submitBtn) {
-    submitBtn.innerText = "💾 儲存修改內容";
+window.submitNewGroupAndProducts = submitGroupForm;
+    // 點擊管理列表的編輯按鈕，帶入資料準備修改
+function openGroupEditModal(groupName) {
+    // 切換回上架/編輯分頁
+    switchAdminTab('create');
+    
+    // 從快取中找到該團務資料並填入表單
+    let target = cachedGroupsList.find(g => g['團務名稱'] === groupName);
+    if (target) {
+        let idField = document.getElementById('editingGroupId');
+        if (idField) idField.value = target.id;
+        
+        let nameField = document.getElementById('newGroupName');
+        if (nameField) nameField.value = target['團務名稱'] || '';
+        
+        let imgField = document.getElementById('newGroupImg');
+        if (imgField) imgField.value = target['圖片'] || '';
+        
+        let deadlineField = document.getElementById('newGroupDeadline');
+        if (deadlineField) deadlineField.value = target['截單時間'] || '';
+        
+        let paymentField = document.getElementById('newGroupPayment');
+        if (paymentField) paymentField.value = target['付款方式'] || '';
+        
+        let remarkField = document.getElementById('newGroupRemark');
+        if (remarkField) remarkField.value = target['團務備註'] || '';
+        
+        // 同時載入該團務的商品供編輯
+        if (typeof loadProductsForEdit === 'function') {
+            loadProductsForEdit(groupName);
+        }
+    }
 }
-    submitBtn.style.background = "#10b981";
-    if (deleteBtn) deleteBtn.style.display = "block";
-    if (productEditBox) productEditBox.style.display = "block";
-    loadGroupSelectForEdit();
-  }
-}
-window.switchAdminGroupTab = switchAdminGroupTab;
-
-// 1. 載入編輯團務下拉選單
-async function loadGroupSelectForEdit() {
-  const selectElem = document.getElementById('editGroupSelect');
-  if (!selectElem) return;
-  
-  try {
-    const { data, error } = await db.from('groups').select('*').order('created_at', { ascending: false });
-    if (error) throw error;
-    
-    // 把資料存到全域變數方便後續比對
-    allGroupsData = data || [];
-    
-    // 第一項固定放「新增全新團務」，接著動態帶入所有既有團務
-    let html = `<option value="NEW">➕ 【新增全新團務】</option>`;
-    allGroupsData.forEach(g => {
-      html += `<option value="${g.id}">${g["團務名稱"]}</option>`;
-    });
-    selectElem.innerHTML = html;
-  } catch (err) {
-    console.error("載入團務失敗：" + err.message);
-  }
-}
-
-// 2. 當下拉選單切換時（自動判斷是要新增還是編輯）
-function onSelectGroupToEdit() {
-  let selectEl = document.getElementById('editGroupSelect');
-  if (!selectEl) return; // 如果不在團務管理頁面就直接跳出，避免影響其他分頁
-  
-  let selectedVal = selectEl.value;
-  let submitBtn = document.getElementById('groupSubmitBtn');
-  let deleteBtn = document.getElementById('groupDeleteBtn');
-  let editBox = document.getElementById('groupProductEditBox');
-  let actionContainer = document.getElementById('actionButtonContainer');
-
-  if (selectedVal === "NEW") {
-    // 🧹 切換到新增模式：清空表單
-    document.getElementById('editingGroupId').value = "";
-    document.getElementById('newGroupName').value = "";
-    document.getElementById('newGroupImg').value = "";
-    document.getElementById('newGroupDeadline').value = "";
-    document.getElementById('newGroupPayment').value = "賣貨便貨到付款(不含運費)";
-    document.getElementById('newGroupRemark').value = "";
-    
-    if (submitBtn) {
-      submitBtn.innerText = "建立新團務";
-      submitBtn.style.background = "#2563eb";
-    }
-    if (deleteBtn) deleteBtn.style.display = "none";
-    if (editBox) editBox.style.display = "block";
-    
-    const productListContainer = document.getElementById('productListContainer');
-    if (productListContainer) {
-      productListContainer.innerHTML = `
-        <div style="background: #1e1e1e; border: 1px dashed #10b981; padding: 12px; border-radius: 6px; margin-top: 15px;">
-          <div style="color: #10b981; font-weight: bold; font-size: 12px; margin-bottom: 4px;">📦 批次貼上新增商品（建立新團務時會一併寫入）</div>
-          <div style="color: #aaa; font-size: 11px; margin-bottom: 8px;">依序填寫：商品分類, 商品名稱, 單價, 圖片, 商品說明 (可用 Tab、逗號或空格分隔)</div>
-          <textarea id="batchProductsInput" placeholder="請在此貼上多行商品資料..." style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 90px; width: 100%; box-sizing: border-box;"></textarea>
-          <div id="batchMsg" style="font-size: 11px; margin: 4px 0;"></div>
-        </div>
-      `;
-      
-      // 只有在團務管理頁面才把按鈕移到批次商品下方
-      if (actionContainer) {
-        productListContainer.parentNode.appendChild(actionContainer);
-      }
-    }
-
-  } else {
-    // ✏️ 切換到編輯模式：帶入該團務資料
-    let group = allGroupsData.find(g => String(g.id) === String(selectedVal));
-    if (group) {
-      document.getElementById('editingGroupId').value = group.id;
-      document.getElementById('newGroupName').value = group["團務名稱"] || "";
-      document.getElementById('newGroupImg').value = group["圖片"] || "";
-      document.getElementById('newGroupDeadline').value = group["截單時間"] || "";
-      document.getElementById('newGroupPayment').value = group["付款方式"] || "賣貨便貨到付款(不含運費)";
-      document.getElementById('newGroupRemark').value = group["團務備註"] || "";
-    }
-    
-    if (submitBtn) {
-      submitBtn.innerText = "💾 儲存修改內容";
-      submitBtn.style.background = "#10b981";
-    }
-    if (deleteBtn) deleteBtn.style.display = "block";
-    if (editBox) editBox.style.display = "block";
-    
-    // 編輯模式時，把按鈕區塊放回商品編輯區的前面
-    let formElement = document.getElementById('newGroupName')?.closest('form') || document.getElementById('tab-groups');
-    if (actionContainer && editBox && formElement) {
-      formElement.insertBefore(actionContainer, editBox);
-    }
-
-    if (typeof loadProductsForEdit === 'function' && group) {
-      loadProductsForEdit(group["團務名稱"]);
-    }
-  }
-}
-window.onSelectGroupToEdit = onSelectGroupToEdit;
-    
-// 1. 切換分頁按鈕並更新樣式
-function switchGroupTab(tab) {
-  currentGroupTab = tab;
-  
-  let btnActive = document.getElementById('tabActive');
-  let btnExpired = document.getElementById('tabExpired');
-  
-  if (btnActive && btnExpired) {
-    if (tab === 'active') {
-      btnActive.style.background = '#2563eb';
-      btnActive.style.color = '#fff';
-      btnExpired.style.background = '#2f2f35';
-      btnExpired.style.color = '#aaa';
-    } else {
-      btnExpired.style.background = '#2563eb';
-      btnExpired.style.color = '#fff';
-      btnActive.style.background = '#2f2f35';
-      btnActive.style.color = '#aaa';
-    }
-  }
-  
-  // 重新渲染清單
-  renderGroupsList();
-  }
-
-    // 📦 讀取並顯示指定團務底下的商品清單供編輯（含圖片網址與商品說明）
-async function loadProductsForEdit(groupId) {
-  const container = document.getElementById('productListContainer');
-  if (!container) return;
-  
-  container.innerHTML = "<div style='color: #aaa; font-size: 12px; text-align: center; padding: 10px;'>載入商品中...</div>";
-
-  try {
-    const selectEl = document.getElementById('editGroupSelect');
-    const groupName = selectEl ? selectEl.options[selectEl.selectedIndex].text : "";
-
-    if (!groupName || groupName.includes("-- 請選擇")) {
-      container.innerHTML = "<p style='font-size: 12px; color: #888; text-align: center; padding: 10px;'>請先選擇團務</p>";
-      return;
-    }
-
-    const { data: products, error } = await db
-      .from('products')
-      .select('*')
-      .eq('團務名稱', groupName);
-
-    if (error) throw error;
-
-    let html = `
-  <div style="background: #1e1e1e; border: 1px dashed #3b82f6; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-    <div style="color: #60a5fa; font-weight: bold; font-size: 12px; margin-bottom: 8px;">➕ 新增商品到此團務</div>
-    <div style="display: flex; gap: 6px; flex-direction: column;">
-      <input type="text" id="newProdName" placeholder="商品名稱" style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-      <div style="display: flex; gap: 6px;">
-        <input type="number" id="newProdPrice" placeholder="單價 ($)" style="flex: 1; padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-        <input type="text" id="newProdCategory" placeholder="商品分類 (預設: 一般)" value="一般" style="flex: 1; padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
-      </div>
-      <textarea id="newProdImg" placeholder="商品圖片網址 (URL，每行一張或用逗號分隔)" style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 50px;"></textarea>
-      <textarea id="newProdDesc" placeholder="商品說明..." style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 50px;"></textarea>
-      <button type="button" onclick="addProductToCurrentGroup()" style="background: #2563eb; color: white; border: none; padding: 8px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; margin-top: 4px;">確認新增商品</button>
-    </div>
-  </div>
-
-  <!-- 💡 新增：批次貼上新增商品區塊 -->
-  <div style="background: #1e1e1e; border: 1px dashed #10b981; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-    <div style="color: #10b981; font-weight: bold; font-size: 12px; margin-bottom: 4px;">📦 批次貼上新增商品（每行一個）</div>
-    <div style="color: #aaa; font-size: 11px; margin-bottom: 8px;">依序填寫：商品分類, 商品名稱, 單價, 圖片, 商品說明 (可用 Tab、逗號或空格分隔)</div>
-    <textarea id="batchProductsInput" placeholder="請在此貼上多行商品資料..." style="padding: 6px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; resize: vertical; height: 70px; width: 100%; box-sizing: border-box;"></textarea>
-    <div id="batchMsg" style="font-size: 11px; margin: 4px 0;"></div>
-    <button type="button" onclick="submitBatchProducts()" style="background: #059669; color: white; border: none; padding: 8px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 4px;">確認批次新增</button>
-  </div>
-
-  <div style="font-size: 12px; color: #aaa; margin-bottom: 6px; font-weight: bold;">現有商品列表：</div>
-`;
-
-    if (!products || products.length === 0) {
-      html += "<p style='font-size: 12px; color: #888; text-align: center; padding: 6px;'>此團務目前沒有任何商品。</p>";
-    } else {
-     products.forEach(p => {
-        html += `
-          <div style="background: #1a1a1a; padding: 10px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #333;">
-            <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
-              <!-- 商品名稱、單價、分類 -->
-              <input type="text" id="prodName_${p.id}" value="${p.商品名稱 || ''}" placeholder="商品名稱" style="flex: 3; min-width: 120px; padding: 5px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; margin: 0;">
-              <input type="number" id="prodPrice_${p.id}" value="${p.單價 || 0}" placeholder="單價" style="flex: 1.2; min-width: 70px; padding: 5px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; margin: 0;">
-              <input type="text" id="prodCat_${p.id}" value="${p.商品分類 || '一般'}" placeholder="分類" style="flex: 1.2; min-width: 70px; padding: 5px; font-size: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; margin: 0;">
-              
-              <!-- 💾 儲存與 🗑️ 刪除按鈕：強制鎖定固定寬高、絕對不准伸縮 -->
-              <button type="button" onclick="saveProduct('${p.id}')" style="background: #059669; color: white; border: none; padding: 0; border-radius: 4px; font-size: 13px; cursor: pointer; flex: 0 0 38px; width: 38px; height: 32px; min-width: 38px; flex-shrink: 0; margin: 0;" title="儲存修改">💾</button>
-              <button type="button" onclick="deleteProduct('${p.id}')" style="background: #dc2626; color: white; border: none; padding: 0; border-radius: 4px; font-size: 13px; cursor: pointer; flex: 0 0 38px; width: 38px; height: 32px; min-width: 38px; flex-shrink: 0; margin: 0;" title="刪除商品">🗑</button>
-            </div>
-            <div style="display: flex; gap: 6px; flex-direction: column;">
-              <input type="text" id="prodImg_${p.id}" value="${p.圖片 || ''}" placeholder="圖片網址 (URL)" style="padding: 5px; font-size: 11px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; margin: 0;">
-              <textarea id="prodDesc_${p.id}" placeholder="商品說明..." style="padding: 5px; font-size: 11px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; resize: vertical; height: 40px; margin: 0;">${p.商品說明 || ''}</textarea>
-            </div>
-          </div>
-        `;
-      });
-    }
-    container.innerHTML = html;
-
-  } catch (err) {
-    console.error("載入商品失敗：", err);
-    container.innerHTML = `<p style='font-size: 12px; color: #ef4444; text-align: center;'>載入商品失敗: ${err.message}</p>`;
-  }
-}
-window.loadProductsForEdit = loadProductsForEdit;
+window.openGroupEditModal = openGroupEditModal;
 
 // --- 分頁切換控制 ---
 function switchAdminTab(tabName) {
@@ -828,27 +578,125 @@ function renderGroupManageTable() {
         let deadline = g['截單時間'] || '未定';
         let count = g.orderCount;
 
-        html += `
-            <tr style="border-bottom: 1px solid #333;">
-                <td style="padding: 8px;"><img src="${imgUrl}" style="width: 40px; height: 40px; object-fit: contain; background: #111; border-radius: 4px; display: block;"></td>
-                <td style="padding: 8px; color: #fff; font-weight: bold;">${gName}</td>
-                <td style="padding: 8px; color: #f59e0b; font-size: 12px;">${deadline}</td>
-                <td style="padding: 8px; text-align: center; color: #38bdf8; font-weight: bold;">${count}</td>
-                <td style="padding: 8px; text-align: center;">
-                    <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                        <button onclick="openGroupEditModal('${gName}')" style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏️ 編輯</button>
-                        <button onclick="openProductEditModal('${gName}')" style="background: #8b5cf6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">🛍️ 商品</button>
-                        <button onclick="exportGroupSpecificCSV('${gName}', 'buyer')" style="background: #059669; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">📥 名單</button>
-                        <button onclick="exportGroupSpecificCSV('${gName}', 'summary')" style="background: #d97706; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">📊 總表</button>
-                    </div>
-                </td>
-            </tr>
-        `;
+        // 將原本的 width: 40px; height: 40px; 改大
+html += `
+    <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 8px;"><img src="${imgUrl}" style="width: 70px; height: 70px; object-fit: contain; background: #111; border-radius: 4px; display: block;"></td>
+        <td style="padding: 8px; color: #fff; font-weight: bold;">${gName}</td>
+        <td style="padding: 8px; color: #f59e0b; font-size: 12px;">${deadline}</td>
+        <td style="padding: 8px; text-align: center; color: #38bdf8; font-weight: bold;">${count}</td>
+        <td style="padding: 8px; text-align: center;">
+            <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                <button onclick="openGroupEditModal('${gName}')" style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏️ 編輯</button>
+                <button onclick="openProductEditModal('${gName}')" style="background: #8b5cf6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">🛍️ 商品</button>
+                <button onclick="exportGroupSpecificCSV('${gName}', 'buyer')" style="background: #059669; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">📥 名單</button>
+                <button onclick="exportGroupSpecificCSV('${gName}', 'summary')" style="background: #d97706; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">📊 總表</button>
+            </div>
+        </td>
+    </tr>
+`;
     });
     tbody.innerHTML = html;
 }
 window.renderGroupManageTable = renderGroupManageTable;
+    // --- 🛠️ 點擊快捷操作的對應處理函式 ---
+
+// 1. 編輯團務跳窗 / 動作
+function openGroupEditModal(groupName) {
+    // 這裡可以直接帶入你原本修改團務的邏輯，或者跳轉至對應的編輯區域
+    alert("準備編輯團務：" + groupName);
+    // 如果你原本有編輯團務的 modal 或切換頁面，可以在這邊呼叫
+}
+window.openGroupEditModal = openGroupEditModal;
+
+// 2. 編輯商品跳窗 / 動作
+function openProductEditModal(groupName) {
+    // 自動幫你切換到商品編輯區，並把對應的團務選單切過去
+    const selectEl = document.getElementById('editGroupSelect');
+    if (selectEl) {
+        for (let i = 0; i < selectEl.options.length; i++) {
+            if (selectEl.options[i].text === groupName || selectEl.options[i].value === groupName) {
+                selectEl.selectedIndex = i;
+                break;
+            }
+        }
+    }
+    // 如果你有商品管理的頁面或 Tab，也可以在此切換，例如 switchAdminTab('products');
+    alert("已選取「" + groupName + "」，請前往商品編輯區進行修改。");
+}
+window.openProductEditModal = openProductEditModal;
+
+// 3. 匯出指定團務的名單或總表 (CSV)
+async function exportGroupSpecificCSV(groupName, type) {
+    try {
+        let query = db.from('orders').select('*').eq('團務名稱', groupName);
+        const { data: orders, error } = await query;
+        
+        if (error) throw error;
+        if (!orders || orders.length === 0) {
+            alert(`「${groupName}」目前沒有任何訂單記錄！`);
+            return;
+        }
+
+        if (type === 'buyer') {
+            // 匯出名單 (買家喊單明細)
+            exportToCSV(orders, `${groupName}_買家喊單名單.csv`);
+        } else if (type === 'summary') {
+            // 匯出總表 (統計商品數量)
+            exportSummaryCSV(groupName, orders);
+        }
+    } catch (err) {
+        console.error("匯出失敗：", err);
+        alert("匯出過程發生錯誤，請檢查主控台。");
+    }
+}
+window.exportGroupSpecificCSV = exportGroupSpecificCSV;
+
+// 簡易 CSV 匯出輔助函式 (如果你的後台原本就有共用的 export 函式可忽略這段)
+function exportToCSV(dataArray, filename) {
+    if (!dataArray.length) return;
+    let keys = Object.keys(dataArray[0]);
+    let csvContent = "\uFEFF" + keys.join(",") + "\n"; // 加 BOM 避免中文亂碼
     
+    dataArray.forEach(row => {
+        let values = keys.map(k => {
+            let val = row[k] !== null && row[k] !== undefined ? String(row[k]) : "";
+            return `"${val.replace(/"/g, '""')}"`;
+        });
+        csvContent += values.join(",") + "\n";
+    });
+
+    let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+}
+
+// 統計總表 CSV 匯出邏輯
+async function exportSummaryCSV(groupName, orders) {
+    // 抓取該團對應的商品資料來統計
+    let summary = {};
+    orders.forEach(o => {
+        if (o['處理狀態'] === '已取消') return;
+        let items = typeof o['商品明細'] === 'string' ? JSON.parse(o['商品明細'] || '{}') : (o['商品明細'] || {});
+        for (let [prodName, qty] of Object.entries(items)) {
+            summary[prodName] = (summary[prodName] || 0) + Number(qty);
+        }
+    });
+
+    let summaryArray = Object.keys(summary).map(pName => ({
+        '商品名稱': pName,
+        '總訂購數量': summary[pName]
+    }));
+
+    if (summaryArray.length === 0) {
+        alert("此團無有效的商品明細可統計");
+        return;
+    }
+
+    exportToCSV(summaryArray, `${groupName}_商品統計總表.csv`);
+}
 // ➕ 新增商品至當前選取的團務
 async function addProductToCurrentGroup() {
   const selectEl = document.getElementById('editGroupSelect');
