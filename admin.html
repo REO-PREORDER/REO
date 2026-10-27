@@ -970,9 +970,9 @@ function openProductEditModal(groupName) {
 }
 window.openProductEditModal = openProductEditModal;
     
-// 📊 終極強化版：商品統計總表 CSV 匯出邏輯（完美支援分類與餘量自動合併）
+// 📊 升級版：商品統計總表 CSV 匯出邏輯（包含團務名稱、單價、總預購數量與預估總金額）
 async function exportSummaryCSV(groupName, orders) {
-    let summary = {};
+    let summary = {}; // 用來記錄 { '商品名稱': { qty: 總數量, price: 單價 } }
     
     let targetOrders = orders;
     if (!targetOrders) {
@@ -988,8 +988,12 @@ async function exportSummaryCSV(groupName, orders) {
 
     targetOrders.forEach(o => {
         let status = String(o['處理狀態'] || o['status'] || '').trim();
+        // 嚴格限定：只統計「已成立」與「已變更」
         if (status !== '已成立' && status !== '已變更') return;
         
+        let oGroup = String(o['團務名稱'] || '').trim();
+        let isSurplus = oGroup.includes("餘量認領") || String(o['備註'] || '').includes("餘量認領");
+
         let itemsRaw = o['訂單內容'] !== undefined ? o['訂單內容'] : o['商品明細'];
         let items = [];
 
@@ -1010,29 +1014,48 @@ async function exportSummaryCSV(groupName, orders) {
                 let iCat = item.category || item['商品分類'] || '';
                 let iName = item.name || item['商品名稱'] || item['商品'] || item['title'] || '未知商品';
                 
-                // 💡 組合帶有分類的商品名稱（例如：[立牌] 贊卡），如果本來就帶有中括號則直接使用
+                // 組合帶有分類的商品名稱（支援餘量自動對應）
                 let pName = (iCat && !iName.startsWith('[')) ? `[${iCat}] ${iName}` : iName;
                 
                 let qty = Number(item['qty'] || item['數量'] || item['q'] || item['quantity'] || 1);
+                let price = Number(item['price'] || item['單價'] || 0);
                 
                 if (pName && !isNaN(qty)) {
-                    summary[pName] = (summary[pName] || 0) + qty;
+                    if (!summary[pName]) {
+                        summary[pName] = { qty: 0, price: price };
+                    }
+                    summary[pName].qty += qty;
+                    // 如果原本沒記錄到單價，用有抓到的單價補上
+                    if (!summary[pName].price && price) {
+                        summary[pName].price = price;
+                    }
                 }
             });
         }
     });
 
-    let summaryArray = Object.keys(summary).map(pName => ({
-        '商品名稱': pName,
-        '總訂購數量': summary[pName]
-    }));
+    // 轉換成符合截圖欄位格式的陣列
+    let summaryArray = Object.keys(summary).map(pName => {
+        let itemData = summary[pName];
+        let totalQty = itemData.qty;
+        let unitPrice = itemData.price;
+        let estimatedTotal = unitPrice * totalQty;
+
+        return {
+            '團務名稱': groupName,
+            '商品名稱': pName,
+            '單價': unitPrice,
+            '總預購數量': totalQty,
+            '預估總金額': estimatedTotal
+        };
+    });
 
     if (summaryArray.length === 0) {
         alert(`「${groupName}」目前沒有任何「已成立」或「已變更」的有效訂單可供統計（包含餘量認領）！`);
         return;
     }
 
-    exportToCSV(summaryArray, `${groupName}_商品統計總表(含餘量).csv`);
+    exportToCSV(summaryArray, `${groupName}_商品統計總表(含金額).csv`);
 }
 window.exportSummaryCSV = exportSummaryCSV;
     
