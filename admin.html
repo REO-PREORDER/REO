@@ -1099,17 +1099,37 @@ function openProductEditModal(groupName) {
 }
 window.openProductEditModal = openProductEditModal;
 
-// 3. 匯出指定團務的名單或總表 (CSV)
+// 5. 匯出指定團務的名單或總表 (完美對應截圖格式，支援餘量與分類合併)
 async function exportGroupSpecificCSV(groupName, type) {
     try {
-        const { data: allOrders, error } = await db.from('orders').select('*');
-        if (error) throw error;
+        const [ordersRes, productsRes] = await Promise.all([
+            db.from('orders').select('*'),
+            db.from('products').select('*').eq('團務名稱', groupName)
+        ]);
+        
+        if (ordersRes.error) throw ordersRes.error;
+        let allOrders = ordersRes.data || [];
+        let groupProducts = productsRes.data || [];
+        let productNames = new Set(groupProducts.map(p => String(p['商品名稱'] || '').trim()).filter(Boolean));
 
-        const orders = (allOrders || []).filter(o => {
+        // 嚴格篩選該團訂單（包含一般預購與該團的餘量認領）
+        const orders = allOrders.filter(o => {
             let oGroup = String(o['團務名稱'] || '').trim();
             let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
             if (oGroup === groupName || cleanGroup === groupName) return true;
             if (oGroup.includes(groupName) || groupName.includes(cleanGroup)) return true;
+
+            let items = o['訂單內容'];
+            if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
+            if (Array.isArray(items)) {
+                return items.some(item => {
+                    let itemName = String(item.name || item['商品名稱'] || '').trim();
+                    for (let pName of productNames) {
+                        if (pName && (itemName === pName || pName.includes(itemName))) return true;
+                    }
+                    return false;
+                });
+            }
             return false;
         });
 
@@ -1119,7 +1139,43 @@ async function exportGroupSpecificCSV(groupName, type) {
         }
 
         if (type === 'buyer') {
-            exportToCSV(orders, `${groupName}_買家喊單名單(含餘量).csv`);
+            // 📝 轉換成截圖指定的買家名單格式
+            let buyerListArray = orders.map(o => {
+                let itemsRaw = o['訂單內容'] !== undefined ? o['訂單內容'] : o['商品明細'];
+                let items = [];
+
+                try {
+                    if (typeof itemsRaw === 'string') {
+                        items = JSON.parse(itemsRaw || '[]');
+                    } else if (Array.isArray(itemsRaw)) {
+                        items = itemsRaw;
+                    } else if (itemsRaw && typeof itemsRaw === 'object') {
+                        items = [itemsRaw];
+                    }
+                } catch (e) {
+                    items = [];
+                }
+
+                // 組裝商品明細字串，例如：[立牌] 恩琴 x1 ; [支架徽章] 恩琴 x1
+                let itemsTextFormatted = items.map(i => {
+                    let iCat = i.category || i['商品分類'] || '';
+                    let iName = i.name || i['商品名稱'] || i['商品'] || i['title'] || '未知商品';
+                    let qty = i.qty || i['數量'] || i['q'] || i['quantity'] || 1;
+
+                    // 如果餘量沒有帶分類，試著從該團商品庫補上分類
+                    let finalName = (iCat && !iName.startsWith('[')) ? `[${iCat}] ${iName}` : iName;
+                    return `${finalName} x${qty}`;
+                }).join(' ; ');
+
+                return {
+                    '團務名稱': groupName,
+                    '買家姓名': o['買家名稱'] || '未知買家',
+                    '商品明細': itemsTextFormatted,
+                    '總金額': Number(o['總金額'] || 0)
+                };
+            });
+
+            exportToCSV(buyerListArray, `${groupName}_買家喊單名單(含餘量).csv`);
         } else if (type === 'summary') {
             exportSummaryCSV(groupName, orders);
         }
