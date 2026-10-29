@@ -3006,7 +3006,7 @@ async function onFrontendGroupSelected() {
 }
 window.onFrontendGroupSelected = onFrontendGroupSelected;
   
-// 📊 讀取並計算前台指定分類的方格看板數據
+// 📊 前台專用：讀取並計算拆團看板數據（完美同步後台「同買家集中」與「手動調整」邏輯）
 async function loadFrontendSplitBoardData() {
   const groupSelect = document.getElementById('frontendSplitGroupSelect');
   const catSelect = document.getElementById('frontendSplitCategorySelect');
@@ -3082,7 +3082,6 @@ async function loadFrontendSplitBoardData() {
       return;
     }
 
-    let roleSet = new Set();
     let roleTotals = {};
     let validOrders = [];
 
@@ -3111,7 +3110,6 @@ async function loadFrontendSplitBoardData() {
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
 
-        roleSet.add(roleName);
         if (!roleTotals[roleName]) roleTotals[roleName] = 0;
         roleTotals[roleName] += pQty;
 
@@ -3124,6 +3122,7 @@ async function loadFrontendSplitBoardData() {
         validOrders.push({
           buyer: ord['買家名稱'] || '未具名',
           time: new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          orderId: ord.id,
           items: orderItemsParsed
         });
       }
@@ -3142,89 +3141,56 @@ async function loadFrontendSplitBoardData() {
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
-let boxes = [];
-    
-    // 1. 依喊單時間先後排序買家訂單
+    // 💡 同步讀取後台在該分類手動微調過的 localStorage 覆寫紀錄，確保前台顯示與後台一模一樣
+    let manualOverridesKey = `reo_split_override_${selectedGroup}_${selectedCategory}`;
+    let manualOverrides = {};
+    try {
+      manualOverrides = JSON.parse(localStorage.getItem(manualOverridesKey) || '{}');
+    } catch(e) { manualOverrides = {}; }
+
+    // 5. 智慧分盒分配（同買家集中 + 支援後台微調結果）
+    let boxes = [];
     validOrders.sort((a, b) => new Date(a.time) - new Date(b.time));
 
-    // 2. 以「買家」為單位統整每個買家喊的所有角色需求
-    // 結構範例：buyerDemands = [ { buyer: '咪呀', time: '下午09:30', items: ['蘇', '龜', '梅'] }, ... ]
-    let buyerMap = {};
     validOrders.forEach(ord => {
-      let bName = ord.buyer;
-      if (!buyerMap[bName]) {
-        buyerMap[bName] = { buyer: bName, time: ord.time, items: [] };
-      }
-      // 把該買家喊的所有角色加進去（不重複或照實加）
-      ord.items.forEach(role => {
-        buyerMap[bName].items.push(role);
+      ord.items.forEach(roleName => {
+        let overrideKey = `${ord.buyer}_${roleName}`;
+        let targetBoxIndex = manualOverrides[overrideKey];
+
+        if (targetBoxIndex !== undefined) {
+          while (boxes.length <= targetBoxIndex) {
+            let newBox = {};
+            roles.forEach(r => { newBox[r] = []; });
+            boxes.push(newBox);
+          }
+          if (!boxes[targetBoxIndex][roleName]) boxes[targetBoxIndex][roleName] = [];
+          boxes[targetBoxIndex][roleName].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId, role: roleName });
+        } else {
+          let placed = false;
+          for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
+            let currentBox = boxes[bIndex];
+            if (!currentBox[roleName]) currentBox[roleName] = [];
+
+            if (currentBox[roleName].length === 0) {
+              let hasThisBuyer = Object.values(currentBox).some(entries => entries.some(e => e.buyer === ord.buyer));
+              if (hasThisBuyer || bIndex === boxes.length - 1) {
+                currentBox[roleName].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId, role: roleName });
+                placed = true;
+                break;
+              }
+            }
+          }
+
+          if (!placed) {
+            let newBox = {};
+            roles.forEach(r => { newBox[r] = []; });
+            newBox[roleName].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId, role: roleName });
+            boxes.push(newBox);
+          }
+        }
       });
     });
 
-    let groupedBuyers = Object.values(buyerMap);
-
-    // 3. 核心分配：每個買家「整組」去尋找盒子，確保同一個人的所有角色都在同一盒
-    groupedBuyers.forEach(buyerObj => {
-      let placed = false;
-
-      // 策略 A：尋找現有盒子中，該買家需要的「所有角色格子」都剛好是空的之盒子
-      for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
-        let currentBox = boxes[bIndex];
-        
-        // 檢查這一盒是不是能容納這位買家的所有角色（也就是所有需要的角色格子目前都沒人）
-        let canFit = buyerObj.items.every(role => {
-          if (!currentBox[role]) currentBox[role] = [];
-          return currentBox[role].length === 0;
-        });
-
-        if (canFit) {
-          // 完美！這一盒可以把這位買家的所有角色一次裝完
-          buyerObj.items.forEach(role => {
-            currentBox[role].push({ buyer: buyerObj.buyer, time: buyerObj.time });
-          });
-          placed = true;
-          break;
-        }
-      }
-
-      // 策略 B：如果現有的盒子都無法完整塞下他的整組品項（有部分角色被別人佔了），則尋找「空位最多」或者開新的一盒
-      if (!placed) {
-        // 先嘗試找一個空位最多的現有盒子，盡量讓他的品項靠攏
-        let bestBox = null;
-        let maxEmptySlots = -1;
-
-        for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
-          let currentBox = boxes[bIndex];
-          let emptyCount = buyerObj.items.filter(role => !currentBox[role] || currentBox[role].length === 0).length;
-          // 必須確保至少有一半以上的角色可以塞進這一盒，或者這盒能塞多少算多少
-          if (emptyCount > maxEmptySlots) {
-            maxEmptySlots = emptyCount;
-            bestBox = currentBox;
-          }
-        }
-
-        // 如果找到合適的現有盒子（能塞進去大部分），就塞進去；否則直接開新的一盒
-        let targetBox = bestBox;
-        if (!targetBox) {
-          targetBox = {};
-          roles.forEach(r => { targetBox[r] = []; });
-          boxes.push(targetBox);
-        }
-
-        buyerObj.items.forEach(role => {
-          if (!targetBox[role]) targetBox[role] = [];
-          // 如果該角色已經被佔了，強制開新盒處理衝突
-          if (targetBox[role].length > 0) {
-            let overflowBox = {};
-            roles.forEach(r => { overflowBox[r] = []; });
-            overflowBox[role].push({ buyer: buyerObj.buyer, time: buyerObj.time });
-            boxes.push(overflowBox);
-          } else {
-            targetBox[role].push({ buyer: buyerObj.buyer, time: buyerObj.time });
-          }
-        });
-      }
-    });
     let maxBoxCount = Math.max(boxes.length, 4);
 
     let tableHtml = `
