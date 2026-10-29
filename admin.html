@@ -2439,37 +2439,47 @@ document.addEventListener("DOMContentLoaded", () => {
     emailInput.value = localStorage.getItem('reo_buyer_email');
   }
 });
-// 📦 1. 載入拆團看板的團務下拉選單（只撈取「商品分類中包含『拆』字」的團務）
+// 📦 完整抓取所有含拆團款的團務選單（使用 0 到 4999 範圍確保不漏掉）
 async function loadSplitGroupOptions() {
   const selectElem = document.getElementById('splitGroupSelect');
   if (!selectElem) return;
 
   try {
-    // 同時撈取 groups 與 products 來做過濾
-    const { data: groups, error: gErr } = await db.from('groups').select('*').order('created_at', { ascending: false });
+    // 1. 撈出所有 groups 團務（使用 range 確保撈取完整範圍）
+    const { data: groups, error: gErr } = await db
+      .from('groups')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(0, 4999);
+
     if (gErr) throw gErr;
 
-    const { data: products, error: pErr } = await db.from('products').select('團務名稱, 商品分類').range(0, 4999);
+    // 2. 撈出所有 products 商品資料（使用 range 4999 確保所有商品都被比對到）
+    const { data: products, error: pErr } = await db
+      .from('products')
+      .select('團務名稱, 商品分類, 商品名稱')
+      .range(0, 4999);
+
     if (pErr) throw pErr;
 
-    // 找出所有商品分類中包含「拆」字的團務名稱集合
+    // 3. 找出所有分類或商品名稱中包含「拆」字的團務名稱
     let validGroupNames = new Set();
     (products || []).forEach(p => {
       let pCat = String(p['商品分類'] || '').trim();
+      let pName = String(p['商品名稱'] || '').trim();
       let gName = String(p['團務名稱'] || '').trim();
-      // 分類必須包含「拆」字
-      if (pCat.includes('拆') && gName) {
+
+      if ((pCat.includes('拆') || pName.includes('拆')) && gName) {
         validGroupNames.add(gName);
       }
     });
 
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let count = 0;
-    
+
     (groups || []).forEach(g => {
       let gName = String(g['團務名稱'] || '').trim();
-      // 確保該團務確實有包含「拆團款」的商品
-      if (gName && validGroupNames.has(gName)) {
+      if (gName && (validGroupNames.has(gName) || gName.includes('拆'))) {
         html += `<option value="${gName}">${gName}</option>`;
         count++;
       }
@@ -2481,7 +2491,7 @@ async function loadSplitGroupOptions() {
     selectElem.innerHTML = html;
 
   } catch (err) {
-    console.error("載入團務下拉選單失敗：", err);
+    console.error("載入拆團團務清單失敗：", err);
   }
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
