@@ -3006,7 +3006,7 @@ async function onFrontendGroupSelected() {
 }
 window.onFrontendGroupSelected = onFrontendGroupSelected;
   
-// 📊 前台專用：讀取並計算拆團看板數據（完美同步後台「同買家集中」與「手動調整」邏輯）
+// 📊 前台專用：完美同步後台「防重疊、複數展開與手動微調」的拆團看板邏輯
 async function loadFrontendSplitBoardData() {
   const groupSelect = document.getElementById('frontendSplitGroupSelect');
   const catSelect = document.getElementById('frontendSplitCategorySelect');
@@ -3083,7 +3083,7 @@ async function loadFrontendSplitBoardData() {
     }
 
     let roleTotals = {};
-    let validOrders = [];
+    let validItemsParsed = [];
 
     orders.forEach(ord => {
       let rawStatus = String(ord['處理狀態'] || '').trim();
@@ -3092,7 +3092,6 @@ async function loadFrontendSplitBoardData() {
       let items = ord['訂單內容'] || [];
       if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
 
-      let orderItemsParsed = [];
       items.forEach(item => {
         let pName = item.name || item['商品名稱'] || '';
         
@@ -3105,7 +3104,6 @@ async function loadFrontendSplitBoardData() {
           .trim();
         
         if (roleName.includes(' x')) roleName = roleName.split(' x')[0].trim();
-
         if (!roles.includes(roleName)) return;
 
         let pQty = parseInt(item.qty || item['數量'] || 1);
@@ -3113,22 +3111,20 @@ async function loadFrontendSplitBoardData() {
         if (!roleTotals[roleName]) roleTotals[roleName] = 0;
         roleTotals[roleName] += pQty;
 
-        for (let i = 0; i < pQty; i++) {
-          orderItemsParsed.push(roleName);
+        for (let q = 0; q < pQty; q++) {
+          validItemsParsed.push({
+            id: `${ord.id}_${roleName}_${q}`,
+            buyer: ord['買家名稱'] || '未具名',
+            time: new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            orderId: ord.id,
+            role: roleName,
+            qtyIndex: q
+          });
         }
       });
-
-      if (orderItemsParsed.length > 0) {
-        validOrders.push({
-          buyer: ord['買家名稱'] || '未具名',
-          time: new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          orderId: ord.id,
-          items: orderItemsParsed
-        });
-      }
     });
 
-    if (roles.length === 0 || validOrders.length === 0) {
+    if (roles.length === 0 || validItemsParsed.length === 0) {
       container.innerHTML = `<p style="color: #f87171; text-align: center; font-size: 13px; padding: 20px;">此分類目前沒有包含喊單紀錄。</p>`;
       if (statsContainer) statsContainer.innerHTML = "";
       return;
@@ -3141,54 +3137,77 @@ async function loadFrontendSplitBoardData() {
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
-    // 💡 同步讀取後台在該分類手動微調過的 localStorage 覆寫紀錄，確保前台顯示與後台一模一樣
+    // 💡 關鍵：讀取與後台完全相同的 localStorage Key 來對應手動調動過的位子
     let manualOverridesKey = `reo_split_override_${selectedGroup}_${selectedCategory}`;
     let manualOverrides = {};
     try {
       manualOverrides = JSON.parse(localStorage.getItem(manualOverridesKey) || '{}');
     } catch(e) { manualOverrides = {}; }
 
-    // 5. 智慧分盒分配（同買家集中 + 支援後台微調結果）
+    // 5. 分盒與防重疊演算法
     let boxes = [];
-    validOrders.sort((a, b) => new Date(a.time) - new Date(b.time));
+    validItemsParsed.sort((a, b) => new Date(a.time) - new Date(b.time));
 
-    validOrders.forEach(ord => {
-      ord.items.forEach(roleName => {
-        let overrideKey = `${ord.buyer}_${roleName}`;
-        let targetBoxIndex = manualOverrides[overrideKey];
+    validItemsParsed.forEach(item => {
+      let targetBoxIndex = manualOverrides[item.id];
 
-        if (targetBoxIndex !== undefined) {
-          while (boxes.length <= targetBoxIndex) {
-            let newBox = {};
-            roles.forEach(r => { newBox[r] = []; });
-            boxes.push(newBox);
-          }
-          if (!boxes[targetBoxIndex][roleName]) boxes[targetBoxIndex][roleName] = [];
-          boxes[targetBoxIndex][roleName].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId, role: roleName });
+      if (targetBoxIndex !== undefined) {
+        while (boxes.length <= targetBoxIndex) {
+          let newBox = {};
+          roles.forEach(r => { newBox[r] = null; });
+          boxes.push(newBox);
+        }
+        let placedManually = false;
+        if (!boxes[targetBoxIndex][item.role]) {
+          boxes[targetBoxIndex][item.role] = item;
+          placedManually = true;
         } else {
-          let placed = false;
-          for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
-            let currentBox = boxes[bIndex];
-            if (!currentBox[roleName]) currentBox[roleName] = [];
-
-            if (currentBox[roleName].length === 0) {
-              let hasThisBuyer = Object.values(currentBox).some(entries => entries.some(e => e.buyer === ord.buyer));
-              if (hasThisBuyer || bIndex === boxes.length - 1) {
-                currentBox[roleName].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId, role: roleName });
-                placed = true;
-                break;
-              }
+          for (let b = 0; b < boxes.length; b++) {
+            if (!boxes[b][item.role]) {
+              boxes[b][item.role] = item;
+              placedManually = true;
+              break;
             }
           }
-
-          if (!placed) {
-            let newBox = {};
-            roles.forEach(r => { newBox[r] = []; });
-            newBox[roleName].push({ buyer: ord.buyer, time: ord.time, orderId: ord.orderId, role: roleName });
-            boxes.push(newBox);
+        }
+        if (!placedManually) {
+          let newBox = {};
+          roles.forEach(r => { newBox[r] = null; });
+          newBox[item.role] = item;
+          boxes.push(newBox);
+        }
+      } else {
+        let placed = false;
+        for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
+          let currentBox = boxes[bIndex];
+          if (!currentBox[item.role]) {
+            let hasThisBuyer = Object.values(currentBox).some(e => e && e.buyer === item.buyer);
+            if (hasThisBuyer) {
+              currentBox[item.role] = item;
+              placed = true;
+              break;
+            }
           }
         }
-      });
+
+        if (!placed) {
+          for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
+            let currentBox = boxes[bIndex];
+            if (!currentBox[item.role]) {
+              currentBox[item.role] = item;
+              placed = true;
+              break;
+            }
+          }
+        }
+
+        if (!placed) {
+          let newBox = {};
+          roles.forEach(r => { newBox[r] = null; });
+          newBox[item.role] = item;
+          boxes.push(newBox);
+        }
+      }
     });
 
     let maxBoxCount = Math.max(boxes.length, 4);
@@ -3200,7 +3219,7 @@ async function loadFrontendSplitBoardData() {
             <th style="padding: 10px; border-right: 1px solid #444; width: 100px; text-align: center; color: #38bdf8;">${selectedCategory} / 角色</th>
     `;
     for (let b = 1; b <= maxBoxCount; b++) {
-      tableHtml += `<th style="padding: 10px; border-right: 1px solid #444; text-align: center; min-width: 140px;">第 ${b} 盒</th>`;
+      tableHtml += `<th style="padding: 10px; border-right: 1px solid #444; text-align: center; min-width: 160px;">第 ${b} 盒</th>`;
     }
     tableHtml += `</tr></thead><tbody>`;
 
@@ -3209,11 +3228,10 @@ async function loadFrontendSplitBoardData() {
       tableHtml += `<td style="padding: 10px; border-right: 1px solid #444; font-weight: bold; background: #18181b; color: #f59e0b; text-align: center;">${role}</td>`;
 
       for (let b = 0; b < maxBoxCount; b++) {
-        let boxData = boxes[b] ? boxes[b][role] : null;
-        let entry = (boxData && boxData.length > 0) ? boxData[0] : null;
-
+        let entry = boxes[b] ? boxes[b][role] : null;
         let cellContent = entry ? `<div style="font-weight: bold; color: #fff;">${entry.buyer}</div><div style="font-size: 11px; color: #888;">(${entry.time})</div>` : `<span style="color: #555; font-style: italic;">(尚無)</span>`;
         let cellBg = entry ? "#1e293b" : "transparent";
+
         tableHtml += `<td style="padding: 8px 10px; border-right: 1px solid #333; background: ${cellBg}; text-align: center; vertical-align: middle;">${cellContent}</td>`;
       }
       tableHtml += `</tr>`;
