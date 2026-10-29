@@ -2439,13 +2439,13 @@ document.addEventListener("DOMContentLoaded", () => {
     emailInput.value = localStorage.getItem('reo_buyer_email');
   }
 });
-// 📦 完整抓取所有含拆團款的團務選單（使用 0 到 4999 範圍確保不漏掉）
+// 📦 後台專用：精準檢查 products 表格中的「商品分類」欄位來載入拆團團務
 async function loadSplitGroupOptions() {
   const selectElem = document.getElementById('splitGroupSelect');
   if (!selectElem) return;
 
   try {
-    // 1. 撈出所有 groups 團務（使用 range 確保撈取完整範圍）
+    // 1. 撈出所有 groups 團務
     const { data: groups, error: gErr } = await db
       .from('groups')
       .select('*')
@@ -2454,7 +2454,7 @@ async function loadSplitGroupOptions() {
 
     if (gErr) throw gErr;
 
-    // 2. 撈出所有 products 商品資料（使用 range 4999 確保所有商品都被比對到）
+    // 2. 撈出所有 products 商品資料，特別指定檢查「商品分類」與「團務名稱」
     const { data: products, error: pErr } = await db
       .from('products')
       .select('團務名稱, 商品分類, 商品名稱')
@@ -2462,14 +2462,14 @@ async function loadSplitGroupOptions() {
 
     if (pErr) throw pErr;
 
-    // 3. 找出所有分類或商品名稱中包含「拆」字的團務名稱
+    // 3. 找出所有在「商品分類」欄位中包含「拆」字的團務名稱
     let validGroupNames = new Set();
     (products || []).forEach(p => {
       let pCat = String(p['商品分類'] || '').trim();
-      let pName = String(p['商品名稱'] || '').trim();
       let gName = String(p['團務名稱'] || '').trim();
 
-      if ((pCat.includes('拆') || pName.includes('拆')) && gName) {
+      // 嚴格檢查：商品分類欄位內含有「拆」字（如「拆團款」）
+      if (pCat.includes('拆') && gName) {
         validGroupNames.add(gName);
       }
     });
@@ -2479,7 +2479,8 @@ async function loadSplitGroupOptions() {
 
     (groups || []).forEach(g => {
       let gName = String(g['團務名稱'] || '').trim();
-      if (gName && (validGroupNames.has(gName) || gName.includes('拆'))) {
+      // 只要該團務名稱在有效清單中，就列入選單
+      if (gName && validGroupNames.has(gName)) {
         html += `<option value="${gName}">${gName}</option>`;
         count++;
       }
@@ -2495,7 +2496,7 @@ async function loadSplitGroupOptions() {
   }
 }
 window.loadSplitGroupOptions = loadSplitGroupOptions;
-
+    
 // 🏷️ 2. 當選擇團務後，只載入該團務底下「分類包含『拆』字」的商品分類
 async function loadCategoriesByGroup(groupName) {
   const catSelect = document.getElementById('splitCategorySelect');
