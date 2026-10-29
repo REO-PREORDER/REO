@@ -298,25 +298,24 @@
     <!-- 📦 1. 選擇團務 -->
     <div style="margin-bottom: 15px;">
       <label style="font-size: 13px; color: #60a5fa; font-weight: bold;">選擇團務：</label>
-      <select id="splitGroupSelect" onchange="onGroupSelectChanged()" style="width: 100%; padding: 8px; margin-top: 5px; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 6px; font-size: 13px;">
+      <select id="splitGroupSelect" onchange="onSplitGroupChanged()" style="width: 100%; padding: 8px; margin-top: 5px; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 6px; font-size: 13px;">
         <option value="">-- 請先選擇團務 --</option>
       </select>
     </div>
 
-    <!-- 🏷️ 2. 選擇商品分類（新增的第二層選單） -->
-   <div style="margin-bottom: 15px;">
-  <label style="font-size: 13px; color: #60a5fa; font-weight: bold;">選擇團務：</label>
-  <select id="splitGroupSelect" onchange="onGroupSelectChanged()" style="width: 100%; padding: 8px; margin-top: 5px; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 6px; font-size: 13px;">
-    <option value="">-- 請先選擇團務 --</option>
-  </select>
-</div>
+    <!-- 🏷️ 2. 選擇商品分類 -->
+    <div style="margin-bottom: 15px;">
+      <label style="font-size: 13px; color: #60a5fa; font-weight: bold;">選擇商品分類：</label>
+      <select id="splitCategorySelect" onchange="loadSplitBoardData()" style="width: 100%; padding: 8px; margin-top: 5px; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 6px; font-size: 13px;">
+        <option value="">-- 請先選擇團務以載入分類 --</option>
+      </select>
+    </div>
 
     <div id="splitSummaryStats" style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; font-size: 13px; color: #d4d4d8;"></div>
-
+    
     <div id="splitBoardTableContainer" style="width: 100%; max-width: 100%; overflow-x: auto; box-sizing: border-box; background: #121212; border: 1px solid #333; border-radius: 6px; padding: 15px;">
       <p style="color: #888; text-align: center; font-size: 13px;">請先上方選擇一個拆團，以展開方格看板。</p>
     </div>
-
   </div>
 </div>
  
@@ -2440,29 +2439,25 @@ document.addEventListener("DOMContentLoaded", () => {
     emailInput.value = localStorage.getItem('reo_buyer_email');
   }
 });
-// 1. 載入含有拆團款的團務選單
+// 📦 1. 載入拆團看板的團務下拉選單（只撈取「商品分類中包含『拆』字」的團務）
 async function loadSplitGroupOptions() {
   const selectElem = document.getElementById('splitGroupSelect');
   if (!selectElem) return;
-  
+
   try {
-    const [groupsRes, productsRes] = await Promise.all([
-      db.from('groups').select('*').order('created_at', { ascending: false }),
-      db.from('products').select('*').order('id', { ascending: false }).range(0, 4999)
-    ]);
+    // 同時撈取 groups 與 products 來做過濾
+    const { data: groups, error: gErr } = await db.from('groups').select('*').order('created_at', { ascending: false });
+    if (gErr) throw gErr;
 
-    if (groupsRes.error) throw groupsRes.error;
-    if (productsRes.error) throw productsRes.error;
+    const { data: products, error: pErr } = await db.from('products').select('團務名稱, 商品分類').range(0, 4999);
+    if (pErr) throw pErr;
 
-    const groups = groupsRes.data || [];
-    const products = productsRes.data || [];
-
-    const cleanStr = (str) => String(str || '').replace(/[\s\u3000]+/g, '').trim();
-
+    // 找出所有商品分類中包含「拆」字的團務名稱集合
     let validGroupNames = new Set();
-    products.forEach(p => {
-      let pCat = cleanStr(p['商品分類']);
+    (products || []).forEach(p => {
+      let pCat = String(p['商品分類'] || '').trim();
       let gName = String(p['團務名稱'] || '').trim();
+      // 分類必須包含「拆」字
       if (pCat.includes('拆') && gName) {
         validGroupNames.add(gName);
       }
@@ -2470,9 +2465,10 @@ async function loadSplitGroupOptions() {
 
     let html = `<option value="">-- 請選擇要檢視的拆團 --</option>`;
     let count = 0;
-
-    groups.forEach(g => {
-      const gName = String(g["團務名稱"] || '').trim();
+    
+    (groups || []).forEach(g => {
+      let gName = String(g['團務名稱'] || '').trim();
+      // 確保該團務確實有包含「拆團款」的商品
       if (gName && validGroupNames.has(gName)) {
         html += `<option value="${gName}">${gName}</option>`;
         count++;
@@ -2482,14 +2478,15 @@ async function loadSplitGroupOptions() {
     if (count === 0) {
       html = `<option value="">-- 目前沒有包含拆團款的團務 --</option>`;
     }
-
     selectElem.innerHTML = html;
+
   } catch (err) {
     console.error("載入團務下拉選單失敗：", err);
   }
 }
+window.loadSplitGroupOptions = loadSplitGroupOptions;
 
-// 2. 當選擇團務後，載入該團務底下「只包含拆團款」的商品分類
+// 🏷️ 2. 當選擇團務後，只載入該團務底下「分類包含『拆』字」的商品分類
 async function loadCategoriesByGroup(groupName) {
   const catSelect = document.getElementById('splitCategorySelect');
   if (!catSelect) return;
@@ -2500,7 +2497,8 @@ async function loadCategoriesByGroup(groupName) {
   }
 
   try {
-    const { data: products, error } = await db.from('products')
+    const { data: products, error } = await db
+      .from('products')
       .select('商品分類, 團務名稱')
       .eq('團務名稱', groupName)
       .range(0, 4999);
@@ -2510,7 +2508,7 @@ async function loadCategoriesByGroup(groupName) {
     let categories = new Set();
     (products || []).forEach(p => {
       let cat = String(p['商品分類'] || '').trim();
-      // 只保留包含「拆」字的分類
+      // 嚴格過濾：分類必須包含「拆」字（如「拆團款」）
       if (cat && cat.includes('拆')) {
         categories.add(cat);
       }
@@ -2524,15 +2522,16 @@ async function loadCategoriesByGroup(groupName) {
     if (categories.size === 0) {
       html = `<option value="">-- 該團務無拆團款分類 --</option>`;
     }
-
     catSelect.innerHTML = html;
+
   } catch (err) {
     console.error("載入分類失敗：", err);
     catSelect.innerHTML = `<option value="">-- 載入分類失敗 --</option>`;
   }
 }
+window.loadCategoriesByGroup = loadCategoriesByGroup;
 
-// 綁定事件監聽
+// 綁定選單變更事件
 document.addEventListener('DOMContentLoaded', () => {
   const selectElem = document.getElementById('splitGroupSelect');
   if (selectElem) {
@@ -2542,10 +2541,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   loadSplitGroupOptions();
 });
-
-// 這兩行務必保留
-window.loadSplitGroupOptions = loadSplitGroupOptions;
-window.loadCategoriesByGroup = loadCategoriesByGroup;
 
 
 // 📦 支援「同買家集中」與「左右手動換盒按鈕」的升級版拆團看板邏輯
