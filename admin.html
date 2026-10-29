@@ -2439,7 +2439,7 @@ document.addEventListener("DOMContentLoaded", () => {
     emailInput.value = localStorage.getItem('reo_buyer_email');
   }
 });
-// 📦 嚴格過濾：後台選單只抓取「商品分類中確實包含『拆』字」的團務
+// 📦 絕對不漏接：使用 trim() 與嚴格模糊比對抓取所有含「拆」字的團務
 async function loadSplitGroupOptions() {
   const selectElem = document.getElementById('splitGroupSelect');
   if (!selectElem) return;
@@ -2462,13 +2462,13 @@ async function loadSplitGroupOptions() {
 
     if (pErr) throw pErr;
 
-    // 3. 找出所有「商品分類」欄位中確實包含「拆」字的團務名稱集合
+    // 3. 找出所有商品分類包含「拆」字的團務名稱集合（自動去除前後空白）
     let validGroupNames = new Set();
     (products || []).forEach(p => {
       let pCat = String(p['商品分類'] || '').trim();
       let gName = String(p['團務名稱'] || '').trim();
 
-      // 嚴格檢查：分類名稱必須包含「拆」字（例如：拆團款、拆團款-相卡等）
+      // 只要分類裡包含「拆」字（如「拆團款」），該團務名稱就有效
       if (pCat.includes('拆') && gName) {
         validGroupNames.add(gName);
       }
@@ -2479,8 +2479,9 @@ async function loadSplitGroupOptions() {
 
     (groups || []).forEach(g => {
       let gName = String(g['團務名稱'] || '').trim();
-      // 只有當該團務在 products 的商品分類中有出現「拆」字，才放進選單
-      if (gName && validGroupNames.has(gName)) {
+      
+      // 比對：只要該團務名稱在有效清單中，或者團務名稱本身包含「拆」字
+      if (gName && (validGroupNames.has(gName) || gName.includes('拆'))) {
         html += `<option value="${gName}">${gName}</option>`;
         count++;
       }
