@@ -3142,11 +3142,13 @@ async function loadFrontendSplitBoardData() {
     });
     if (statsContainer) statsContainer.innerHTML = statsHtml;
 
-    let boxes = [];
-    let individualItems = [];
+let boxes = [];
     
+    // 1. 依喊單時間先後排序
     validOrders.sort((a, b) => new Date(a.time) - new Date(b.time));
 
+    // 2. 展開所有喊單項目
+    let individualItems = [];
     validOrders.forEach(ord => {
       ord.items.forEach(roleName => {
         individualItems.push({
@@ -3157,19 +3159,50 @@ async function loadFrontendSplitBoardData() {
       });
     });
 
+    // 3. 貪婪裝箱分配：讓後下單的 b 優先去補滿 a 的盒子（湊滿與同買家靠攏）
     individualItems.forEach(item => {
       let placed = false;
+
+      // 策略 1：優先尋找「現有盒子中，該角色位置是空的，且該盒子已經有這位買家其他角色」的盒子（讓同一個人集中）
       for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
         let currentBox = boxes[bIndex];
         if (!currentBox[item.role]) currentBox[item.role] = [];
 
         if (currentBox[item.role].length === 0) {
-          currentBox[item.role].push({ buyer: item.buyer, time: item.time });
-          placed = true;
-          break;
+          let hasThisBuyer = Object.values(currentBox).some(roleEntries => 
+            roleEntries.some(entry => entry.buyer === item.buyer)
+          );
+          if (hasThisBuyer) {
+            currentBox[item.role].push({ buyer: item.buyer, time: item.time });
+            placed = true;
+            break;
+          }
         }
       }
 
+      // 策略 2：如果找不到同買家的盒子，則找「空格最少、最快能把箱子湊滿」的現有盒子（也就是 b 去遞補、代替進去 a 的盒子）
+      if (!placed) {
+        // 計算每個現有盒子的「已填滿角色數」，排序優先塞給快滿的盒子
+        let sortedBoxes = boxes.map((box, index) => {
+          let filledCount = Object.values(box).filter(entries => entries.length > 0).length;
+          let isRoleEmpty = !box[item.role] || box[item.role].length === 0;
+          return { index, filledCount, isRoleEmpty };
+        }).filter(b => b.isRoleEmpty); // 篩選出該角色還沒被佔用的盒子
+
+        // 優先挑選已填滿度最高的盒子（讓箱子盡量整盒湊滿）
+        sortedBoxes.sort((x, y) => y.filledCount - x.filledCount);
+
+        if (sortedBoxes.length > 0) {
+          let bestBoxIndex = sortedBoxes[0].index;
+          let targetBox = boxes[bestBoxIndex];
+          if (!targetBox[item.role]) targetBox[item.role] = [];
+          
+          targetBox[item.role].push({ buyer: item.buyer, time: item.time });
+          placed = true;
+        }
+      }
+
+      // 策略 3：如果前面的盒子角色都滿了，或是還沒有任何盒子，才開新的一盒
       if (!placed) {
         let newBox = {};
         roles.forEach(r => { newBox[r] = []; });
