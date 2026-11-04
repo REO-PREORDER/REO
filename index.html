@@ -1352,7 +1352,7 @@ async function selectGroup(groupName, isExpired) {
   document.getElementById('groupListView').style.display = 'none';
   document.getElementById('productOrderView').style.display = 'block';
   document.getElementById('activeGroupTitle').innerText = groupName;
-
+document.getElementById('activeGroupPayment').innerText = group['付款方式'] || '無特別註明';
   // 1. 找出當前團務的物件（取得其 id 與圖片網址）
   let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
   const groupId = currentGroupObj ? currentGroupObj.id : "";
