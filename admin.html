@@ -592,6 +592,7 @@ function renderGroupManageTable() {
                         <button onclick="toggleInlineProducts('${g.id}', '${safeName}')" style="background: #8b5cf6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">🛍️ 管理商品</button>
                         <button onclick="exportGroupSpecificCSV('${safeName}', 'buyer')" style="background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">📥 名單</button>
                         <button onclick="exportGroupSpecificCSV('${safeName}', 'summary')" style="background: #d97706; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">📊 總表</button>
+                        <button onclick="closeGroup('${group['團務名稱']}')" style="background: #e11d48; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">🔒 結單</button>
                     </div>
                 </td>
             </tr>
@@ -719,6 +720,38 @@ if (Array.isArray(items)) {
 }
 window.toggleInlineOrders = toggleInlineOrders;
 
+    // 🔒 執行結單功能（同時更新截單狀態與 isExpired 標記）
+async function closeGroup(groupName) {
+  if (!confirm(`確定要將「${groupName}」進行結單嗎？結單後將無法繼續受理新訂單。`)) {
+    return;
+  }
+
+  try {
+    // 同時更新 isExpired 為 true（代表已截單）
+    const { error } = await db
+      .from('groups')
+      .update({ 
+        'isExpired': true
+      })
+      .eq('團務名稱', groupName);
+
+    if (error) throw error;
+
+    alert(`「${groupName}」已成功結單！`);
+    
+    // 重新載入後台團務列表畫面
+    if (typeof loadAdminGroups === 'function') {
+      loadAdminGroups();
+    } else {
+      location.reload();
+    }
+
+  } catch (err) {
+    console.error("結單失敗：", err);
+    alert(`結單失敗：${err.message}`);
+  }
+}
+window.closeGroup = closeGroup;
     
 // 🔗 點擊訂單數時觸發的跳轉與篩選函式（如果還沒貼過，順便貼在下方）
 function jumpToOrdersForGroup(groupName) {
