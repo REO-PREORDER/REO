@@ -720,38 +720,7 @@ if (Array.isArray(items)) {
 }
 window.toggleInlineOrders = toggleInlineOrders;
 
-    // 🔒 執行結單功能（同時更新截單狀態與 isExpired 標記）
-async function closeGroup(groupName) {
-  if (!confirm(`確定要將「${groupName}」進行結單嗎？結單後將無法繼續受理新訂單。`)) {
-    return;
-  }
-
-  try {
-    // 同時更新 isExpired 為 true（代表已截單）
-    const { error } = await db
-      .from('groups')
-      .update({ 
-        'isExpired': true
-      })
-      .eq('團務名稱', groupName);
-
-    if (error) throw error;
-
-    alert(`「${groupName}」已成功結單！`);
-    
-    // 重新載入後台團務列表畫面
-    if (typeof loadAdminGroups === 'function') {
-      loadAdminGroups();
-    } else {
-      location.reload();
-    }
-
-  } catch (err) {
-    console.error("結單失敗：", err);
-    alert(`結單失敗：${err.message}`);
-  }
-}
-window.closeGroup = closeGroup;
+   
     
 // 🔗 點擊訂單數時觸發的跳轉與篩選函式（如果還沒貼過，順便貼在下方）
 function jumpToOrdersForGroup(groupName) {
