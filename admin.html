@@ -502,52 +502,55 @@ window.switchAdminTab = switchAdminTab;
 
 // --- ⚙️ 團務管理相關完整核心邏輯 ---
 
-// 1. 載入團務管理列表（依截單時間近到遠排序）
-let cachedGroupsList = [];
-    
-// 1. 📦 載入團務管理列表（依截單時間近到遠排序，並正確計算含餘量的訂單數）
+// 1. 📦 載入團務管理列表（開團中排前面，已結單自動置底，並依截單時間排序）
 async function loadGroupManageList() {
-    try {
-        const [groupsRes, ordersRes] = await Promise.all([
-            db.from('groups').select('*'),
-            db.from('orders').select('團務名稱, 處理狀態')
-        ]);
-        
-        if (groupsRes.error) throw groupsRes.error;
-        let groups = groupsRes.data || [];
-        let orders = ordersRes.data || [];
+  try {
+    const [groupsRes, ordersRes] = await Promise.all([
+      db.from('groups').select('*'),
+      db.from('orders').select('團務名稱, 處理狀態')
+    ]);
 
-        // ⏱️ 依照截單時間由近到遠排序 (時間越近越前面，沒填的排後面)
-        groups.sort((a, b) => {
-            let timeA = a['截單時間'] ? new Date(a['截單時間']).getTime() : 8640000000000;
-            let timeB = b['截單時間'] ? new Date(b['截單時間']).getTime() : 8640000000000;
-            return timeA - timeB;
-        });
+    if (groupsRes.error) throw groupsRes.error;
+    let groups = groupsRes.data || [];
+    let orders = ordersRes.data || [];
 
-        // 建立快取清單，並直接在此計算每個團的訂單數（完美包含一般預購與餘量認領）
-        cachedGroupsList = groups.map(g => {
-            let gName = g['團務名稱'] || '';
-            
-            // 過濾出屬於這個團的所有訂單（包含含有該團名的餘量認領訂單）
-            let matchedOrders = orders.filter(o => {
-                let oGroup = String(o['團務名稱'] || '').trim();
-                let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
-                return oGroup === gName || cleanGroup === gName;
-            });
+    // ⏱️ 排序邏輯：1. 開團中優先；2. 已結單自動置底；3. 依截單時間由近到遠排序
+    groups.sort((a, b) => {
+      let isClosedA = a['isExpired'] === true;
+      let isClosedB = b['isExpired'] === true;
 
-            return {
-                ...g,
-                orderCount: matchedOrders.length
-            };
-        });
+      // 如果一個已結單、一個開團中，開團中（false）排在前面
+      if (isClosedA !== isClosedB) {
+        return isClosedA ? 1 : -1;
+      }
 
-        renderGroupManageTable();
-    } catch (err) {
-        console.error("載入團務列表失敗：", err);
-    }
+      // 狀態相同時，依照截單時間由近到遠排序
+      let timeA = a['截單時間'] ? new Date(a['截單時間']).getTime() : 8640000000000;
+      let timeB = b['截單時間'] ? new Date(b['截單時間']).getTime() : 8640000000000;
+      return timeA - timeB;
+    });
+
+    // 建立快取清單，並計算每個團的訂單數
+    cachedGroupsList = groups.map(g => {
+      let gName = g['團務名稱'] || '';
+      let matchedOrders = orders.filter(o => {
+        let oGroup = String(o['團務名稱'] || '').trim();
+        let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
+        return oGroup === gName || cleanGroup === gName;
+      });
+      return {
+        ...g,
+        orderCount: matchedOrders.length
+      };
+    });
+
+    renderGroupManageTable();
+
+  } catch (err) {
+    console.error("載入團務列表失敗：", err);
+  }
 }
 window.loadGroupManageList = loadGroupManageList;
-
 // --- ⚙️ 1. 渲染團務管理表格（含結單快捷按鈕與點擊訂單數直接在下方展開該團訂單） ---
 function renderGroupManageTable() {
     const tbody = document.getElementById('groupManageTbody');
