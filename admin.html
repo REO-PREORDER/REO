@@ -1727,44 +1727,41 @@ async function exportProductSummaryCSV() {
     }
     return url;
   }
-// 🔐 管理員後台控制（支援 1 小時內重新整理不用重新登入）
+// 🔐 超穩定的管理員登入控制（支援 1 小時內免重新登入，且重新整理不會失效）
 function checkAdminHash() {
   const adminDash = document.getElementById('adminDashboard');
   const adminLoginBox = document.getElementById('adminLoginBox');
 
-  // 檢查 localStorage 裡面記錄的登入時間
   const loginTime = localStorage.getItem('adminLoginTime');
-  const ONE_HOUR = 60 * 60 * 1000; // 一小時的毫秒數 (3600000)
+  const ONE_HOUR = 60 * 60 * 1000; // 1 小時 (毫秒)
   const now = new Date().getTime();
 
-  // 如果 1 小時內有登入過，直接放行顯示後台
+  // 1. 如果 1 小時內驗證過，不管網址有沒有 #admin，直接放行顯示後台！
   if (loginTime && (now - parseInt(loginTime) < ONE_HOUR)) {
     if (adminLoginBox) adminLoginBox.style.display = 'none';
     if (adminDash) {
       adminDash.style.display = 'block';
       if (typeof loadOrderStats === 'function') loadOrderStats();
       if (typeof loadExportGroupOptions === 'function') loadExportGroupOptions();
-      if (typeof loadGroupSelectForEdit === 'function') {
-        loadGroupSelectForEdit();
-      }
+      if (typeof loadGroupSelectForEdit === 'function') loadGroupSelectForEdit();
+      if (typeof loadGroupManageList === 'function') loadGroupManageList();
     }
     return;
   }
 
-  // 超過一小時或未登入，如果網址帶有 #admin 則跳出密碼提示
+  // 2. 如果超過 1 小時或沒登入過，檢查網址是否有帶 #admin
   if (window.location.hash === '#admin') {
     if (adminLoginBox) adminLoginBox.style.display = 'none';
     const pwd = prompt("🔐 請輸入管理員密碼：");
     if (pwd === "qingyuan") {
-      // 記錄登入當下的時間戳記
+      // 記錄登入時間
       localStorage.setItem('adminLoginTime', new Date().getTime().toString());
       if (adminDash) {
         adminDash.style.display = 'block';
         if (typeof loadOrderStats === 'function') loadOrderStats();
         if (typeof loadExportGroupOptions === 'function') loadExportGroupOptions();
-        if (typeof loadGroupSelectForEdit === 'function') {
-          loadGroupSelectForEdit();
-        }
+        if (typeof loadGroupSelectForEdit === 'function') loadGroupSelectForEdit();
+        if (typeof loadGroupManageList === 'function') loadGroupManageList();
         alert("🎉 管理員登入成功！");
       }
     } else if (pwd !== null) {
@@ -1773,12 +1770,16 @@ function checkAdminHash() {
       if (adminDash) adminDash.style.display = 'none';
     }
   } else {
-    // 如果沒帶 #admin，顯示登入按鈕框
+    // 3. 既沒登入過又沒帶 #admin，顯示登入按鈕/提示框
     if (adminLoginBox) adminLoginBox.style.display = 'block';
     if (adminDash) adminDash.style.display = 'none';
   }
 }
 window.checkAdminHash = checkAdminHash;
+
+// 頁面載入與網址雜湊改變時自動觸發
+window.addEventListener('DOMContentLoaded', checkAdminHash);
+window.addEventListener('hashchange', checkAdminHash);
     
     // 簡單的密碼驗證 (與您原本的相呼應)
     function checkAdminPassword() {
