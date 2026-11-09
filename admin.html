@@ -374,7 +374,7 @@ async function submitGroupForm() {
       if (updateErr) throw updateErr;
 
       alert(`💾 成功儲存團務「${groupName}」的修改內容！`);
-      location.reload();
+    
 
     } else {
       // ➕ 新增模式：寫入新 groups 資料
@@ -433,7 +433,6 @@ async function submitGroupForm() {
       if (prodErr) throw new Error("團務建立成功，但商品寫入失敗：" + prodErr.message);
 
       alert(`🎉 成功建立新團務「${groupName}」並同時新增了 ${newProducts.length} 項商品！`);
-      location.reload();
     }
 
   } catch (err) {
@@ -638,7 +637,6 @@ async function closeGroup(groupName) {
     if (typeof loadAdminGroups === 'function') {
       loadAdminGroups();
     } else {
-      location.reload();
     }
 
   } catch (err) {
@@ -1624,7 +1622,6 @@ async function deleteCurrentGroup() {
     if (groupError) throw new Error(groupError.message);
 
     alert("🎉 團務已成功從資料庫刪除！");
-    location.reload(); 
   } catch (err) {
     console.error("刪除發生錯誤：", err);
     alert("❌ 刪除失敗，錯誤原因：" + err.message);
