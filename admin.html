@@ -2453,8 +2453,7 @@ function filterOrders() {
   const rawKeyword = document.getElementById('searchOrderInput').value.trim();
   const keyword = rawKeyword.toLowerCase();
   const selectedGroup = document.getElementById('filterGroupSelect').value;
-  const selectedStatus = document.getElementById('filterStatusSelect') ? document.getElementById('filterStatusSelect'].value : "";
-
+  const selectedStatus = document.getElementById('filterStatusSelect') ? document.getElementById('filterStatusSelect').value : "";
   if (!window.allOrdersData) return;
 
   // 檢查使用者輸入的是不是純數字（或是帶有 # 的編號，例如 #214 或 214）
