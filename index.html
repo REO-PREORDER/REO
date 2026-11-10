@@ -1883,23 +1883,26 @@ function renderCustomerOrders() {
     if (statusText === "已變更") statusColor = "#f59e0b";
     if (statusText === "已取消") statusColor = "#ef4444";
 
-    let itemsHtml = "";
+   let itemsHtml = "";
     let items = order["訂單內容"] || [];
     items.forEach(item => {
-      let itemName = item.name || item["商品名稱"] || "";
+      let itemName = (item.name || item["商品名稱"] || "").trim();
       
-      // 💡 自動去全域最新商品庫 (allProductsData) 尋找同名商品，優先抓取「圖片」或「圖片網址」
+      // 💡 終極比對：去 products 找商品
       let latestImgUrl = "";
       if (typeof allProductsData !== 'undefined' && Array.isArray(allProductsData)) {
-        let matchedProd = allProductsData.find(p => (p["商品名稱"] || "").trim() === itemName.trim());
+        // 找找看有沒有品名完全一樣，或是包含關鍵字的商品
+        let matchedProd = allProductsData.find(p => {
+          let pName = (p["商品名稱"] || "").trim();
+          return pName && (itemName === pName || itemName.includes(pName));
+        });
         if (matchedProd) {
           latestImgUrl = matchedProd["圖片"] || matchedProd["圖片網址"] || matchedProd["image"] || "";
         }
       }
 
-     // 💡 強制優先使用 products 裡最新修改的圖片！如果最新商品庫找不到，才fallback用舊訂單的圖
+      // 只要 products 裡有最新圖片，就強制優先使用！沒有才用訂單當下的舊圖
       let imgUrl = latestImgUrl ? latestImgUrl : (item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "");
-      let category = item.category || item["分類"] || item["商品分類"] || "";
       
       let imgTag = "";
       if (imgUrl) {
