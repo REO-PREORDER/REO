@@ -1881,7 +1881,19 @@ function renderCustomerOrders() {
     let itemsHtml = "";
     let items = order["訂單內容"] || [];
     items.forEach(item => {
-      let imgUrl = item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "";
+      let itemName = item.name || item["商品名稱"] || "";
+      
+      // 💡 自動去全域最新商品庫 (allProductsData) 尋找同名商品，若有最新圖片則優先採用！
+      let latestImgUrl = "";
+      if (typeof allProductsData !== 'undefined' && Array.isArray(allProductsData)) {
+        let matchedProd = allProductsData.find(p => (p["商品名稱"] || "").trim() === itemName.trim());
+        if (matchedProd) {
+          latestImgUrl = matchedProd["圖片"] || matchedProd["image"] || "";
+        }
+      }
+
+      // 如果最新商品庫找不到，才退回使用原本訂單裡的圖片
+      let imgUrl = latestImgUrl || item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "";
       let category = item.category || item["分類"] || item["商品分類"] || "";
       
       let imgTag = "";
@@ -1905,7 +1917,7 @@ function renderCustomerOrders() {
         <div style="margin-bottom: 8px; font-size: 13px; color: #e4e4e7; display: flex; align-items: center;">
           ${imgTag}
           <div>
-            <div>${categoryBadge}<strong style="color:#fff;">${item.name || item["商品名稱"]}</strong></div>
+            <div>${categoryBadge}<strong style="color:#fff;">${itemName}</strong></div>
             <div style="font-size:12px; color:#a1a1aa; margin-top:2px;">數量: ${item.qty || item["數量"]} | 單價: $${item.price || item["單價"] || 0}</div>
           </div>
         </div>`;
