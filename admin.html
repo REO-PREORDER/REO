@@ -289,7 +289,7 @@
         <th style="padding: 10px 12px; color: #9ca3af; width: 80px;">總金額</th>
         <th style="padding: 10px 12px; color: #9ca3af; width: 80px;">訂單狀態</th>
         <th style="padding: 10px 12px; color: #9ca3af; width: 120px;">買家備註</th>
-        <th style="padding: 10px 12px; color: #fbbf24; width: 120px;">管理員備註</th>
+        <th style="padding: 10px 12px; color: #fbbf24; width: 160px;">管理員備註</th>
         <th style="padding: 10px 12px; color: #9ca3af; text-align: center; width: 100px;">操作</th>
       </tr>
     </thead>
@@ -2377,7 +2377,7 @@ async function loadAllOrders() {
 }
 window.loadAllOrders = loadAllOrders;
 
-// 🎨 渲染訂單表格（已加強 DOM 可見性與防護）
+// 🎨 渲染訂單表格（已支援管理員備註行內即時編輯）
 function renderOrdersTable(orders) {
   // 💡 強制確保訂單分頁容器是顯示的，避免因為 display: none 導致渲染失敗
   const tabOrders = document.getElementById('tab-orders');
@@ -2402,7 +2402,10 @@ function renderOrdersTable(orders) {
     let timeStr = o.created_at ? new Date(o.created_at).toLocaleString() : "未知時間";
     
     let buyerRemark = o["買家備註"] || "-";
-    let adminRemark = o["備註"] || "-";
+    
+    // 💡 管理員備註對應資料庫的「備註」欄位
+    let adminRemark = o["備註"] || "";
+    let safeAdminRemark = adminRemark.replace(/'/g, "&#39;");
     
     let statusColor = "#10b981"; 
     if (o["處理狀態"] === "已變更") statusColor = "#f59e0b";
@@ -2415,11 +2418,11 @@ function renderOrdersTable(orders) {
     }
     
     if (Array.isArray(items)) {
-  detailsText = items.map(i => {
-    let cat = i.category ? `[${i.category}] ` : "";
-    return `${cat}${i.name || i["商品名稱"]} x ${i.qty || i["數量"]} ($${i.price || 0})`;
-  }).join("<br>");
-} else {
+      detailsText = items.map(i => {
+        let cat = i.category ? `[${i.category}] ` : "";
+        return `${cat}${i.name || i["商品名稱"]} x ${i.qty || i["數量"]} ($${i.price || 0})`;
+      }).join("<br>");
+    } else {
       detailsText = items || "無明細";
     }
 
@@ -2433,7 +2436,22 @@ function renderOrdersTable(orders) {
         <td style="padding: 8px; color: #f87171; font-weight: bold;">$${o["總金額"] || 0}</td>
         <td style="padding: 8px; font-weight: bold; color: ${statusColor};">${o["處理狀態"] || '待確認'}</td>
         <td style="padding: 8px; color: #cbd5e1; font-size: 11px; max-width: 150px; word-break: break-all;">${buyerRemark}</td>
-        <td style="padding: 8px; color: #fbbf24; font-size: 11px; max-width: 150px; word-break: break-all;">${adminRemark}</td>
+        
+        <!-- 🟢 支援行內即時編輯的管理員備註欄位 -->
+        <td style="padding: 8px; font-size: 11px; max-width: 180px; word-break: break-all;">
+          <div id="remark-display-${orderId}">
+            <span style="color: #fbbf24;">${adminRemark ? adminRemark : '<span style="color:#666; font-style:italic;">點擊新增</span>'}</span>
+            <br><button onclick="openInlineRemarkEdit('${orderId}')" style="background: transparent; border: none; color: #38bdf8; font-size: 11px; cursor: pointer; padding: 2px 0; text-decoration: underline;">✏️ 修改</button>
+          </div>
+          <div id="remark-edit-${orderId}" style="display: none; margin-top: 4px;">
+            <input type="text" id="remark-input-${orderId}" value="${safeAdminRemark}" style="width: 100%; padding: 4px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+            <div style="display: flex; gap: 4px; margin-top: 4px;">
+              <button onclick="saveAdminRemark('${orderId}')" style="background: #10b981; color: white; border: none; padding: 2px 6px; border-radius: 3px; font-size: 11px; cursor: pointer;">💾</button>
+              <button onclick="cancelInlineRemarkEdit('${orderId}')" style="background: #555; color: white; border: none; padding: 2px 6px; border-radius: 3px; font-size: 11px; cursor: pointer;">✕</button>
+            </div>
+          </div>
+        </td>
+
         <td style="padding: 8px; display: flex; gap: 4px; flex-wrap: wrap;">
           <button onclick="updateOrderStatus('${o.id}', '已成立')" style="background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✓ 成立</button>
           <button onclick='openModifyModal(${JSON.stringify(o)})' style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏ 變更</button>
@@ -2448,6 +2466,68 @@ function renderOrdersTable(orders) {
 }
 window.renderOrdersTable = renderOrdersTable;
 
+    // ✏️ 開啟管理員備註的行內編輯模式
+function openInlineRemarkEdit(orderId) {
+  let displayBox = document.getElementById(`remark-display-${orderId}`);
+  let editBox = document.getElementById(`remark-edit-${orderId}`);
+  if (displayBox) displayBox.style.display = 'none';
+  if (editBox) editBox.style.display = 'block';
+  
+  let inputEl = document.getElementById(`remark-input-${orderId}`);
+  if (inputEl) {
+    inputEl.focus();
+    inputEl.select();
+  }
+}
+window.openInlineRemarkEdit = openInlineRemarkEdit;
+
+// ✕ 取消管理員備註編輯
+function cancelInlineRemarkEdit(orderId) {
+  let displayBox = document.getElementById(`remark-display-${orderId}`);
+  let editBox = document.getElementById(`remark-edit-${orderId}`);
+  if (displayBox) displayBox.style.display = 'block';
+  if (editBox) editBox.style.display = 'none';
+}
+window.cancelInlineRemarkEdit = cancelInlineRemarkEdit;
+
+// 💾 儲存修改後的管理員備註到 Supabase 資料庫的「備註」欄位
+async function saveAdminRemark(orderId) {
+  let inputEl = document.getElementById(`remark-input-${orderId}`);
+  if (!inputEl) return;
+  
+  let newRemark = inputEl.value.trim();
+
+  try {
+    const { error } = await db.from('orders')
+      .update({ "備註": newRemark })
+      .eq('id', Number(orderId));
+
+    if (error) throw error;
+
+    // 同時更新本地快取資料
+    if (window.allOrdersData) {
+      let cachedOrder = window.allOrdersData.find(o => String(o.id) === String(orderId));
+      if (cachedOrder) {
+        cachedOrder["備註"] = newRemark;
+      }
+    }
+
+    alert("💾 管理員備註已更新！");
+    
+    // 重新過濾與渲染表格畫面
+    if (typeof filterOrders === 'function') {
+      filterOrders();
+    } else if (typeof loadAllOrders === 'function') {
+      loadAllOrders();
+    }
+
+  } catch (err) {
+    console.error("更新管理員備註失敗：", err);
+    alert("更新失敗：" + err.message);
+  }
+}
+window.saveAdminRemark = saveAdminRemark;
+    
 // 🔍 搜尋與篩選訂單（完美支援精準編號搜尋）
 function filterOrders() {
   const rawKeyword = document.getElementById('searchOrderInput').value.trim();
