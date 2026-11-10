@@ -987,7 +987,7 @@ function toggleInlineEdit(groupId) {
 }
 window.toggleInlineEdit = toggleInlineEdit;
 
-// 💾 儲存行內編輯的團務（並自動同步更新所有關聯商品的團務名稱）
+// 💾 儲存行內編輯的團務（智慧連動更新：若有訂單會自動同步更新商品與舊訂單的團名，確保對帳不中斷）
 async function saveInlineGroup(groupId) {
   let oldName = document.getElementById(`edit_name_${groupId}`).getAttribute('data-old-name') || '';
   let newName = document.getElementById(`edit_name_${groupId}`).value.trim();
@@ -1002,7 +1002,39 @@ async function saveInlineGroup(groupId) {
   }
 
   try {
-    // 1. 更新 groups 資料表的團務資料
+    // 1. 如果團名有被更改，檢查是否有舊訂單或商品需要同步
+    if (oldName && oldName !== newName) {
+      // 檢查該舊團名是否有訂單
+      const { data: existingOrders, error: orderCheckErr } = await db
+        .from('orders')
+        .select('id, 團務名稱')
+        .or(`團務名稱.eq.${oldName},團務名稱.ilike.%${oldName}%`);
+
+      if (!orderCheckErr && existingOrders && existingOrders.length > 0) {
+        let confirmChange = confirm(`⚠️ 注意：「${oldName}」目前已有 ${existingOrders.length} 筆買家訂單紀錄！\n\n點擊「確定」後，系統會自動把相關的「商品表」與「所有歷史訂單」的團務名稱同步改成「${newName}」，確保訂單與總表不會跑掉。要繼續嗎？`);
+        if (!confirmChange) {
+          return; // 使用者按取消，中止修改
+        }
+
+        // 🟢 A. 連動更新所有歷史訂單的團務名稱
+        for (let ord of existingOrders) {
+          await db.from('orders')
+            .update({ "團務名稱": newName })
+            .eq('id', ord.id);
+        }
+      }
+
+      // 🟢 B. 同時連動更新 products 商品表裡該團所有商品的團務名稱
+      const { error: prodError } = await db.from('products')
+        .update({ "團務名稱": newName })
+        .eq('團務名稱', oldName);
+
+      if (prodError) {
+        console.error("同步更新商品團名失敗：", prodError);
+      }
+    }
+
+    // 2. 更新 groups 資料表的團務資料
     const { error: groupError } = await db.from('groups')
       .update({
         "團務名稱": newName,
@@ -1015,19 +1047,7 @@ async function saveInlineGroup(groupId) {
 
     if (groupError) throw groupError;
 
-    // 2. 🟢 關鍵同步：如果團務名稱有被更改，連帶把 products 商品表裡的「團務名稱」一起改掉！
-    if (oldName && oldName !== newName) {
-      const { error: prodError } = await db.from('products')
-        .update({ "團務名稱": newName })
-        .eq('團務名稱', oldName);
-
-      if (prodError) {
-        console.error("同步更新商品團名失敗：", prodError);
-        alert("團務名稱已更新，但部分關聯商品的團名同步失敗：" + prodError.message);
-      }
-    }
-
-    // 更新快取資料
+    // 更新前端快取資料
     let target = cachedGroupsList.find(g => String(g.id) === String(groupId));
     if (target) {
       target['團務名稱'] = newName;
@@ -1035,11 +1055,17 @@ async function saveInlineGroup(groupId) {
       target['圖片'] = newImg;
       target['付款方式'] = newPayment;
       target['團務備註'] = newRemark;
+      // 同時更新 data-old-name 避免連續修改出錯
+      const nameInput = document.getElementById(`edit_name_${groupId}`);
+      if (nameInput) nameInput.setAttribute('data-old-name', newName);
     }
 
-    alert("💾 團務修改成功（商品團名已同步更新）！");
+    alert("💾 團務修改成功！相關商品與歷史訂單已同步更新！");
     document.getElementById(`inline-edit-container-${groupId}`).style.display = 'none';
     renderGroupManageTable();
+    
+    // 如果統計區塊存在，順便重新計算
+    if (typeof loadOrderStats === 'function') loadOrderStats();
 
   } catch (err) {
     console.error("修改失敗：", err);
@@ -1047,6 +1073,7 @@ async function saveInlineGroup(groupId) {
   }
 }
 window.saveInlineGroup = saveInlineGroup;
+    
 // --- 🛍️ 直接在表格內展開/收合「管理商品」清單（含圖片網址與固定大小按鈕） ---
 async function toggleInlineProducts(groupId, groupName) {
     let container = document.getElementById(`inline-edit-container-${groupId}`);
