@@ -1883,18 +1883,18 @@ function renderCustomerOrders() {
     if (statusText === "已變更") statusColor = "#f59e0b";
     if (statusText === "已取消") statusColor = "#ef4444";
 
-   let itemsHtml = "";
+  let itemsHtml = "";
     let items = order["訂單內容"] || [];
     items.forEach(item => {
       let itemName = (item.name || item["商品名稱"] || "").trim();
-      let category = item.category || item["分類"] || item["商品分類"] || ""; // 💡 補上這一行宣告變數！
+      let category = item.category || item["分類"] || item["商品分類"] || ""; // 補上分類變數避免報錯
       
-      // 💡 終極比對：去 products 找商品
+      // 💡 絕對優先：不管舊訂單寫什麼，強制去全域商品庫 (allProductsData) 抓最新圖片！
       let latestImgUrl = "";
       if (typeof allProductsData !== 'undefined' && Array.isArray(allProductsData)) {
-        // 找找看有沒有品名完全一樣，或是包含關鍵字的商品
         let matchedProd = allProductsData.find(p => {
           let pName = (p["商品名稱"] || "").trim();
+          // 只要商品名稱完全一樣，或者訂單品名包含該商品名稱（例如 "[兔娃] 蘇枋" 包含 "蘇枋"）
           return pName && (itemName === pName || itemName.includes(pName));
         });
         if (matchedProd) {
@@ -1902,7 +1902,7 @@ function renderCustomerOrders() {
         }
       }
 
-      // 只要 products 裡有最新圖片，就強制優先使用！沒有才用訂單當下的舊圖
+      // 如果全域商品庫真的找不到這項商品，才退回使用舊訂單的圖
       let imgUrl = latestImgUrl ? latestImgUrl : (item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "");
       
       let imgTag = "";
