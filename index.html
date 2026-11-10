@@ -1888,12 +1888,12 @@ function renderCustomerOrders() {
     items.forEach(item => {
       let itemName = item.name || item["商品名稱"] || "";
       
-      // 💡 自動去全域最新商品庫 (allProductsData) 尋找同名商品，若有最新圖片則優先採用！
+      // 💡 自動去全域最新商品庫 (allProductsData) 尋找同名商品，優先抓取「圖片」或「圖片網址」
       let latestImgUrl = "";
       if (typeof allProductsData !== 'undefined' && Array.isArray(allProductsData)) {
         let matchedProd = allProductsData.find(p => (p["商品名稱"] || "").trim() === itemName.trim());
         if (matchedProd) {
-          latestImgUrl = matchedProd["圖片"] || matchedProd["image"] || "";
+          latestImgUrl = matchedProd["圖片"] || matchedProd["圖片網址"] || matchedProd["image"] || "";
         }
       }
 
