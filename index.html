@@ -1878,12 +1878,27 @@ function renderCustomerOrders() {
     if (statusText === "已變更") statusColor = "#f59e0b";
     if (statusText === "已取消") statusColor = "#ef4444";
 
-    let itemsHtml = "";
+   let itemsHtml = "";
     let items = order["訂單內容"] || [];
     items.forEach(item => {
-      let imgUrl = item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "";
+      let itemName = (item.name || item["商品名稱"] || "").trim();
       let category = item.category || item["分類"] || item["商品分類"] || "";
       
+      // 💡 絕對核心：不管訂單寫什麼，強制只抓 products 裡最新對應的圖片！
+      let imgUrl = "";
+      if (typeof allProductsData !== 'undefined' && Array.isArray(allProductsData)) {
+        // 去 products 尋找名稱符合的商品
+        let matchedProd = allProductsData.find(p => {
+          let pName = (p["商品名稱"] || "").trim();
+          // 如果 products 裡的名稱完全符合，或是訂單品名包含該商品名稱
+          return pName && (itemName === pName || itemName.includes(pName));
+        });
+        if (matchedProd) {
+          imgUrl = matchedProd["圖片"] || matchedProd["圖片網址"] || matchedProd["image"] || "";
+        }
+      }
+
+      // 如果真的很不幸在 products 找不到，才給空圖，絕對不抓舊訂單的圖！
       let imgTag = "";
       if (imgUrl) {
         let urlList = String(imgUrl).split(/[\r\n,，\s]+/).filter(u => u.trim() !== "");
@@ -1897,6 +1912,7 @@ function renderCustomerOrders() {
       } else {
         imgTag = `<div style="width:45px; height:45px; background:#27272a; border-radius:6px; margin-right:10px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#a1a1aa;">無圖</div>`;
       }
+
       let categoryBadge = category 
         ? `<span style="background:#3f3f46; color:#e4e4e7; font-size:10px; padding:1px 5px; border-radius:3px; margin-right:6px;">${category}</span>`
         : "";
@@ -1905,7 +1921,7 @@ function renderCustomerOrders() {
         <div style="margin-bottom: 8px; font-size: 13px; color: #e4e4e7; display: flex; align-items: center;">
           ${imgTag}
           <div>
-            <div>${categoryBadge}<strong style="color:#fff;">${item.name || item["商品名稱"]}</strong></div>
+            <div>${categoryBadge}<strong style="color:#fff;">${itemName}</strong></div>
             <div style="font-size:12px; color:#a1a1aa; margin-top:2px;">數量: ${item.qty || item["數量"]} | 單價: $${item.price || item["單價"] || 0}</div>
           </div>
         </div>`;
