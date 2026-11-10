@@ -1767,7 +1767,7 @@ function closeLightbox() {
 // 全域變數：暫存目前查詢到的客戶訂單
 let currentCustomerOrders = [];
 
-// 1. 查詢個人訂單記錄
+// 1. 查詢個人訂單記錄（已同步載入最新商品圖庫）
 async function queryOrder() {
   let searchKey = document.getElementById('searchKey').value.trim();
   let searchResult = document.getElementById('searchResult');
@@ -1776,14 +1776,20 @@ async function queryOrder() {
   searchResult.innerHTML = "查詢中...";
 
   try {
-    const { data: orders, error } = await db
-      .from('orders')
-      .select('*')
-      .or(`手機號碼.eq.${searchKey},Email.eq.${searchKey}`)
-      .order('created_at', { ascending: false });
+    // 💡 查詢訂單的同時，順便把 products 資料表的最新圖片抓下來備用！
+    const [ordersRes, productsRes] = await Promise.all([
+      db.from('orders').select('*').or(`手機號碼.eq.${searchKey},Email.eq.${searchKey}`).order('created_at', { ascending: false }),
+      db.from('products').select('*')
+    ]);
 
-    if (error) throw error;
+    if (ordersRes.error) throw ordersRes.error;
+    
+    // 把抓到的最新商品資料存入全域變數
+    if (productsRes.data) {
+      window.allProductsData = productsRes.data;
+    }
 
+    const orders = ordersRes.data;
     if (!orders || orders.length === 0) {
       searchResult.innerHTML = "<p style='color:#aaa; text-align:center;'>查無相關預購紀錄。</p>";
       return;
@@ -1797,7 +1803,6 @@ async function queryOrder() {
     searchResult.innerHTML = `<p style="color:#f87171;">查詢失敗：${err.message}</p>`;
   }
 }
-
 // 2. 渲染與過濾客戶訂單（含自動抓取月份下拉選單）
 function renderCustomerOrders() {
   let searchResult = document.getElementById('searchResult');
