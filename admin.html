@@ -505,10 +505,9 @@ function switchAdminTab(tabName) {
 }
 window.switchAdminTab = switchAdminTab;
     
-// 📊 載入訂單統計與「當月截單」的已結單團務總營業額
+// 📊 載入訂單統計與「當月截單」的已結單團務總營業額（含詳細對帳明細）
 async function loadOrderStats() {
   try {
-    // 1. 同時撈取 groups 與 orders
     const [groupsRes, ordersRes] = await Promise.all([
       db.from('groups').select('*'),
       db.from('orders').select('*')
@@ -520,34 +519,35 @@ async function loadOrderStats() {
     const groups = groupsRes.data || [];
     const orders = ordersRes.data || [];
 
-    // 2. 取得當前年份與月份 (例如 2026 年 11 月)
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth(); // 0~11
 
-    // 3. 篩選出「已結單」且「截單時間落在當月」的團務名稱集合
+    console.log(`--- [對帳檢查] 當前統計月份：${currentYear} 年 ${currentMonth + 1} 月 ---`);
+
+    // 1. 篩選出「已結單」且「截單時間落在當月」的團務名稱集合
     const targetGroupNames = new Set();
+    const matchedGroupsLog = [];
 
     groups.forEach(g => {
-      // 必須是已結單
       if (g['isExpired'] === true) {
         let deadlineStr = g['截單時間'];
         if (deadlineStr && !deadlineStr.includes('未定')) {
-          // 標準化日期字串以供正確解析
           let normalized = deadlineStr
             .replace(/：/g, ':')
             .replace(/-/g, '/')
             .replace(/年|月/g, '/')
             .replace(/日/g, '');
           
-          normalized = normalized.replace(/^(\d{4})(\d{2})\//, '$1/$2/');
-          
+          normalized = normalized.replace(/^(\d{4})(\d{2})\//, '$1/$2/$3');
           let deadlineDate = new Date(normalized);
+
           if (!isNaN(deadlineDate.getTime())) {
-            // 檢查截單年份與月份是否為當前月份
             if (deadlineDate.getFullYear() === currentYear && deadlineDate.getMonth() === currentMonth) {
               if (g['團務名稱']) {
-                targetGroupNames.add(g['團務名稱'].trim());
+                let gName = g['團務名稱'].trim();
+                targetGroupNames.add(gName);
+                matchedGroupsLog.push({ 團名: gName, 截單時間: deadlineStr });
               }
             }
           }
@@ -555,28 +555,40 @@ async function loadOrderStats() {
       }
     });
 
-    let currentMonthRevenue = 0;
+    console.log("✅ 符合條件的「當月已結單」團務清單：", matchedGroupsLog);
 
-    // 4. 走訪所有訂單，只要訂單屬於這些「當月截單團務」，且狀態有效，就累加金額
+    let currentMonthRevenue = 0;
+    const orderBreakdown = {}; // 用來統計各團營收細節
+
+    // 2. 走訪所有訂單進行加總與分類
     orders.forEach(order => {
       let rawStatus = String(order['處理狀態'] || order['status'] || '').trim();
-      // 排除已取消或待確認的訂單
       if (rawStatus === '已取消' || rawStatus === '待確認' || rawStatus === '') return;
 
       let orderGroup = (order['團務名稱'] || '').trim();
       let cleanGroup = orderGroup.replace(/\s*\(餘量認領\)/g, '').trim();
 
-      // 如果該筆訂單屬於當月截單的團務清單內
       if (targetGroupNames.has(orderGroup) || targetGroupNames.has(cleanGroup)) {
         let qty = Number(order['數量'] || order['qty'] || 1);
         let price = Number(order['單價'] || order['price'] || 0);
         let subtotal = order['總金額'] ? Number(order['總金額']) : (qty * price);
         
         currentMonthRevenue += subtotal;
+
+        // 記錄各團累積金額供對帳用
+        let keyGroup = targetGroupNames.has(orderGroup) ? orderGroup : cleanGroup;
+        if (!orderBreakdown[keyGroup]) {
+          orderBreakdown[keyGroup] = { 訂單數: 0, 總金額: 0 };
+        }
+        orderBreakdown[keyGroup].訂單數 += 1;
+        orderBreakdown[keyGroup].總金額 += subtotal;
       }
     });
 
-    // 5. 將計算好的金額渲染到畫面上
+    console.log("📊 各團營業額明細統計：", orderBreakdown);
+    console.log(`💰 當月已結單總營業額合計：NT$ ${currentMonthRevenue.toLocaleString()}`);
+
+    // 3. 渲染到畫面上
     const revenueEl = document.getElementById('currentMonthRevenueDisplay');
     if (revenueEl) {
       revenueEl.innerText = `NT$ ${currentMonthRevenue.toLocaleString()}`;
