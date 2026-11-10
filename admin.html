@@ -2448,33 +2448,42 @@ function renderOrdersTable(orders) {
 }
 window.renderOrdersTable = renderOrdersTable;
 
-// 🔍 搜尋與篩選訂單
+// 🔍 搜尋與篩選訂單（完美支援精準編號搜尋）
 function filterOrders() {
-  const keyword = document.getElementById('searchOrderInput').value.trim().toLowerCase();
+  const rawKeyword = document.getElementById('searchOrderInput').value.trim();
+  const keyword = rawKeyword.toLowerCase();
   const selectedGroup = document.getElementById('filterGroupSelect').value;
-  const selectedStatus = document.getElementById('filterStatusSelect') ? document.getElementById('filterStatusSelect').value : ""; // 💡 取得選中的狀態
+  const selectedStatus = document.getElementById('filterStatusSelect') ? document.getElementById('filterStatusSelect'].value : "";
 
   if (!window.allOrdersData) return;
+
+  // 檢查使用者輸入的是不是純數字（或是帶有 # 的編號，例如 #214 或 214）
+  let cleanNumberKeyword = rawKeyword.replace('#', '').trim();
+  let isSearchingId = cleanNumberKeyword !== '' && !isNaN(cleanNumberKeyword);
 
   let filtered = window.allOrdersData.filter(o => {
     let orderIdStr = o.id ? String(o.id).trim() : ""; 
     
-    // 1. 先獨立檢查：如果輸入了關鍵字，是否剛好等於訂單編號
-    let matchId = keyword && (orderIdStr === keyword);
+    let matchKeyword = true;
 
-    // 2. 檢查其他文字欄位是否包含關鍵字
-    let matchOther = keyword && (
-      (o["買家名稱"] && o["買家名稱"].toLowerCase().includes(keyword)) ||
-      (o["手機號碼"] && o["手機號碼"].toLowerCase().includes(keyword)) ||
-      (o["Email"] && o["Email"].toLowerCase().includes(keyword))
-    );
-
-    // 3. 綜合判定：如果沒有輸入關鍵字，或者「剛好符合編號」或「其他欄位包含關鍵字」
-    let matchKeyword = !keyword || matchId || matchOther;
+    if (keyword) {
+      if (isSearchingId) {
+        // 🟢 如果使用者輸入的是編號數字，強制要求「訂單編號必須完全相符」！絕對不准模糊搜尋到其他欄位
+        matchKeyword = (orderIdStr === cleanNumberKeyword);
+      } else {
+        // 如果輸入的是文字（買家姓名、手機、Email），才進行一般文字搜尋
+        let matchId = (orderIdStr === keyword);
+        let matchOther = (
+          (o["買家名稱"] && o["買家名稱"].toLowerCase().includes(keyword)) ||
+          (o["手機號碼"] && o["手機號碼"].toLowerCase().includes(keyword)) ||
+          (o["Email"] && o["Email"].toLowerCase().includes(keyword))
+        );
+        matchKeyword = matchId || matchOther;
+      }
+    }
 
     let matchGroup = !selectedGroup || o["團務名稱"] === selectedGroup;
 
-    // 💡 檢查訂單狀態是否符合（若沒選代表全部，若有選則必須完全相符，沒填狀態的預設視為「待確認」）
     const currentStatus = String(o["處理狀態"] || '待確認').trim();
     let matchStatus = !selectedStatus || currentStatus === selectedStatus;
 
