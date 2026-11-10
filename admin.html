@@ -502,7 +502,7 @@ window.switchAdminTab = switchAdminTab;
 
 // --- ⚙️ 團務管理相關完整核心邏輯 ---
 
-// 1. 📦 載入團務管理列表（開團中排前面，已結單自動置底，並依截單時間排序）
+// 1. 📦 載入團務管理列表（開團中優先、已結單置底，且嚴格依截單時間由近到遠排序）
 async function loadGroupManageList() {
   try {
     const [groupsRes, ordersRes] = await Promise.all([
@@ -514,19 +514,35 @@ async function loadGroupManageList() {
     let groups = groupsRes.data || [];
     let orders = ordersRes.data || [];
 
-    // ⏱️ 排序邏輯：1. 開團中優先；2. 已結單自動置底；3. 依截單時間由近到遠排序
+    // 輔助函式：安全解析各種奇怪格式的日期字串
+    function parseDeadline(dateStr) {
+      if (!dateStr || dateStr.includes('未定') || dateStr.includes('？')) {
+        return 8640000000000; // 沒有期限的排在最後面
+      }
+      // 將全形冒號、不同斜線標準化
+      let normalized = dateStr
+        .replace(/：/g, ':')
+        .replace(/-/g, '/')
+        .replace(/年|月/g, '/')
+        .replace(/日/g, '');
+      
+      let t = new Date(normalized).getTime();
+      return isNaN(t) ? 8640000000000 : t;
+    }
+
+    // ⏱️ 嚴格排序邏輯
     groups.sort((a, b) => {
       let isClosedA = a['isExpired'] === true;
       let isClosedB = b['isExpired'] === true;
 
-      // 如果一個已結單、一個開團中，開團中（false）排在前面
+      // 1. 開團中（false）永遠排在最前面，已結單（true）自動置底
       if (isClosedA !== isClosedB) {
         return isClosedA ? 1 : -1;
       }
 
-      // 狀態相同時，依照截單時間由近到遠排序
-      let timeA = a['截單時間'] ? new Date(a['截單時間']).getTime() : 8640000000000;
-      let timeB = b['截單時間'] ? new Date(b['截單時間']).getTime() : 8640000000000;
+      // 2. 狀態相同時，依截單時間由近到遠排序（近的在上面）
+      let timeA = parseDeadline(a['截單時間']);
+      let timeB = parseDeadline(b['截單時間']);
       return timeA - timeB;
     });
 
