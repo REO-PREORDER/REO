@@ -504,8 +504,69 @@ function switchAdminTab(tabName) {
     }
 }
 window.switchAdminTab = switchAdminTab;
+// 📊 載入訂單統計與當月已結單營業額
+async function loadOrderStats() {
+  try {
+    // 1. 同時撈取 groups（看哪些團已結單）與 orders（計算金額）
+    const [groupsRes, ordersRes] = await Promise.all([
+      db.from('groups').select('*'),
+      db.from('orders').select('*')
+    ]);
 
-// --- ⚙️ 團務管理相關完整核心邏輯 ---
+    if (groupsRes.error) throw groupsRes.error;
+    if (ordersRes.error) throw ordersRes.error;
+
+    const groups = groupsRes.data || [];
+    const orders = ordersRes.data || [];
+
+    // 2. 找出所有「已結單」的團務名稱集合
+    const closedGroupNames = new Set(
+      groups.filter(g => g['isExpired'] === true).map(g => g['團務名稱'])
+    );
+
+    // 3. 取得當前年份與月份 (例如 2026 年 11 月)
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0~11
+
+    let currentMonthRevenue = 0;
+
+    // 4. 走訪所有訂單，累加符合條件的金額
+    orders.forEach(order => {
+      let orderGroup = (order['團務名稱'] || '').trim();
+      // 移除可能帶有的 "(餘量認領)" 字樣以對齊團名
+      let cleanGroup = orderGroup.replace(/\s*\(餘量認領\)/g, '').trim();
+
+      // 條件 A：必須屬於「已結單」的團
+      if (closedGroupNames.has(orderGroup) || closedGroupNames.has(cleanGroup)) {
+        
+        // 條件 B：檢查訂單成立時間是否為「當月」（如果你的訂單欄位叫 created_at）
+        let orderDate = order['created_at'] ? new Date(order['created_at']) : null;
+        
+        if (orderDate && !isNaN(orderDate.getTime())) {
+          if (orderDate.getFullYear() === currentYear && orderDate.getMonth() === currentMonth) {
+            // 計算該筆訂單總金額（假設數量 * 單價，或直接讀取總金額欄位，依你資料庫結構調整）
+            let qty = Number(order['數量'] || order['qty'] || 1);
+            let price = Number(order['單價'] || order['price'] || 0);
+            let subtotal = order['總金額'] ? Number(order['總金額']) : (qty * price);
+            
+            currentMonthRevenue += subtotal;
+          }
+        }
+      }
+    });
+
+    // 5. 將計算好的金額渲染到畫面上指定的 HTML 元素中
+    const revenueEl = document.getElementById('currentMonthRevenueDisplay');
+    if (revenueEl) {
+      revenueEl.innerText = `NT$ ${currentMonthRevenue.toLocaleString()}`;
+    }
+
+  } catch (err) {
+    console.error("計算當月營業額失敗：", err);
+  }
+}
+window.loadOrderStats = loadOrderStats;
 
 // 1. 📦 載入團務管理列表（開團中優先、已結單置底，且嚴格依截單時間由近到遠排序）
 async function loadGroupManageList() {
