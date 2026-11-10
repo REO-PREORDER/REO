@@ -1897,8 +1897,8 @@ function renderCustomerOrders() {
         }
       }
 
-      // 如果最新商品庫找不到，才退回使用原本訂單裡的圖片
-      let imgUrl = latestImgUrl || item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "";
+     // 💡 強制優先使用 products 裡最新修改的圖片！如果最新商品庫找不到，才fallback用舊訂單的圖
+      let imgUrl = latestImgUrl ? latestImgUrl : (item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "");
       let category = item.category || item["分類"] || item["商品分類"] || "";
       
       let imgTag = "";
