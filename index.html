@@ -1767,7 +1767,7 @@ function closeLightbox() {
 // 全域變數：暫存目前查詢到的客戶訂單
 let currentCustomerOrders = [];
 
-// 1. 查詢個人訂單記錄（已同步載入最新商品圖庫）
+// 1. 查詢個人訂單記錄
 async function queryOrder() {
   let searchKey = document.getElementById('searchKey').value.trim();
   let searchResult = document.getElementById('searchResult');
@@ -1776,20 +1776,14 @@ async function queryOrder() {
   searchResult.innerHTML = "查詢中...";
 
   try {
-    // 💡 查詢訂單的同時，順便把 products 資料表的最新圖片抓下來備用！
-   const [ordersRes, productsRes] = await Promise.all([
-      db.from('orders').select('*').or(`手機號碼.eq.${searchKey},Email.eq.${searchKey}`).order('created_at', { ascending: false }),
-      db.from('products').select('*') // 確保這裡有抓 products
-    ]);
-    
-    if (ordersRes.error) throw ordersRes.error;
-    
-    // 把抓到的最新商品資料存入全域變數
-    if (productsRes.data) {
-      window.allProductsData = productsRes.data;
-    }
+    const { data: orders, error } = await db
+      .from('orders')
+      .select('*')
+      .or(`手機號碼.eq.${searchKey},Email.eq.${searchKey}`)
+      .order('created_at', { ascending: false });
 
-    const orders = ordersRes.data;
+    if (error) throw error;
+
     if (!orders || orders.length === 0) {
       searchResult.innerHTML = "<p style='color:#aaa; text-align:center;'>查無相關預購紀錄。</p>";
       return;
@@ -1803,6 +1797,7 @@ async function queryOrder() {
     searchResult.innerHTML = `<p style="color:#f87171;">查詢失敗：${err.message}</p>`;
   }
 }
+
 // 2. 渲染與過濾客戶訂單（含自動抓取月份下拉選單）
 function renderCustomerOrders() {
   let searchResult = document.getElementById('searchResult');
@@ -1883,27 +1878,11 @@ function renderCustomerOrders() {
     if (statusText === "已變更") statusColor = "#f59e0b";
     if (statusText === "已取消") statusColor = "#ef4444";
 
-  let itemsHtml = "";
+    let itemsHtml = "";
     let items = order["訂單內容"] || [];
     items.forEach(item => {
-      let itemName = (item.name || item["商品名稱"] || "").trim();
-      let category = item.category || item["分類"] || item["商品分類"] || ""; // 補上分類變數避免報錯
-      
-      // 💡 絕對優先：不管舊訂單寫什麼，強制去全域商品庫 (allProductsData) 抓最新圖片！
-      let latestImgUrl = "";
-      if (typeof allProductsData !== 'undefined' && Array.isArray(allProductsData)) {
-        let matchedProd = allProductsData.find(p => {
-          let pName = (p["商品名稱"] || "").trim();
-          // 只要商品名稱完全一樣，或者訂單品名包含該商品名稱（例如 "[兔娃] 蘇枋" 包含 "蘇枋"）
-          return pName && (itemName === pName || itemName.includes(pName));
-        });
-        if (matchedProd) {
-          latestImgUrl = matchedProd["圖片"] || matchedProd["圖片網址"] || matchedProd["image"] || "";
-        }
-      }
-
-      // 如果全域商品庫真的找不到這項商品，才退回使用舊訂單的圖
-      let imgUrl = latestImgUrl ? latestImgUrl : (item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "");
+      let imgUrl = item.img || item.image || item.picture || item["圖片"] || item["圖片網址"] || "";
+      let category = item.category || item["分類"] || item["商品分類"] || "";
       
       let imgTag = "";
       if (imgUrl) {
@@ -1926,7 +1905,7 @@ function renderCustomerOrders() {
         <div style="margin-bottom: 8px; font-size: 13px; color: #e4e4e7; display: flex; align-items: center;">
           ${imgTag}
           <div>
-            <div>${categoryBadge}<strong style="color:#fff;">${itemName}</strong></div>
+            <div>${categoryBadge}<strong style="color:#fff;">${item.name || item["商品名稱"]}</strong></div>
             <div style="font-size:12px; color:#a1a1aa; margin-top:2px;">數量: ${item.qty || item["數量"]} | 單價: $${item.price || item["單價"] || 0}</div>
           </div>
         </div>`;
