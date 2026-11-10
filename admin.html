@@ -961,8 +961,7 @@ function toggleInlineEdit(groupId) {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
             <div>
                 <label style="font-size: 11px; color: #aaa;">團務名稱</label>
-                <input type="text" id="edit_name_${groupId}" value="${target['團務名稱'] || ''}" style="width:100%; padding:8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; box-sizing:border-box;">
-            </div>
+              <input type="text" id="edit_name_${groupId}" value="${target['團務名稱'] || ''}" data-old-name="${target['團務名稱'] || ''}" style="width:100%; padding:8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; box-sizing:border-box;">
             <div>
                 <label style="font-size: 11px; color: #aaa;">截單時間</label>
                 <input type="text" id="edit_deadline_${groupId}" value="${target['截單時間'] || ''}" style="width:100%; padding:8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; box-sizing:border-box;">
@@ -988,38 +987,66 @@ function toggleInlineEdit(groupId) {
 }
 window.toggleInlineEdit = toggleInlineEdit;
 
-// 儲存行內編輯的團務
+// 💾 儲存行內編輯的團務（並自動同步更新所有關聯商品的團務名稱）
 async function saveInlineGroup(groupId) {
-    let newName = document.getElementById(`edit_name_${groupId}`).value.trim();
-    let newDeadline = document.getElementById(`edit_deadline_${groupId}`).value.trim();
-    let newImg = document.getElementById(`edit_img_${groupId}`).value.trim();
-    let newPayment = document.getElementById(`edit_payment_${groupId}`).value.trim();
-    let newRemark = document.getElementById(`edit_remark_${groupId}`).value.trim();
+  let oldName = document.getElementById(`edit_name_${groupId}`).getAttribute('data-old-name') || '';
+  let newName = document.getElementById(`edit_name_${groupId}`).value.trim();
+  let newDeadline = document.getElementById(`edit_deadline_${groupId}`).value.trim();
+  let newImg = document.getElementById(`edit_img_${groupId}`).value.trim();
+  let newPayment = document.getElementById(`edit_payment_${groupId}`).value.trim();
+  let newRemark = document.getElementById(`edit_remark_${groupId}`).value.trim();
 
-    if (!newName) {
-        alert("團務名稱不能為空！");
-        return;
+  if (!newName) {
+    alert("團務名稱不能為空！");
+    return;
+  }
+
+  try {
+    // 1. 更新 groups 資料表的團務資料
+    const { error: groupError } = await db.from('groups')
+      .update({
+        "團務名稱": newName,
+        "截單時間": newDeadline,
+        "圖片": newImg,
+        "付款方式": newPayment,
+        "團務備註": newRemark
+      })
+      .eq('id', Number(groupId));
+
+    if (groupError) throw groupError;
+
+    // 2. 🟢 關鍵同步：如果團務名稱有被更改，連帶把 products 商品表裡的「團務名稱」一起改掉！
+    if (oldName && oldName !== newName) {
+      const { error: prodError } = await db.from('products')
+        .update({ "團務名稱": newName })
+        .eq('團務名稱', oldName);
+
+      if (prodError) {
+        console.error("同步更新商品團名失敗：", prodError);
+        alert("團務名稱已更新，但部分關聯商品的團名同步失敗：" + prodError.message);
+      }
     }
 
-    try {
-        const { error } = await db.from('groups').update({
-            "團務名稱": newName,
-            "截單時間": newDeadline,
-            "圖片": newImg,
-            "付款方式": newPayment,
-            "團務備註": newRemark
-        }).eq('id', Number(groupId));
-
-        if (error) throw error;
-        alert("💾 團務修改成功！");
-        loadGroupManageList();
-    } catch (err) {
-        console.error("修改失敗：", err);
-        alert("修改失敗：" + err.message);
+    // 更新快取資料
+    let target = cachedGroupsList.find(g => String(g.id) === String(groupId));
+    if (target) {
+      target['團務名稱'] = newName;
+      target['截單時間'] = newDeadline;
+      target['圖片'] = newImg;
+      target['付款方式'] = newPayment;
+      target['團務備註'] = newRemark;
     }
+
+    alert("💾 團務修改成功（商品團名已同步更新）！");
+    document.getElementById(`inline-edit-container-${groupId}`).style.display = 'none';
+    renderGroupManageTable();
+
+  } catch (err) {
+    console.error("修改失敗：", err);
+    alert("修改失敗：" + err.message);
+  }
 }
 window.saveInlineGroup = saveInlineGroup;
-
 // --- 🛍️ 直接在表格內展開/收合「管理商品」清單（含圖片網址與固定大小按鈕） ---
 async function toggleInlineProducts(groupId, groupName) {
     let container = document.getElementById(`inline-edit-container-${groupId}`);
