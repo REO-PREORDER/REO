@@ -164,10 +164,18 @@
     <!-- ✔️ 直接放內容與按鈕列即可，不要再包一層 id="adminDashboard" -->
     <div style="margin: 15px auto 0 auto; width: 98%; max-width: 100%; text-align: left; padding: 0 15px;"> 
       <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
-      <!-- 💰 當月已結單營業額統計卡片 -->
-<div style="background: #18181b; border: 1px solid #27272a; padding: 16px; border-radius: 12px; text-align: center; color: #fff; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);">
-    <div style="font-size: 13px; color: #9ca3af; margin-bottom: 6px;">📅 當月已結單團務營業額</div>
+      <!-- 💰 當月已結單營業額統計卡片（點擊可展開/收合詳細明細） -->
+<div onclick="toggleRevenueDetails()" style="background: #18181b; border: 1px solid #27272a; padding: 16px; border-radius: 12px; text-align: center; color: #fff; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); cursor: pointer; transition: 0.2s;" title="點擊展開/收合對帳明細">
+    <div style="font-size: 13px; color: #9ca3af; margin-bottom: 6px;">📅 當月已結單團務營業額 <span style="font-size: 11px; color: #38bdf8;">(點擊查看明細 📋)</span></div>
     <div id="currentMonthRevenueDisplay" style="font-size: 26px; font-weight: bold; color: #38bdf8;">NT$ 0</div>
+    
+    <!-- 隱藏的明細展開容器 -->
+    <div id="revenueDetailsContainer" style="display: none; margin-top: 15px; border-top: 1px solid #333; padding-top: 12px; text-align: left;">
+        <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #f59e0b;">📦 本月已結單團務明細列表：</div>
+        <div id="revenueDetailsList" style="font-size: 13px; color: #d1d5db; max-height: 200px; overflow-y: auto;">
+            <!-- 動態插入明細 -->
+        </div>
+    </div>
 </div>
 
 <!-- 💡 上方分頁切換按鈕列 -->
@@ -505,7 +513,9 @@ function switchAdminTab(tabName) {
 }
 window.switchAdminTab = switchAdminTab;
     
-// 📊 載入訂單統計與「當月截單」的已結單團務總營業額（含詳細對帳明細）
+// 全域變數用來暫存明細，方便點擊時切換展開
+let cachedRevenueBreakdown = {};
+
 async function loadOrderStats() {
   try {
     const [groupsRes, ordersRes] = await Promise.all([
@@ -523,12 +533,8 @@ async function loadOrderStats() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth(); // 0~11
 
-    console.log(`--- [對帳檢查] 當前統計月份：${currentYear} 年 ${currentMonth + 1} 月 ---`);
-
     // 1. 篩選出「已結單」且「截單時間落在當月」的團務名稱集合
     const targetGroupNames = new Set();
-    const matchedGroupsLog = [];
-
     groups.forEach(g => {
       if (g['isExpired'] === true) {
         let deadlineStr = g['截單時間'];
@@ -545,9 +551,7 @@ async function loadOrderStats() {
           if (!isNaN(deadlineDate.getTime())) {
             if (deadlineDate.getFullYear() === currentYear && deadlineDate.getMonth() === currentMonth) {
               if (g['團務名稱']) {
-                let gName = g['團務名稱'].trim();
-                targetGroupNames.add(gName);
-                matchedGroupsLog.push({ 團名: gName, 截單時間: deadlineStr });
+                targetGroupNames.add(g['團務名稱'].trim());
               }
             }
           }
@@ -555,10 +559,8 @@ async function loadOrderStats() {
       }
     });
 
-    console.log("✅ 符合條件的「當月已結單」團務清單：", matchedGroupsLog);
-
     let currentMonthRevenue = 0;
-    const orderBreakdown = {}; // 用來統計各團營收細節
+    cachedRevenueBreakdown = {}; // 重置明細快取
 
     // 2. 走訪所有訂單進行加總與分類
     orders.forEach(order => {
@@ -575,30 +577,72 @@ async function loadOrderStats() {
         
         currentMonthRevenue += subtotal;
 
-        // 記錄各團累積金額供對帳用
         let keyGroup = targetGroupNames.has(orderGroup) ? orderGroup : cleanGroup;
-        if (!orderBreakdown[keyGroup]) {
-          orderBreakdown[keyGroup] = { 訂單數: 0, 總金額: 0 };
+        if (!cachedRevenueBreakdown[keyGroup]) {
+          cachedRevenueBreakdown[keyGroup] = { 訂單數: 0, 總金額: 0 };
         }
-        orderBreakdown[keyGroup].訂單數 += 1;
-        orderBreakdown[keyGroup].總金額 += subtotal;
+        cachedRevenueBreakdown[keyGroup].訂單數 += 1;
+        cachedRevenueBreakdown[keyGroup].總金額 += subtotal;
       }
     });
 
-    console.log("📊 各團營業額明細統計：", orderBreakdown);
-    console.log(`💰 當月已結單總營業額合計：NT$ ${currentMonthRevenue.toLocaleString()}`);
-
-    // 3. 渲染到畫面上
+    // 3. 渲染總金額到畫面上
     const revenueEl = document.getElementById('currentMonthRevenueDisplay');
     if (revenueEl) {
       revenueEl.innerText = `NT$ ${currentMonthRevenue.toLocaleString()}`;
     }
+
+    // 4. 產生明細清單 HTML
+    renderRevenueDetailsHTML();
 
   } catch (err) {
     console.error("計算當月截單營業額失敗：", err);
   }
 }
 window.loadOrderStats = loadOrderStats;
+
+// 點擊卡片時展開/收合明細
+function toggleRevenueDetails() {
+  const container = document.getElementById('revenueDetailsContainer');
+  if (!container) return;
+  if (container.style.display === 'none' || container.style.display === '') {
+    container.style.display = 'block';
+  } else {
+    container.style.display = 'none';
+  }
+}
+window.toggleRevenueDetails = toggleRevenueDetails;
+
+// 渲染明細清單內容
+function renderRevenueDetailsHTML() {
+  const listEl = document.getElementById('revenueDetailsList');
+  if (!listEl) return;
+
+  const keys = Object.keys(cachedRevenueBreakdown);
+  if (keys.length === 0) {
+    listEl.innerHTML = `<div style="color: #888; padding: 5px 0;">本月目前尚無符合已結單且有業績的團務</div>`;
+    return;
+  }
+
+  let html = `<table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <tr style="border-bottom: 1px solid #444; color: #9ca3af;">
+                  <th style="text-align: left; padding: 4px;">團務名稱</th>
+                  <th style="text-align: center; padding: 4px;">訂單數</th>
+                  <th style="text-align: right; padding: 4px;">小計金額</th>
+                </tr>`;
+
+  keys.forEach(groupName => {
+    let item = cachedRevenueBreakdown[groupName];
+    html += `<tr style="border-bottom: 1px solid #27272a;">
+               <td style="padding: 6px 4px; color: #fff;">${groupName}</td>
+               <td style="text-align: center; padding: 6px 4px; color: #38bdf8;">${item.訂單數} 筆</td>
+               <td style="text-align: right; padding: 6px 4px; color: #f59e0b; font-weight: bold;">NT$ ${item.總金額.toLocaleString()}</td>
+             </tr>`;
+  });
+
+  html += `</table>`;
+  listEl.innerHTML = html;
+}
 
 // 1. 📦 載入團務管理列表（開團中優先、已結單置底，且嚴格依截單時間由近到遠排序）
 async function loadGroupManageList() {
