@@ -1887,6 +1887,7 @@ function renderCustomerOrders() {
     let items = order["訂單內容"] || [];
     items.forEach(item => {
       let itemName = (item.name || item["商品名稱"] || "").trim();
+      let category = item.category || item["分類"] || item["商品分類"] || ""; // 💡 補上這一行宣告變數！
       
       // 💡 終極比對：去 products 找商品
       let latestImgUrl = "";
