@@ -1777,11 +1777,11 @@ async function queryOrder() {
 
   try {
     // 💡 查詢訂單的同時，順便把 products 資料表的最新圖片抓下來備用！
-    const [ordersRes, productsRes] = await Promise.all([
+   const [ordersRes, productsRes] = await Promise.all([
       db.from('orders').select('*').or(`手機號碼.eq.${searchKey},Email.eq.${searchKey}`).order('created_at', { ascending: false }),
-      db.from('products').select('*')
+      db.from('products').select('*') // 確保這裡有抓 products
     ]);
-
+    
     if (ordersRes.error) throw ordersRes.error;
     
     // 把抓到的最新商品資料存入全域變數
