@@ -504,10 +504,11 @@ function switchAdminTab(tabName) {
     }
 }
 window.switchAdminTab = switchAdminTab;
-// 📊 載入訂單統計與當月已結單營業額
+    
+// 📊 載入訂單統計與「當月截單」的已結單團務總營業額
 async function loadOrderStats() {
   try {
-    // 1. 同時撈取 groups（看哪些團已結單）與 orders（計算金額）
+    // 1. 同時撈取 groups 與 orders
     const [groupsRes, ordersRes] = await Promise.all([
       db.from('groups').select('*'),
       db.from('orders').select('*')
@@ -519,51 +520,70 @@ async function loadOrderStats() {
     const groups = groupsRes.data || [];
     const orders = ordersRes.data || [];
 
-    // 2. 找出所有「已結單」的團務名稱集合
-    const closedGroupNames = new Set(
-      groups.filter(g => g['isExpired'] === true).map(g => g['團務名稱'])
-    );
-
-    // 3. 取得當前年份與月份 (例如 2026 年 11 月)
+    // 2. 取得當前年份與月份 (例如 2026 年 11 月)
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth(); // 0~11
 
-    let currentMonthRevenue = 0;
+    // 3. 篩選出「已結單」且「截單時間落在當月」的團務名稱集合
+    const targetGroupNames = new Set();
 
-    // 4. 走訪所有訂單，累加符合條件的金額
-    orders.forEach(order => {
-      let orderGroup = (order['團務名稱'] || '').trim();
-      // 移除可能帶有的 "(餘量認領)" 字樣以對齊團名
-      let cleanGroup = orderGroup.replace(/\s*\(餘量認領\)/g, '').trim();
-
-      // 條件 A：必須屬於「已結單」的團
-      if (closedGroupNames.has(orderGroup) || closedGroupNames.has(cleanGroup)) {
-        
-        // 條件 B：檢查訂單成立時間是否為「當月」（如果你的訂單欄位叫 created_at）
-        let orderDate = order['created_at'] ? new Date(order['created_at']) : null;
-        
-        if (orderDate && !isNaN(orderDate.getTime())) {
-          if (orderDate.getFullYear() === currentYear && orderDate.getMonth() === currentMonth) {
-            // 計算該筆訂單總金額（假設數量 * 單價，或直接讀取總金額欄位，依你資料庫結構調整）
-            let qty = Number(order['數量'] || order['qty'] || 1);
-            let price = Number(order['單價'] || order['price'] || 0);
-            let subtotal = order['總金額'] ? Number(order['總金額']) : (qty * price);
-            
-            currentMonthRevenue += subtotal;
+    groups.forEach(g => {
+      // 必須是已結單
+      if (g['isExpired'] === true) {
+        let deadlineStr = g['截單時間'];
+        if (deadlineStr && !deadlineStr.includes('未定')) {
+          // 標準化日期字串以供正確解析
+          let normalized = deadlineStr
+            .replace(/：/g, ':')
+            .replace(/-/g, '/')
+            .replace(/年|月/g, '/')
+            .replace(/日/g, '');
+          
+          normalized = normalized.replace(/^(\d{4})(\d{2})\//, '$1/$2/');
+          
+          let deadlineDate = new Date(normalized);
+          if (!isNaN(deadlineDate.getTime())) {
+            // 檢查截單年份與月份是否為當前月份
+            if (deadlineDate.getFullYear() === currentYear && deadlineDate.getMonth() === currentMonth) {
+              if (g['團務名稱']) {
+                targetGroupNames.add(g['團務名稱'].trim());
+              }
+            }
           }
         }
       }
     });
 
-    // 5. 將計算好的金額渲染到畫面上指定的 HTML 元素中
+    let currentMonthRevenue = 0;
+
+    // 4. 走訪所有訂單，只要訂單屬於這些「當月截單團務」，且狀態有效，就累加金額
+    orders.forEach(order => {
+      let rawStatus = String(order['處理狀態'] || order['status'] || '').trim();
+      // 排除已取消或待確認的訂單
+      if (rawStatus === '已取消' || rawStatus === '待確認' || rawStatus === '') return;
+
+      let orderGroup = (order['團務名稱'] || '').trim();
+      let cleanGroup = orderGroup.replace(/\s*\(餘量認領\)/g, '').trim();
+
+      // 如果該筆訂單屬於當月截單的團務清單內
+      if (targetGroupNames.has(orderGroup) || targetGroupNames.has(cleanGroup)) {
+        let qty = Number(order['數量'] || order['qty'] || 1);
+        let price = Number(order['單價'] || order['price'] || 0);
+        let subtotal = order['總金額'] ? Number(order['總金額']) : (qty * price);
+        
+        currentMonthRevenue += subtotal;
+      }
+    });
+
+    // 5. 將計算好的金額渲染到畫面上
     const revenueEl = document.getElementById('currentMonthRevenueDisplay');
     if (revenueEl) {
       revenueEl.innerText = `NT$ ${currentMonthRevenue.toLocaleString()}`;
     }
 
   } catch (err) {
-    console.error("計算當月營業額失敗：", err);
+    console.error("計算當月截單營業額失敗：", err);
   }
 }
 window.loadOrderStats = loadOrderStats;
