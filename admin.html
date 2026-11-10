@@ -487,7 +487,40 @@ function openGroupEditModal(groupName) {
     }
 }
 window.openGroupEditModal = openGroupEditModal;
+// 🟢 切換團務的結單 / 重新開團狀態
+async function toggleGroupExpired(groupId, setExpired) {
+  let actionText = setExpired ? "結單" : "重新開團";
+  if (!confirm(`確定要將此團務設為「${actionText}」嗎？`)) {
+    return;
+  }
 
+  try {
+    const { error } = await db
+      .from('groups')
+      .update({ 'isExpired': setExpired })
+      .eq('id', Number(groupId));
+
+    if (error) throw error;
+
+    alert(`🎉 成功將團務狀態更新為：${actionText}！`);
+    
+    // 重新載入團務管理列表
+    if (typeof loadGroupManageList === 'function') {
+      loadGroupManageList();
+    }
+    
+    // 如果統計區塊存在，順便重新計算
+    if (typeof loadOrderStats === 'function') {
+      loadOrderStats();
+    }
+
+  } catch (err) {
+    console.error("更新團務狀態失敗：", err);
+    alert("更新失敗：" + err.message);
+  }
+}
+window.toggleGroupExpired = toggleGroupExpired;
+    
 // --- 分頁切換控制 ---
 function switchAdminTab(tabName) {
     const tabs = ['create', 'groups', 'orders', 'splitBoard'];
