@@ -1358,18 +1358,19 @@ async function selectGroup(groupName, isExpired) {
   const deadline = currentGroupObj ? (currentGroupObj["截單時間"] || "未定") : "未定";
   const paymentMethod = currentGroupObj ? (currentGroupObj["付款方式"] || "賣貨便貨到付款(不含運費)") : "賣貨便貨到付款(不含運費)";
 
-  // 💡 自動在 activeGroupTitle 下方插入或更新「截單時間」與「付款方式」的資訊列
+  // 💡 建立一個獨立的好看資訊框 (Box)
   let detailBox = document.getElementById('activeGroupHeaderMeta');
   if (!detailBox) {
     detailBox = document.createElement('div');
     detailBox.id = 'activeGroupHeaderMeta';
-    detailBox.style.cssText = "font-size: 12px; margin-top: 6px; display: flex; flex-direction: column; gap: 3px;";
+    // 這裡加上了獨立的外框、背景色、圓角跟內距
+    detailBox.style.cssText = "background: #18181b; border: 1px solid #27272a; padding: 12px 14px; border-radius: 8px; margin-top: 10px; margin-bottom: 12px; font-size: 13px; display: flex; flex-direction: column; gap: 6px;";
     let titleEl = document.getElementById('activeGroupTitle');
     titleEl.parentNode.insertBefore(detailBox, titleEl.nextSibling);
   }
   detailBox.innerHTML = `
-    <div style="color: #aaa;">截單：<span style="color: #fff;">${deadline}</span></div>
-    <div style="color: #60a5fa;">付款方式：${paymentMethod}</div>
+    <div style="color: #f87171;">⏳ <strong>截單時間：</strong> ${deadline}</div>
+    <div style="color: #38bdf8;">💳 <strong>付款方式：</strong> ${paymentMethod}</div>
   `;
 
   // 2. 🔗 將網址改為純參數形式（/?id=31）
