@@ -1348,6 +1348,24 @@ async function selectGroup(groupName, isExpired) {
   document.getElementById('groupListView').style.display = 'none';
   document.getElementById('productOrderView').style.display = 'block';
   document.getElementById('activeGroupTitle').innerText = groupName;
+
+  // 💡 取得當前團務的截單時間與付款方式
+  let deadline = currentGroupObj ? (currentGroupObj["截單時間"] || "未設定") : "未設定";
+  let payment = currentGroupObj ? (currentGroupObj["付款方式"] || "賣貨便貨到付款(不含運費)") : "賣貨便貨到付款(不含運費)";
+
+  // 💡 如果你在 HTML 的 activeGroupTitle 下方有預留或想動態塞入，可以這樣寫：
+  // 假設我們在 activeGroupTitle 後面建立/更新一個專屬的詳細資訊小區塊
+  let detailBox = document.getElementById('activeGroupHeaderMeta');
+  if (!detailBox) {
+    detailBox = document.createElement('div');
+    detailBox.id = 'activeGroupHeaderMeta';
+    detailBox.style.cssText = "font-size: 12px; margin-top: 6px; display: flex; flex-direction: column; gap: 3px;";
+    document.getElementById('activeGroupTitle').parentNode.appendChild(detailBox);
+  }
+  detailBox.innerHTML = `
+    <div style="color: #f87171;">⏳ <strong>截單：</strong> ${deadline}</div>
+    <div style="color: #60a5fa;">💳 <strong>付款方式：</strong> ${payment}</div>
+  `;
   // 1. 找出當前團務的物件（取得其 id 與圖片網址）
   let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
   const groupId = currentGroupObj ? currentGroupObj.id : "";
