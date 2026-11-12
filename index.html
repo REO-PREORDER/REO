@@ -1348,10 +1348,29 @@ async function selectGroup(groupName, isExpired) {
   document.getElementById('groupListView').style.display = 'none';
   document.getElementById('productOrderView').style.display = 'block';
   document.getElementById('activeGroupTitle').innerText = groupName;
-  // 1. 找出當前團務的物件（取得其 id 與圖片網址）
+  
+  // 1. 找出當前團務的物件（取得其 id、圖片網址、截單時間、付款方式）
   let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
   const groupId = currentGroupObj ? currentGroupObj.id : "";
   const groupImage = currentGroupObj ? (currentGroupObj["圖片"] || "") : "";
+  
+  // 💡 取得截單時間與付款方式
+  const deadline = currentGroupObj ? (currentGroupObj["截單時間"] || "未定") : "未定";
+  const paymentMethod = currentGroupObj ? (currentGroupObj["付款方式"] || "賣貨便貨到付款(不含運費)") : "賣貨便貨到付款(不含運費)";
+
+  // 💡 自動在 activeGroupTitle 下方插入或更新「截單時間」與「付款方式」的資訊列
+  let detailBox = document.getElementById('activeGroupHeaderMeta');
+  if (!detailBox) {
+    detailBox = document.createElement('div');
+    detailBox.id = 'activeGroupHeaderMeta';
+    detailBox.style.cssText = "font-size: 12px; margin-top: 6px; display: flex; flex-direction: column; gap: 3px;";
+    let titleEl = document.getElementById('activeGroupTitle');
+    titleEl.parentNode.insertBefore(detailBox, titleEl.nextSibling);
+  }
+  detailBox.innerHTML = `
+    <div style="color: #aaa;">截單：<span style="color: #fff;">${deadline}</span></div>
+    <div style="color: #60a5fa;">付款方式：${paymentMethod}</div>
+  `;
 
   // 2. 🔗 將網址改為純參數形式（/?id=31）
   let newUrl;
@@ -1386,7 +1405,8 @@ async function selectGroup(groupName, isExpired) {
   activeCategory = "全部";
   await loadProducts(groupName);
 }
-  function backToGroupList() {
+
+function backToGroupList() {
   // 1. 切換畫面顯示
   document.getElementById('productOrderView').style.display = 'none';
   document.getElementById('groupListView').style.display = 'block';
@@ -1397,6 +1417,7 @@ async function selectGroup(groupName, isExpired) {
   // 3. 搭配 replaceState，將網址後段的 ?group= 參數清除，恢復乾淨的首頁網址
   history.replaceState({}, '', window.location.pathname);
 }
+  
   async function loadProducts(groupName) {
     const gridContainer = document.getElementById('productGridContainer');
     gridContainer.innerHTML = "載入商品中...";
