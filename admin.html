@@ -2325,10 +2325,10 @@ window.updateOrderStatus = updateOrderStatus;
             <div style="font-size: 13px; font-weight: bold; margin-bottom: 10px;">
               總金額：<span style="color: #60a5fa;">$${order["總金額"]}</span>
             </div>
-           <div style="display: flex; gap: 8px;">
-              <button onclick="updateOrderStatus(${order.id}, '已成立', '${order["Email"] || ""}')" style="flex: 1; padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">審核通過 (成立)</button>
-              <button onclick="updateOrderStatus(${order.id}, '已取消', '${order["Email"] || ""}')" style="flex: 1; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">拒絕申請 (取消)</button>
-              <button onclick="updateOrderStatus(${order.id}, '已變更', '${order["Email"] || ""}')" style="background:#3b82f6; color:white; border:none; border-radius:4px; ...">變更</button>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button onclick="updateOrderStatus(${order.id}, '已成立', '${order["Email"] || ""}')" style="flex: 1; min-width: 110px; padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">審核通過 (成立)</button>
+              <button onclick="updateOrderStatus(${order.id}, '已取消', '${order["Email"] || ""}')" style="flex: 1; min-width: 110px; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">拒絕申請 (取消)</button>
+              <button onclick="mergeBuyerOrders('${groupName.replace(/'/g, "\\'")}', '${(order["買家名稱"] || "").replace(/'/g, "\\'")}')" style="padding: 8px 14px; background: #8b5cf6; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;" title="將此買家在同團的其他有效訂單合併至最早的一筆">🔗 合併同團</button>
             </div>
           </div>
         `;
@@ -2344,7 +2344,96 @@ window.updateOrderStatus = updateOrderStatus;
 
  // 目前選取的訂單記錄頁籤（預設為已成立）
 let currentRecordStatus = "已成立";
+// 🔗 合併同一個買家在同一個團務下的所有有效訂單
+async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
+  if (!confirm(`確定要將買家「${targetBuyerName}」在「${targetGroupName}」底下的所有有效訂單進行合併嗎？\n\n系統將自動把商品明細合併至最早的一筆訂單，並將其餘重複訂單標記為「已取消」。`)) {
+    return;
+  }
 
+  try {
+    const { data: orders, error } = await db
+      .from('orders')
+      .select('*')
+      .eq('團務名稱', targetGroupName)
+      .eq('買家名稱', targetBuyerName)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    const activeOrders = (orders || []).filter(o => String(o['處理狀態'] || '').trim() !== '已取消');
+
+    if (activeOrders.length <= 1) {
+      alert(`⚠️ 買家「${targetBuyerName}」在此團中只有 ${activeOrders.length} 筆有效訂單，不需要進行合併！`);
+      return;
+    }
+
+    const mainOrder = activeOrders[0];
+    const duplicateOrders = activeOrders.slice(1);
+
+    let combinedItems = [];
+    let totalSum = 0;
+
+    let mainItems = mainOrder['訂單內容'];
+    if (typeof mainItems === 'string') {
+      try { mainItems = JSON.parse(mainItems); } catch(e) { mainItems = []; }
+    }
+    if (Array.isArray(mainItems)) combinedItems = combinedItems.concat(mainItems);
+    totalSum += Number(mainOrder['總金額'] || 0);
+
+    let mergedOrderIds = [mainOrder.id];
+
+    for (let dup of duplicateOrders) {
+      mergedOrderIds.push(dup.id);
+      totalSum += Number(dup['總金額'] || 0);
+
+      let dupItems = dup['訂單內容'];
+      if (typeof dupItems === 'string') {
+        try { dupItems = JSON.parse(dupItems); } catch(e) { dupItems = []; }
+      }
+
+      if (Array.isArray(dupItems)) {
+        dupItems.forEach(dupItem => {
+          let existing = combinedItems.find(ci => 
+            (ci.name === dupItem.name || ci['商品名稱'] === dupItem['商品名稱']) &&
+            (ci.category === dupItem.category || ci['商品分類'] === dupItem['商品分類'])
+          );
+          if (existing) {
+            let q1 = parseInt(existing.qty || existing['數量'] || 1);
+            let q2 = parseInt(dupItem.qty || dupItem['數量'] || 1);
+            existing.qty = q1 + q2;
+            if (existing['數量'] !== undefined) existing['數量'] = q1 + q2;
+          } else {
+            combinedItems.push(dupItem);
+          }
+        });
+      }
+
+      await db.from('orders').update({
+        '處理狀態': '已取消',
+        '備註': `已合併至主訂單 #${mainOrder.id}`
+      }).eq('id', dup.id);
+    }
+
+    const { error: updateErr } = await db.from('orders').update({
+      '訂單內容': combinedItems,
+      '總金額': totalSum,
+      '處理狀態': '已變更',
+      '備註': `已由訂單 ${mergedOrderIds.join(', ')} 合併結算`
+    }).eq('id', mainOrder.id);
+
+    if (updateErr) throw updateErr;
+
+    alert(`🎉 成功合併！\n主訂單 #${mainOrder.id} 已更新最新總金額 ($${totalSum}) 與合併商品明細。\n其餘重複訂單已自動標記為取消。`);
+    
+    if (typeof loadAllOrders === 'function') loadAllOrders();
+    if (typeof loadGroupManageList === 'function') loadGroupManageList();
+
+  } catch (err) {
+    console.error("合併訂單失敗：", err);
+    alert("❌ 合併訂單發生錯誤：" + err.message);
+  }
+}
+window.mergeBuyerOrders = mergeBuyerOrders;
 // 切換按鈕樣式並載入資料
 function switchOrderRecordTab(status) {
   currentRecordStatus = status;
