@@ -2347,9 +2347,9 @@ async function loadPendingOrders() {
 
  // 目前選取的訂單記錄頁籤（預設為已成立）
 let currentRecordStatus = "已成立";
-// 🔗 合併同一個買家在同一個團務下的所有有效訂單（終極圖片完美保留版）
+// 🔗 合併同一個買家在同一個團務下的所有有效訂單（完美保留圖片網址版）
 async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
-  if (!confirm(`確定要將買家「${targetBuyerName}」在「${targetGroupName}」底下的所有有效訂單進行合併嗎？\n\n系統將自動把商品明細、數量與圖片完整合併至最早的一筆訂單，並將其餘重複訂單標記為「已取消」。`)) {
+  if (!confirm(`確定要將買家「${targetBuyerName}」在「${targetGroupName}」底下的所有有效訂單進行合併嗎？\n\n系統將自動把商品明細與數量合併，並完整保留圖片網址，其餘重複訂單標記為「已取消」。`)) {
     return;
   }
 
@@ -2375,7 +2375,24 @@ async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
     const mainOrder = activeOrders[0];
     const duplicateOrders = activeOrders.slice(1);
 
-    // 2. 解析並雙向保留商品各項屬性（完美相容英文與中文圖片欄位）
+    // 2. 先去資料庫把該團所有商品的圖片網址抓下來備用
+    const { data: prodData, error: prodErr } = await db
+      .from('products')
+      .select('商品名稱, 圖片')
+      .eq('團務名稱', targetGroupName);
+    
+    let productImgMap = {};
+    if (!prodErr && prodData) {
+      prodData.forEach(p => {
+        let pName = (p['商品名稱'] || '').trim();
+        let pImg = (p['圖片'] || '').trim();
+        if (pName && pImg) {
+          productImgMap[pName] = pImg;
+        }
+      });
+    }
+
+    // 3. 解析商品明細，並確保圖片網址完整抓取
     function parseItems(rawItems) {
       if (typeof rawItems === 'string') {
         try { rawItems = JSON.parse(rawItems); } catch(e) { rawItems = []; }
@@ -2387,8 +2404,9 @@ async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
         let itemCat = i.category || i['商品分類'] || '';
         let itemQty = parseInt(i.qty || i['數量'] || 1);
         let itemPrice = parseFloat(i.price || i['單價'] || 0);
-        // 📸 雙向對應所有可能的圖片欄位名稱
-        let itemImg = i.img || i.image || i['圖片'] || '';
+        
+        // 抓取順序：明細內本身帶有的圖片網址 -> 資料庫對照表的圖片網址 -> 空字串
+        let itemImg = i.img || i.image || i['圖片'] || productImgMap[itemName.trim()] || '';
 
         return {
           category: itemCat,
@@ -2410,7 +2428,7 @@ async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
     let totalSum = Number(mainOrder['總金額'] || 0);
     let mergedOrderIds = [mainOrder.id];
 
-    // 3. 走訪其餘重複訂單，進行商品累加與圖片補齊
+    // 4. 走訪其餘重複訂單，進行商品累加與圖片網址補齊
     for (let dup of duplicateOrders) {
       mergedOrderIds.push(dup.id);
       totalSum += Number(dup['總金額'] || 0);
@@ -2424,28 +2442,26 @@ async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
         );
 
         if (existing) {
-          // 若商品已存在，累加數量
           existing.qty += dupItem.qty;
           existing['數量'] = existing.qty;
-          // 如果原本沒圖片，順便補上圖片
-          if (!existing.img && dupItem.img) {
+          // 如果主訂單本來沒圖網址，但後面重複訂單或資料庫有，就補上去
+          if ((!existing.img || existing.img === '') && dupItem.img) {
             existing.img = dupItem.img;
             existing['圖片'] = dupItem.img;
           }
         } else {
-          // 若是新商品，直接推入陣列
           combinedItems.push(dupItem);
         }
       });
 
-      // 將被合併的舊訂單狀態改為已取消
+      // 將被合併的舊訂單改為已取消
       await db.from('orders').update({
         '處理狀態': '已取消',
         '備註': `已合併至主訂單 #${mainOrder.id}`
       }).eq('id', dup.id);
     }
 
-    // 4. 更新主訂單的內容與總金額
+    // 5. 更新主訂單
     const { error: updateErr } = await db.from('orders').update({
       '訂單內容': combinedItems,
       '總金額': totalSum,
@@ -2455,9 +2471,8 @@ async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
 
     if (updateErr) throw updateErr;
 
-    alert(`🎉 成功合併！\n主訂單 #${mainOrder.id} 已更新最新總金額 ($${totalSum}) 與完整的商品圖片明細。\n其餘重複訂單已自動標記為取消。`);
+    alert(`🎉 成功合併！\n主訂單 #${mainOrder.id} 已更新最新總金額 ($${totalSum}) 並完美帶入商品圖片網址！\n其餘重複訂單已自動標記為取消。`);
     
-    // 重新整理後台顯示
     if (typeof loadAllOrders === 'function') loadAllOrders();
     if (typeof loadGroupManageList === 'function') loadGroupManageList();
 
