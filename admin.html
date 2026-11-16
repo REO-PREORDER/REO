@@ -1388,90 +1388,92 @@ function openProductEditModal(groupName) {
 }
 window.openProductEditModal = openProductEditModal;
 
-// 5. 匯出指定團務的名單或總表 (完美對應截圖格式，支援餘量與分類合併)
+// 5. 匯出指定團務的名單或總表 (已完美過濾已取消訂單)
 async function exportGroupSpecificCSV(groupName, type) {
-    try {
-        const [ordersRes, productsRes] = await Promise.all([
-            db.from('orders').select('*'),
-            db.from('products').select('*').eq('團務名稱', groupName)
-        ]);
-        
-        if (ordersRes.error) throw ordersRes.error;
-        let allOrders = ordersRes.data || [];
-        let groupProducts = productsRes.data || [];
-        let productNames = new Set(groupProducts.map(p => String(p['商品名稱'] || '').trim()).filter(Boolean));
+  try {
+    const [ordersRes, productsRes] = await Promise.all([
+      db.from('orders').select('*'),
+      db.from('products').select('*').eq('團務名稱', groupName)
+    ]);
+    
+    if (ordersRes.error) throw ordersRes.error;
+    let allOrders = ordersRes.data || [];
+    let groupProducts = productsRes.data || [];
+    let productNames = new Set(groupProducts.map(p => String(p['商品名稱'] || '').trim()).filter(Boolean));
 
-        // 嚴格篩選該團訂單（包含一般預購與該團的餘量認領）
-        const orders = allOrders.filter(o => {
-            let oGroup = String(o['團務名稱'] || '').trim();
-            let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
-            if (oGroup === groupName || cleanGroup === groupName) return true;
-            if (oGroup.includes(groupName) || groupName.includes(cleanGroup)) return true;
+    // 嚴格篩選該團訂單：必須是該團，且狀態絕對「不能是已取消」
+    const orders = allOrders.filter(o => {
+      let status = String(o['處理狀態'] || '').trim();
+      if (status === '已取消') return false; // 🚫 直接排除已取消的訂單
 
-            let items = o['訂單內容'];
-            if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
-            if (Array.isArray(items)) {
-                return items.some(item => {
-                    let itemName = String(item.name || item['商品名稱'] || '').trim();
-                    for (let pName of productNames) {
-                        if (pName && (itemName === pName || pName.includes(itemName))) return true;
-                    }
-                    return false;
-                });
-            }
-            return false;
+      let oGroup = String(o['團務名稱'] || '').trim();
+      let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
+      if (oGroup === groupName || cleanGroup === groupName) return true;
+      if (oGroup.includes(groupName) || groupName.includes(cleanGroup)) return true;
+      
+      let items = o['訂單內容'];
+      if (typeof items === 'string') {
+        try { items = JSON.parse(items); } catch(e) { items = []; }
+      }
+      if (Array.isArray(items)) {
+        return items.some(item => {
+          let itemName = String(item.name || item['商品名稱'] || '').trim();
+          for (let pName of productNames) {
+            if (pName && (itemName === pName || pName.includes(itemName))) return true;
+          }
+          return false;
         });
+      }
+      return false;
+    });
 
-        if (!orders || orders.length === 0) {
-            alert(`「${groupName}」目前沒有任何訂單記錄（包含餘量認領）！`);
-            return;
-        }
-
-        if (type === 'buyer') {
-            // 📝 轉換成截圖指定的買家名單格式
-            let buyerListArray = orders.map(o => {
-                let itemsRaw = o['訂單內容'] !== undefined ? o['訂單內容'] : o['商品明細'];
-                let items = [];
-
-                try {
-                    if (typeof itemsRaw === 'string') {
-                        items = JSON.parse(itemsRaw || '[]');
-                    } else if (Array.isArray(itemsRaw)) {
-                        items = itemsRaw;
-                    } else if (itemsRaw && typeof itemsRaw === 'object') {
-                        items = [itemsRaw];
-                    }
-                } catch (e) {
-                    items = [];
-                }
-
-                // 組裝商品明細字串，例如：[立牌] 恩琴 x1 ; [支架徽章] 恩琴 x1
-                let itemsTextFormatted = items.map(i => {
-                    let iCat = i.category || i['商品分類'] || '';
-                    let iName = i.name || i['商品名稱'] || i['商品'] || i['title'] || '未知商品';
-                    let qty = i.qty || i['數量'] || i['q'] || i['quantity'] || 1;
-
-                    // 如果餘量沒有帶分類，試著從該團商品庫補上分類
-                    let finalName = (iCat && !iName.startsWith('[')) ? `[${iCat}] ${iName}` : iName;
-                    return `${finalName} x${qty}`;
-                }).join(' ; ');
-
-                return {
-                    '團務名稱': groupName,
-                    '買家姓名': o['買家名稱'] || '未知買家',
-                    '商品明細': itemsTextFormatted,
-                    '總金額': Number(o['總金額'] || 0)
-                };
-            });
-
-            exportToCSV(buyerListArray, `${groupName}_買家喊單名單(含餘量).csv`);
-        } else if (type === 'summary') {
-            exportSummaryCSV(groupName, orders);
-        }
-    } catch (err) {
-        console.error("匯出失敗：", err);
-        alert("匯出過程發生錯誤：" + err.message);
+    if (!orders || orders.length === 0) {
+      alert(`「${groupName}」目前沒有任何有效的訂單記錄可供匯出！`);
+      return;
     }
+
+    if (type === 'buyer') {
+      // 📝 轉換成買家名單格式（僅包含有效訂單）
+      let buyerListArray = orders.map(o => {
+        let itemsRaw = o['訂單內容'] !== undefined ? o['訂單內容'] : o['商品明細'];
+        let items = [];
+        try {
+          if (typeof itemsRaw === 'string') {
+            items = JSON.parse(itemsRaw || '[]');
+          } else if (Array.isArray(itemsRaw)) {
+            items = itemsRaw;
+          } else if (itemsRaw && typeof itemsRaw === 'object') {
+            items = [itemsRaw];
+          }
+        } catch (e) {
+          items = [];
+        }
+
+        let itemsTextFormatted = items.map(i => {
+          let iCat = i.category || i['商品分類'] || '';
+          let iName = i.name || i['商品名稱'] || i['商品'] || i['title'] || '未知商品';
+          let qty = i.qty || i['數量'] || i['q'] || i['quantity'] || 1;
+          let finalName = (iCat && !iName.startsWith('[')) ? `[${iCat}] ${iName}` : iName;
+          return `${finalName} x${qty}`;
+        }).join(' ; ');
+
+        return {
+          '團務名稱': groupName,
+          '買家姓名': o['買家名稱'] || '未知買家',
+          '商品明細': itemsTextFormatted,
+          '總金額': Number(o['總金額'] || 0)
+        };
+      });
+
+      exportToCSV(buyerListArray, `${groupName}_買家喊單名單(已過濾取消).csv`);
+    } else if (type === 'summary') {
+      // 📊 匯出商品採購總表（直接呼叫會自動排除已取消的統計函式）
+      exportSummaryCSV(groupName, orders);
+    }
+  } catch (err) {
+    console.error("匯出失敗：", err);
+    alert("匯出過程發生錯誤：" + err.message);
+  }
 }
 window.exportGroupSpecificCSV = exportGroupSpecificCSV;
 
