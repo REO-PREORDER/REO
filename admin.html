@@ -2270,7 +2270,7 @@ window.submitBatchProducts = submitBatchProducts;
 }
 window.updateOrderStatus = updateOrderStatus;
     
-  async function loadPendingOrders() {
+async function loadPendingOrders() {
     let container = document.getElementById('pendingOrdersList');
     if (!container) return;
 
@@ -2293,6 +2293,12 @@ window.updateOrderStatus = updateOrderStatus;
       let html = "";
       orders.forEach(order => {
         let groupName = order["團務名稱"] || "";
+        let buyerName = order["買家名稱"] || "";
+        
+        // 🛡️ 安全跳脫單引號，避免破壞 HTML 裡的 onclick 結構
+        let safeGroupName = groupName.replace(/'/g, "\\'");
+        let safeBuyerName = buyerName.replace(/'/g, "\\'");
+
         let remark = order["備註"] || "";
         let isSurplus = groupName.includes("餘量認領") || remark.includes("餘量認領");
 
@@ -2303,19 +2309,18 @@ window.updateOrderStatus = updateOrderStatus;
         let itemsHtml = "";
         let items = order["訂單內容"] || [];
         items.forEach(item => {
-          // 🏷️ 檢查並取得分類名稱
           let cat = item.category ? `[${item.category}] ` : "";
-          
           itemsHtml += `<div style="font-size: 13px; color: #e4e4e7; margin-bottom: 4px;">
             • ${cat}${item.name || item["商品名稱"]} x ${item.qty || item["數量"]} ($${item.price || item["單價"] || 0})
           </div>`;
         });
-      html += `
+
+        html += `
           <tr style="border-bottom: 1px solid #333;">
             <td style="padding: 8px; color: #38bdf8; font-weight: bold;">#${order.id}</td>
             <td style="padding: 8px; color: #aaa; white-space: nowrap;">${order.created_at ? new Date(order.created_at).toLocaleString() : ''}</td>
-            <td style="padding: 8px; color: #fff; font-weight: bold;">${order["買家名稱"] || ''}</td>
-            <td style="padding: 8px; color: #ccc;">${groupName || ''}</td>
+            <td style="padding: 8px; color: #fff; font-weight: bold;">${buyerName}</td>
+            <td style="padding: 8px; color: #ccc;">${groupName}</td>
             <td style="padding: 8px; color: #ddd; line-height: 1.4;">${itemsHtml}</td>
             <td style="padding: 8px; color: #f87171; font-weight: bold;">$${order["總金額"] || 0}</td>
             <td style="padding: 8px; font-weight: bold; color: #f59e0b;">${order["處理狀態"] || '待確認'}</td>
