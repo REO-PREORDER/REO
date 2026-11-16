@@ -2502,7 +2502,7 @@ async function loadAllOrders() {
 }
 window.loadAllOrders = loadAllOrders;
 
-// 🎨 渲染訂單表格（已支援管理員備註行內即時編輯）
+// 🎨 渲染訂單表格（已支援管理員備註行內即時編輯與同團合併）
 function renderOrdersTable(orders) {
   // 💡 強制確保訂單分頁容器是顯示的，避免因為 display: none 導致渲染失敗
   const tabOrders = document.getElementById('tab-orders');
@@ -2532,6 +2532,12 @@ function renderOrdersTable(orders) {
     let adminRemark = o["備註"] || "";
     let safeAdminRemark = adminRemark.replace(/'/g, "&#39;");
     
+    // 🛡️ 安全跳脫單引號，確保合併按鈕的參數不會破壞 HTML 結構
+    let groupNameVal = o["團務名稱"] || "";
+    let buyerNameVal = o["買家名稱"] || "";
+    let safeGroupName = groupNameVal.replace(/'/g, "\\'");
+    let safeBuyerName = buyerNameVal.replace(/'/g, "\\'");
+    
     let statusColor = "#10b981"; 
     if (o["處理狀態"] === "已變更") statusColor = "#f59e0b";
     if (o["處理狀態"] === "已取消") statusColor = "#ef4444";
@@ -2555,8 +2561,8 @@ function renderOrdersTable(orders) {
       <tr style="border-bottom: 1px solid #333;">
         <td style="padding: 8px; color: #38bdf8; font-weight: bold;">#${orderId}</td>
         <td style="padding: 8px; color: #aaa;">${timeStr}</td>
-        <td style="padding: 8px; color: #fff; font-weight: bold;">${o["買家名稱"] || '未填寫'}</td>
-        <td style="padding: 8px; color: #60a5fa;">${o["團務名稱"] || '-'}</td>
+        <td style="padding: 8px; color: #fff; font-weight: bold;">${buyerNameVal || '未填寫'}</td>
+        <td style="padding: 8px; color: #60a5fa;">${groupNameVal || '-'}</td>
         <td style="padding: 8px; color: #ddd; line-height: 1.4; font-size: 11px;">${detailsText}</td>
         <td style="padding: 8px; color: #f87171; font-weight: bold;">$${o["總金額"] || 0}</td>
         <td style="padding: 8px; font-weight: bold; color: ${statusColor};">${o["處理狀態"] || '待確認'}</td>
@@ -2581,6 +2587,7 @@ function renderOrdersTable(orders) {
           <button onclick="updateOrderStatus('${o.id}', '已成立')" style="background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✓ 成立</button>
           <button onclick='openModifyModal(${JSON.stringify(o)})' style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏ 變更</button>
           <button onclick="updateOrderStatus('${o.id}', '已取消')" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✕ 取消</button>
+          <button onclick="mergeBuyerOrders('${safeGroupName}', '${safeBuyerName}')" style="background: #8b5cf6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;" title="將此買家在同團的其他有效訂單合併至最早的一筆">🔗 合併同團</button>
         </td>
       </tr>
     `;
