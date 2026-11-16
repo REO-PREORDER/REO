@@ -2347,22 +2347,24 @@ async function loadPendingOrders() {
 
  // 目前選取的訂單記錄頁籤（預設為已成立）
 let currentRecordStatus = "已成立";
-// 🔗 合併同一個買家在同一個團務下的所有有效訂單
+// 🔗 合併同一個買家在同一個團務下的所有有效訂單（相容各種欄位格式版）
 async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
-  if (!confirm(`確定要將買家「${targetBuyerName}」在「${targetGroupName}」底下的所有有效訂單進行合併嗎？\n\n系統將自動把商品明細合併至最早的一筆訂單，並將其餘重複訂單標記為「已取消」。`)) {
+  if (!confirm(`確定要將買家「${targetBuyerName}」在「${targetGroupName}」底下的所有有效訂單進行合併嗎？\n\n系統將自動把商品明細與數量正確合併至最早的一筆訂單，並將其餘重複訂單標記為「已取消」。`)) {
     return;
   }
 
   try {
+    // 1. 撈出該團務與該買家的所有訂單
     const { data: orders, error } = await db
       .from('orders')
       .select('*')
       .eq('團務名稱', targetGroupName)
       .eq('買家名稱', targetBuyerName)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true }); // 按時間排序，最早的當作主訂單
 
     if (error) throw error;
 
+    // 過濾掉已經取消的訂單
     const activeOrders = (orders || []).filter(o => String(o['處理狀態'] || '').trim() !== '已取消');
 
     if (activeOrders.length <= 1) {
@@ -2373,50 +2375,57 @@ async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
     const mainOrder = activeOrders[0];
     const duplicateOrders = activeOrders.slice(1);
 
-    let combinedItems = [];
-    let totalSum = 0;
-
-    let mainItems = mainOrder['訂單內容'];
-    if (typeof mainItems === 'string') {
-      try { mainItems = JSON.parse(mainItems); } catch(e) { mainItems = []; }
+    // 2. 解析並統一商品明細格式的輔助函式
+    function parseItems(rawItems) {
+      if (typeof rawItems === 'string') {
+        try { rawItems = JSON.parse(rawItems); } catch(e) { rawItems = []; }
+      }
+      if (!Array.isArray(rawItems)) return [];
+      
+      return rawItems.map(i => ({
+        category: i.category || i['商品分類'] || '',
+        name: i.name || i['商品名稱'] || '',
+        qty: parseInt(i.qty || i['數量'] || 1),
+        price: parseFloat(i.price || i['單價'] || 0)
+      }));
     }
-    if (Array.isArray(mainItems)) combinedItems = combinedItems.concat(mainItems);
-    totalSum += Number(mainOrder['總金額'] || 0);
 
+    // 初始化主訂單的商品與總金額
+    let combinedItems = parseItems(mainOrder['訂單內容']);
+    let totalSum = Number(mainOrder['總金額'] || 0);
     let mergedOrderIds = [mainOrder.id];
 
+    // 3. 走訪其餘重複訂單，進行商品累加與金額加總
     for (let dup of duplicateOrders) {
       mergedOrderIds.push(dup.id);
       totalSum += Number(dup['總金額'] || 0);
 
-      let dupItems = dup['訂單內容'];
-      if (typeof dupItems === 'string') {
-        try { dupItems = JSON.parse(dupItems); } catch(e) { dupItems = []; }
-      }
+      let dupItems = parseItems(dup['訂單內容']);
 
-      if (Array.isArray(dupItems)) {
-        dupItems.forEach(dupItem => {
-          let existing = combinedItems.find(ci => 
-            (ci.name === dupItem.name || ci['商品名稱'] === dupItem['商品名稱']) &&
-            (ci.category === dupItem.category || ci['商品分類'] === dupItem['商品分類'])
-          );
-          if (existing) {
-            let q1 = parseInt(existing.qty || existing['數量'] || 1);
-            let q2 = parseInt(dupItem.qty || dupItem['數量'] || 1);
-            existing.qty = q1 + q2;
-            if (existing['數量'] !== undefined) existing['數量'] = q1 + q2;
-          } else {
-            combinedItems.push(dupItem);
-          }
-        });
-      }
+      dupItems.forEach(dupItem => {
+        // 尋找是否已有相同分類與名稱的商品
+        let existing = combinedItems.find(ci => 
+          ci.name.trim() === dupItem.name.trim() && 
+          ci.category.trim() === dupItem.category.trim()
+        );
 
+        if (existing) {
+          // 若商品已存在，直接累加數量
+          existing.qty += dupItem.qty;
+        } else {
+          // 若是新商品，直接推入陣列
+          combinedItems.push(dupItem);
+        }
+      });
+
+      // 將被合併的舊訂單狀態改為已取消
       await db.from('orders').update({
         '處理狀態': '已取消',
         '備註': `已合併至主訂單 #${mainOrder.id}`
       }).eq('id', dup.id);
     }
 
+    // 4. 更新主訂單的內容與總金額
     const { error: updateErr } = await db.from('orders').update({
       '訂單內容': combinedItems,
       '總金額': totalSum,
@@ -2426,8 +2435,9 @@ async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
 
     if (updateErr) throw updateErr;
 
-    alert(`🎉 成功合併！\n主訂單 #${mainOrder.id} 已更新最新總金額 ($${totalSum}) 與合併商品明細。\n其餘重複訂單已自動標記為取消。`);
+    alert(`🎉 成功合併！\n主訂單 #${mainOrder.id} 已更新最新總金額 ($${totalSum}) 與正確的商品明細。\n其餘重複訂單已自動標記為取消。`);
     
+    // 重新整理後台顯示
     if (typeof loadAllOrders === 'function') loadAllOrders();
     if (typeof loadGroupManageList === 'function') loadGroupManageList();
 
@@ -2437,6 +2447,7 @@ async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
   }
 }
 window.mergeBuyerOrders = mergeBuyerOrders;
+    
 // 切換按鈕樣式並載入資料
 function switchOrderRecordTab(status) {
   currentRecordStatus = status;
