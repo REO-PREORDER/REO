@@ -2347,7 +2347,7 @@ async function loadPendingOrders() {
 
  // 目前選取的訂單記錄頁籤（預設為已成立）
 let currentRecordStatus = "已成立";
-// 🔗 合併同一個買家在同一個團務下的所有有效訂單（完整保留商品圖片與明細版）
+// 🔗 合併同一個買家在同一個團務下的所有有效訂單（終極圖片完美保留版）
 async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
   if (!confirm(`確定要將買家「${targetBuyerName}」在「${targetGroupName}」底下的所有有效訂單進行合併嗎？\n\n系統將自動把商品明細、數量與圖片完整合併至最早的一筆訂單，並將其餘重複訂單標記為「已取消」。`)) {
     return;
@@ -2375,20 +2375,34 @@ async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
     const mainOrder = activeOrders[0];
     const duplicateOrders = activeOrders.slice(1);
 
-    // 2. 解析並完整保留商品各項屬性（包含圖片）的輔助函式
+    // 2. 解析並雙向保留商品各項屬性（完美相容英文與中文圖片欄位）
     function parseItems(rawItems) {
       if (typeof rawItems === 'string') {
         try { rawItems = JSON.parse(rawItems); } catch(e) { rawItems = []; }
       }
       if (!Array.isArray(rawItems)) return [];
       
-      return rawItems.map(i => ({
-        category: i.category || i['商品分類'] || '',
-        name: i.name || i['商品名稱'] || '',
-        qty: parseInt(i.qty || i['數量'] || 1),
-        price: parseFloat(i.price || i['單價'] || 0),
-        img: i.img || i['圖片'] || '' // 📸 完整保留商品圖片欄位
-      }));
+      return rawItems.map(i => {
+        let itemName = i.name || i['商品名稱'] || '';
+        let itemCat = i.category || i['商品分類'] || '';
+        let itemQty = parseInt(i.qty || i['數量'] || 1);
+        let itemPrice = parseFloat(i.price || i['單價'] || 0);
+        // 📸 雙向對應所有可能的圖片欄位名稱
+        let itemImg = i.img || i.image || i['圖片'] || '';
+
+        return {
+          category: itemCat,
+          name: itemName,
+          qty: itemQty,
+          price: itemPrice,
+          img: itemImg,
+          '商品分類': itemCat,
+          '商品名稱': itemName,
+          '數量': itemQty,
+          '單價': itemPrice,
+          '圖片': itemImg
+        };
+      });
     }
 
     // 初始化主訂單的商品與總金額
@@ -2396,7 +2410,7 @@ async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
     let totalSum = Number(mainOrder['總金額'] || 0);
     let mergedOrderIds = [mainOrder.id];
 
-    // 3. 走訪其餘重複訂單，進行商品累加與金額加總
+    // 3. 走訪其餘重複訂單，進行商品累加與圖片補齊
     for (let dup of duplicateOrders) {
       mergedOrderIds.push(dup.id);
       totalSum += Number(dup['總金額'] || 0);
@@ -2410,13 +2424,16 @@ async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
         );
 
         if (existing) {
-          // 若商品已存在，直接累加數量（如果原本沒圖片但新單有圖片，順便補上圖片）
+          // 若商品已存在，累加數量
           existing.qty += dupItem.qty;
+          existing['數量'] = existing.qty;
+          // 如果原本沒圖片，順便補上圖片
           if (!existing.img && dupItem.img) {
             existing.img = dupItem.img;
+            existing['圖片'] = dupItem.img;
           }
         } else {
-          // 若是新商品，直接連同圖片一起推入陣列
+          // 若是新商品，直接推入陣列
           combinedItems.push(dupItem);
         }
       });
@@ -2438,7 +2455,7 @@ async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
 
     if (updateErr) throw updateErr;
 
-    alert(`🎉 成功合併！\n主訂單 #${mainOrder.id} 已更新最新總金額 ($${totalSum}) 與完整的商品明細與圖片。\n其餘重複訂單已自動標記為取消。`);
+    alert(`🎉 成功合併！\n主訂單 #${mainOrder.id} 已更新最新總金額 ($${totalSum}) 與完整的商品圖片明細。\n其餘重複訂單已自動標記為取消。`);
     
     // 重新整理後台顯示
     if (typeof loadAllOrders === 'function') loadAllOrders();
