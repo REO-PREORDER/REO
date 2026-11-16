@@ -2325,10 +2325,10 @@ window.updateOrderStatus = updateOrderStatus;
             <div style="font-size: 13px; font-weight: bold; margin-bottom: 10px;">
               總金額：<span style="color: #60a5fa;">$${order["總金額"]}</span>
             </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button onclick="updateOrderStatus(${order.id}, '已成立', '${order["Email"] || ""}')" style="flex: 1; min-width: 110px; padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">審核通過 (成立)</button>
-              <button onclick="updateOrderStatus(${order.id}, '已取消', '${order["Email"] || ""}')" style="flex: 1; min-width: 110px; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">拒絕申請 (取消)</button>
-              <button onclick="mergeBuyerOrders('${groupName.replace(/'/g, "\\'")}', '${(order["買家名稱"] || "").replace(/'/g, "\\'")}')" style="padding: 8px 14px; background: #8b5cf6; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;" title="將此買家在同團的其他有效訂單合併至最早的一筆">🔗 合併同團</button>
+           <div style="display: flex; gap: 8px;">
+              <button onclick="updateOrderStatus(${order.id}, '已成立', '${order["Email"] || ""}')" style="flex: 1; padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">審核通過 (成立)</button>
+              <button onclick="updateOrderStatus(${order.id}, '已取消', '${order["Email"] || ""}')" style="flex: 1; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">拒絕申請 (取消)</button>
+              <button onclick="updateOrderStatus(${order.id}, '已變更', '${order["Email"] || ""}')" style="background:#3b82f6; color:white; border:none; border-radius:4px; ...">變更</button>
             </div>
           </div>
         `;
@@ -2344,96 +2344,7 @@ window.updateOrderStatus = updateOrderStatus;
 
  // 目前選取的訂單記錄頁籤（預設為已成立）
 let currentRecordStatus = "已成立";
-// 🔗 合併同一個買家在同一個團務下的所有有效訂單
-async function mergeBuyerOrders(targetGroupName, targetBuyerName) {
-  if (!confirm(`確定要將買家「${targetBuyerName}」在「${targetGroupName}」底下的所有有效訂單進行合併嗎？\n\n系統將自動把商品明細合併至最早的一筆訂單，並將其餘重複訂單標記為「已取消」。`)) {
-    return;
-  }
 
-  try {
-    const { data: orders, error } = await db
-      .from('orders')
-      .select('*')
-      .eq('團務名稱', targetGroupName)
-      .eq('買家名稱', targetBuyerName)
-      .order('created_at', { ascending: true });
-
-    if (error) throw error;
-
-    const activeOrders = (orders || []).filter(o => String(o['處理狀態'] || '').trim() !== '已取消');
-
-    if (activeOrders.length <= 1) {
-      alert(`⚠️ 買家「${targetBuyerName}」在此團中只有 ${activeOrders.length} 筆有效訂單，不需要進行合併！`);
-      return;
-    }
-
-    const mainOrder = activeOrders[0];
-    const duplicateOrders = activeOrders.slice(1);
-
-    let combinedItems = [];
-    let totalSum = 0;
-
-    let mainItems = mainOrder['訂單內容'];
-    if (typeof mainItems === 'string') {
-      try { mainItems = JSON.parse(mainItems); } catch(e) { mainItems = []; }
-    }
-    if (Array.isArray(mainItems)) combinedItems = combinedItems.concat(mainItems);
-    totalSum += Number(mainOrder['總金額'] || 0);
-
-    let mergedOrderIds = [mainOrder.id];
-
-    for (let dup of duplicateOrders) {
-      mergedOrderIds.push(dup.id);
-      totalSum += Number(dup['總金額'] || 0);
-
-      let dupItems = dup['訂單內容'];
-      if (typeof dupItems === 'string') {
-        try { dupItems = JSON.parse(dupItems); } catch(e) { dupItems = []; }
-      }
-
-      if (Array.isArray(dupItems)) {
-        dupItems.forEach(dupItem => {
-          let existing = combinedItems.find(ci => 
-            (ci.name === dupItem.name || ci['商品名稱'] === dupItem['商品名稱']) &&
-            (ci.category === dupItem.category || ci['商品分類'] === dupItem['商品分類'])
-          );
-          if (existing) {
-            let q1 = parseInt(existing.qty || existing['數量'] || 1);
-            let q2 = parseInt(dupItem.qty || dupItem['數量'] || 1);
-            existing.qty = q1 + q2;
-            if (existing['數量'] !== undefined) existing['數量'] = q1 + q2;
-          } else {
-            combinedItems.push(dupItem);
-          }
-        });
-      }
-
-      await db.from('orders').update({
-        '處理狀態': '已取消',
-        '備註': `已合併至主訂單 #${mainOrder.id}`
-      }).eq('id', dup.id);
-    }
-
-    const { error: updateErr } = await db.from('orders').update({
-      '訂單內容': combinedItems,
-      '總金額': totalSum,
-      '處理狀態': '已變更',
-      '備註': `已由訂單 ${mergedOrderIds.join(', ')} 合併結算`
-    }).eq('id', mainOrder.id);
-
-    if (updateErr) throw updateErr;
-
-    alert(`🎉 成功合併！\n主訂單 #${mainOrder.id} 已更新最新總金額 ($${totalSum}) 與合併商品明細。\n其餘重複訂單已自動標記為取消。`);
-    
-    if (typeof loadAllOrders === 'function') loadAllOrders();
-    if (typeof loadGroupManageList === 'function') loadGroupManageList();
-
-  } catch (err) {
-    console.error("合併訂單失敗：", err);
-    alert("❌ 合併訂單發生錯誤：" + err.message);
-  }
-}
-window.mergeBuyerOrders = mergeBuyerOrders;
 // 切換按鈕樣式並載入資料
 function switchOrderRecordTab(status) {
   currentRecordStatus = status;
@@ -3109,7 +3020,7 @@ async function loadSplitBoardData() {
 
         for (let q = 0; q < pQty; q++) {
           validItemsParsed.push({
-            id: `${ord.id}_${roleName}_${q}`, 
+            id: `${ord.id}_${roleName}_${q}`, // 每個名額的唯一識別碼
             buyer: ord['買家名稱'] || '未具名',
             time: new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             orderId: ord.id,
@@ -3139,6 +3050,7 @@ async function loadSplitBoardData() {
       manualOverrides = JSON.parse(localStorage.getItem(manualOverridesKey) || '{}');
     } catch(e) { manualOverrides = {}; }
 
+    // 5. 初始分配與防重疊演算法
     let boxes = [];
     validItemsParsed.sort((a, b) => new Date(a.time) - new Date(b.time));
 
@@ -3151,15 +3063,17 @@ async function loadSplitBoardData() {
           roles.forEach(r => { newBox[r] = null; });
           boxes.push(newBox);
         }
+        // 如果手動指定的格子已經有人，強制往後尋找下一個該角色是空的盒子，避免重疊
         let placedManually = false;
         if (!boxes[targetBoxIndex][item.role]) {
           boxes[targetBoxIndex][item.role] = item;
           placedManually = true;
         } else {
+          // 若目標格有人，往後找空位
           for (let b = 0; b < boxes.length; b++) {
             if (!boxes[b][item.role]) {
               boxes[b][item.role] = item;
-              manualOverrides[item.id] = b;
+              manualOverrides[item.id] = b; // 自動更新紀錄
               placedManually = true;
               break;
             }
@@ -3174,6 +3088,7 @@ async function loadSplitBoardData() {
         }
       } else {
         let placed = false;
+        // 優先找現有盒子中「該角色是空的」且「同買家已在該盒」的格子
         for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
           let currentBox = boxes[bIndex];
           if (!currentBox[item.role]) {
@@ -3186,6 +3101,7 @@ async function loadSplitBoardData() {
           }
         }
 
+        // 其次找任何一個「該角色是空的」盒子
         if (!placed) {
           for (let bIndex = 0; bIndex < boxes.length; bIndex++) {
             let currentBox = boxes[bIndex];
@@ -3197,6 +3113,7 @@ async function loadSplitBoardData() {
           }
         }
 
+        // 若都滿了則開新盒
         if (!placed) {
           let newBox = {};
           roles.forEach(r => { newBox[r] = null; });
@@ -3231,15 +3148,13 @@ async function loadSplitBoardData() {
 
         if (entry) {
           cellBg = "#1e293b";
-          // 💡 點擊格子時直接呼叫互動移動函式，帶入目前的盒數 (b + 1) 與總盒數 (maxBoxCount)
-          let currentBoxNum = b + 1;
+          let leftBtn = b > 0 ? `<button onclick="moveSplitItemSafe('${selectedGroup}', '${selectedCategory}', '${entry.id}', ${b}, ${b - 1})" style="background: #374151; color: #fff; border: none; padding: 1px 4px; border-radius: 3px; cursor: pointer; font-size: 9px;" title="移至上一盒">◀</button>` : '';
+          let rightBtn = `<button onclick="moveSplitItemSafe('${selectedGroup}', '${selectedCategory}', '${entry.id}', ${b}, ${b + 1})" style="background: #374151; color: #fff; border: none; padding: 1px 4px; border-radius: 3px; cursor: pointer; font-size: 9px;" title="移至下一盒">▶</button>`;
+
           cellContent = `
-            <div onclick="promptMoveSplitItem('${selectedGroup}', '${selectedCategory}', '${entry.id}', ${currentBoxNum}, ${maxBoxCount})" 
-                 style="cursor: pointer; padding: 4px; border-radius: 4px; transition: background 0.2s;" 
-                 title="點擊即可直接更換或移動盒數">
-              <div style="font-weight: bold; color: #fff;">${entry.buyer} <span style="color: #38bdf8; font-size: 11px;">(#${entry.orderId})</span></div>
-              <div style="font-size: 11px; color: #888; margin-top: 2px;">(${entry.time}) <span style="color: #f59e0b; font-size: 10px;">🔄 點擊調位</span></div>
-            </div>
+            <div style="font-weight: bold; color: #fff;">${entry.buyer} <span style="color: #38bdf8; font-size: 11px;">(#${entry.orderId})</span></div>
+            <div style="font-size: 11px; color: #888; margin-bottom: 4px;">(${entry.time})</div>
+            <div style="display: flex; gap: 4px; justify-content: center;">${leftBtn} ${rightBtn}</div>
           `;
         } else {
           cellContent = `<span style="color: #555; font-style: italic;">(尚無)</span>`;
@@ -3259,35 +3174,18 @@ async function loadSplitBoardData() {
 }
 window.loadSplitBoardData = loadSplitBoardData;
 
-// 💡 點擊人名時彈出直覺的目標盒數輸入框
-function promptMoveSplitItem(groupName, category, itemId, currentBox, maxBox) {
-  let targetStr = prompt(`【拆團調位】\n請輸入想要將此名額移動到的目標盒數 (1 ~ ${maxBox})：`, currentBox);
-  if (targetStr === null) return; // 點擊取消
-  
-  let targetBox = parseInt(targetStr.trim());
-  if (isNaN(targetBox) || targetBox < 1 || targetBox > maxBox) {
-    alert("❌ 請輸入有效的盒數編號！");
-    return;
-  }
-
-  if (targetBox === currentBox) return; // 留在原本那一盒
-
-  // 轉換成從 0 開始的索引傳給 moveSplitItemSafe
-  moveSplitItemSafe(groupName, category, itemId, currentBox - 1, targetBox - 1);
-}
-window.promptMoveSplitItem = promptMoveSplitItem;
-
 // 🛡️ 絕對防重疊的移動與置換函式
 function moveSplitItemSafe(groupName, category, itemId, fromBox, toBox) {
   let manualOverridesKey = `reo_split_override_${groupName}_${category}`;
   let manualOverrides = {};
   try {
     manualOverrides = JSON.parse(localStorage.getItem(manualOverridesKey) || '{}');
-  } catch(e) {
-    manualOverrides = {};
-  }
-  
+  } catch(e) { manualOverrides = {}; }
+
+  // 找出目前目標盒裡有沒有其他人佔了同一個角色
+  // 我們直接更新該 item 的目標盒編號，重新載入時系統會自動把被擠掉的人妥善安排位置
   manualOverrides[itemId] = toBox;
+
   localStorage.setItem(manualOverridesKey, JSON.stringify(manualOverrides));
   loadSplitBoardData();
 }
