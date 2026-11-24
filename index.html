@@ -1339,8 +1339,25 @@ function formatImageUrl(url) {
   }
 
 async function selectGroup(groupName, isExpired) {
+  // 先找出當前團務的物件
+  let currentGroupObj = (typeof groupsData !== 'undefined' ? groupsData : []).find(g => g["團務名稱"] === groupName);
+
+  // 如果沒傳入 isExpired，自動從團務資料與截單時間判斷是否已結單
+  if (isExpired === undefined && currentGroupObj) {
+    let deadlineStr = currentGroupObj["截單時間"] || currentGroupObj["截止時間"] || "";
+    let isTimeExpired = deadlineStr ? (new Date(deadlineStr) < new Date()) : false;
+    isExpired = Boolean(currentGroupObj["isExpired"] || currentGroupObj["已結單"] || currentGroupObj["狀態"] === "已結單" || isTimeExpired);
+  }
+
   if (isExpired) { 
     alert("此團務已結單，無法再進行預購！"); 
+    // 如果是從網址直接進來發現已結單，導回團務列表
+    if (document.getElementById('groupListView')) {
+      document.getElementById('groupListView').style.display = 'block';
+    }
+    if (document.getElementById('productOrderView')) {
+      document.getElementById('productOrderView').style.display = 'none';
+    }
     return; 
   }
   
@@ -1349,10 +1366,43 @@ async function selectGroup(groupName, isExpired) {
   document.getElementById('productOrderView').style.display = 'block';
   document.getElementById('activeGroupTitle').innerText = groupName;
   
-  // 1. 找出當前團務的物件（取得其 id、圖片網址、截單時間、付款方式）
-  let currentGroupObj = groupsData.find(g => g["團務名稱"] === groupName);
   const groupId = currentGroupObj ? currentGroupObj.id : "";
   const groupImage = currentGroupObj ? (currentGroupObj["圖片"] || "") : "";
+
+  // 🕒 【補上】動態帶入「截單時間」與「付款方式」
+  let rawDeadline = currentGroupObj ? (currentGroupObj["截單時間"] || currentGroupObj["截止時間"] || "") : "";
+  let deadlineDisplay = "未定";
+  if (rawDeadline) {
+    let d = new Date(rawDeadline);
+    if (!isNaN(d.getTime())) {
+      let yyyy = d.getFullYear();
+      let mm = String(d.getMonth() + 1).padStart(2, '0');
+      let dd = String(d.getDate()).padStart(2, '0');
+      let hh = String(d.getHours()).padStart(2, '0');
+      let min = String(d.getMinutes()).padStart(2, '0');
+      deadlineDisplay = `${yyyy}/${mm}/${dd} ${hh}:${min}`;
+    } else {
+      deadlineDisplay = rawDeadline;
+    }
+  }
+  
+  const deadlineEl = document.getElementById('activeGroupDeadline');
+  if (deadlineEl) {
+    deadlineEl.innerText = deadlineDisplay;
+  } else {
+    // 備援：如果 HTML 沒有給 id，自動尋找包含「截單時間：」的元素並替換文字
+    document.querySelectorAll('#productOrderView div, #productOrderView p, #productOrderView span').forEach(el => {
+      if (el.children.length === 0 && el.innerText.includes('截單時間：')) {
+        el.innerText = `⏳ 截單時間：${deadlineDisplay}`;
+      }
+    });
+  }
+
+  let paymentDisplay = currentGroupObj ? (currentGroupObj["付款方式"] || "賣貨便貨到付款(不含運費)") : "賣貨便貨到付款(不含運費)";
+  const paymentEl = document.getElementById('activeGroupPayment');
+  if (paymentEl) {
+    paymentEl.innerText = paymentDisplay;
+  }
 
   // 2. 🔗 將網址改為純參數形式（/?id=31）
   let newUrl;
@@ -1373,7 +1423,7 @@ async function selectGroup(groupName, isExpired) {
 
   const metaImage = document.getElementById('metaOgImage');
   if (metaImage && groupImage) {
-    metaImage.setAttribute('content', groupImage); // 自動帶入該團務的封面圖片
+    metaImage.setAttribute('content', groupImage);
   }
 
   const metaUrl = document.getElementById('metaOgUrl');
