@@ -1407,30 +1407,16 @@ async function exportGroupSpecificCSV(groupName, type) {
   try {
     const cleanTargetGroup = String(groupName || '').replace(/\s*\(餘量認領\)/g, '').trim();
 
-    const [ordersRes, productsRes] = await Promise.all([
-      db.from('orders').select('*'),
-      db.from('products').select('*').eq('團務名稱', cleanTargetGroup)
-    ]);
+    const { data: allOrders, error } = await db.from('orders').select('*');
+    if (error) throw error;
 
-    if (ordersRes.error) throw ordersRes.error;
-    let allOrders = ordersRes.data || [];
-    let groupProducts = productsRes.data || [];
+    // 1. 嚴格只抓該團（含餘量認領同團）且未取消的訂單
+    const orders = (allOrders || []).filter(o => {
+      const status = String(o['處理狀態'] || '').trim();
+      if (status === '已取消') return false;
 
-    // 建立本團商品名稱集合（精準比對用）
-    let exactProductNames = new Set(
-      groupProducts.map(p => String(p['商品名稱'] || '').trim()).filter(Boolean)
-    );
-    let cleanProductNames = new Set(
-      groupProducts.map(p => String(p['商品名稱'] || '').replace(/^\[[^\]]+\]\s*/, '').trim()).filter(Boolean)
-    );
-
-    // 嚴格篩選該團訂單：必須精準符合該團（含餘量認領同團），且狀態不能是「已取消」
-    const orders = allOrders.filter(o => {
-      let status = String(o['處理狀態'] || '').trim();
-      if (status === '已取消') return false; // 🚫 直接排除已取消的訂單
-
-      let oGroup = String(o['團務名稱'] || '').trim();
-      let cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
+      const oGroup = String(o['團務名稱'] || '').trim();
+      const cleanGroup = oGroup.replace(/\s*\(餘量認領\)/g, '').trim();
 
       return oGroup === groupName || cleanGroup === cleanTargetGroup;
     });
@@ -1440,28 +1426,27 @@ async function exportGroupSpecificCSV(groupName, type) {
       return;
     }
 
-    const parseItems = (o) => {
-      let itemsRaw = o['訂單內容'] !== undefined ? o['訂單內容'] : o['商品明細'];
-      try {
-        if (typeof itemsRaw === 'string') {
-          itemsRaw = JSON.parse(itemsRaw || '[]');
-        }
-        if (Array.isArray(itemsRaw)) return itemsRaw;
-        if (itemsRaw && typeof itemsRaw === 'object') return [itemsRaw];
-      } catch (e) {}
-      return [];
-    };
-
     if (type === 'buyer') {
-      // 📝 轉換成買家名單格式（僅包含有效訂單）
-      let buyerListArray = orders.map(o => {
-        let items = parseItems(o);
+      const buyerListArray = orders.map(o => {
+        let itemsRaw = o['訂單內容'] !== undefined ? o['訂單內容'] : o['商品明細'];
+        let items = [];
+        try {
+          if (typeof itemsRaw === 'string') {
+            items = JSON.parse(itemsRaw || '[]');
+          } else if (Array.isArray(itemsRaw)) {
+            items = itemsRaw;
+          } else if (itemsRaw && typeof itemsRaw === 'object') {
+            items = [itemsRaw];
+          }
+        } catch (e) {
+          items = [];
+        }
 
-        let itemsTextFormatted = items.map(i => {
-          let iCat = i.category || i['商品分類'] || '';
-          let iName = i.name || i['商品名稱'] || i['商品'] || i['title'] || '未知商品';
-          let qty = i.qty || i['數量'] || i['q'] || i['quantity'] || 1;
-          let finalName = (iCat && !String(iName).startsWith('[')) ? `[${iCat}] ${iName}` : iName;
+        const itemsTextFormatted = items.map(i => {
+          const iCat = i.category || i['商品分類'] || '';
+          const iName = i.name || i['商品名稱'] || i['商品'] || i['title'] || '未知商品';
+          const qty = i.qty || i['數量'] || i['q'] || i['quantity'] || 1;
+          const finalName = (iCat && !String(iName).startsWith('[')) ? `[${iCat}] ${iName}` : iName;
           return `${finalName} x${qty}`;
         }).join(' ; ');
 
@@ -1475,51 +1460,7 @@ async function exportGroupSpecificCSV(groupName, type) {
 
       exportToCSV(buyerListArray, `${groupName}_買家喊單名單(已過濾取消).csv`);
     } else if (type === 'summary') {
-      // 📊 匯出商品採購總表：僅統計屬於該團的商品，避免混入其他團務品項
-      const summaryMap = new Map();
-
-      orders.forEach(o => {
-        const items = parseItems(o);
-        items.forEach(i => {
-          const rawName = String(i.name || i['商品名稱'] || i['商品'] || i['title'] || '').trim();
-          const cleanName = rawName.replace(/^\[[^\]]+\]\s*/, '').trim();
-          const cat = String(i.category || i['商品分類'] || '').trim();
-          const displayName = (cat && !rawName.startsWith('[')) ? `[${cat}] ${rawName}` : rawName;
-
-          if (!displayName) return;
-
-          // 若該團在 products 表中有建檔商品，只統計本團商品
-          if (exactProductNames.size > 0) {
-            const belongsToGroup = exactProductNames.has(rawName) || cleanProductNames.has(cleanName);
-            if (!belongsToGroup) return;
-          }
-
-          const qty = Number(i.qty || i['數量'] || i['q'] || i['quantity'] || 1);
-          const price = Number(i.price || i['單價'] || 0);
-
-          if (!summaryMap.has(displayName)) {
-            summaryMap.set(displayName, {
-              '團務名稱': cleanTargetGroup,
-              '商品名稱': displayName,
-              '單價': price,
-              '總預購數量': 0,
-              '預估總金額': 0
-            });
-          }
-
-          const row = summaryMap.get(displayName);
-          row['總預購數量'] += qty;
-          row['預估總金額'] += qty * (row['單價'] || price);
-        });
-      });
-
-      const summaryArray = Array.from(summaryMap.values());
-      if (summaryArray.length === 0) {
-        alert(`「${groupName}」沒有符合本團商品的統計資料可供匯出！`);
-        return;
-      }
-
-      exportToCSV(summaryArray, `${groupName}_商品統計總表(含金額).csv`);
+      exportSummaryCSV(groupName, orders);
     }
   } catch (err) {
     console.error("匯出失敗：", err);
