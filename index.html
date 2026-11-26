@@ -2221,717 +2221,126 @@ try {
       productContainer.innerHTML = "<p style='color:#f87171; margin-top:10px;'>載入餘量商品失敗。</p>"; 
     }
    }
- // 提交餘量認領
-  async function submitSurplusClaim() {
-    let name = document.getElementById('surplus_name')?.value.trim();
-    let phone = document.getElementById('surplus_phone')?.value.trim();
-    let email = document.getElementById('surplus_email')?.value.trim();
+let isSubmittingSurplusClaim = false;
 
-    if (!name || !phone || !email) {
-      alert("請填寫 暱稱、手機號碼 與 Email！");
-      return;
-    }
+// 提交餘量認領（防重複送出版）
+async function submitSurplusClaim() {
+  if (isSubmittingSurplusClaim) return;
 
-    // 💡 記憶買家在餘量認領填寫的聯絡資訊
-    if (name) localStorage.setItem('reo_buyer_lineName', name);
-    if (phone) localStorage.setItem('reo_buyer_phone', phone);
-    if (email) localStorage.setItem('reo_buyer_email', email);
-    
-    // 👈 補上這兩行宣告，讓餘量認領可以正常計算商品與總金額
-    let selectedItems = [];
-    let totalPrice = 0;
+  let name = document.getElementById('surplus_name')?.value.trim();
+  let phone = document.getElementById('surplus_phone')?.value.trim();
+  let email = document.getElementById('surplus_email')?.value.trim();
 
-    currentSurplusProducts.forEach((p, index) => {
-      let qtySelect = document.getElementById(`surplus_qty_${index}`);
-      let qty = qtySelect ? parseInt(qtySelect.value) : 0;
-      if (qty > 0) {
-        let price = parseFloat(p["單價"]) || 0;
-        selectedItems.push({
-          id: p.id,
-          name: p["商品名稱"],
-          category: p["商品分類"] || "", // 👈 記錄分類名稱
-          price: price,
-          qty: qty
-        });
-        totalPrice += price * qty;
-      }
-    });
-
-    if (selectedItems.length === 0) {
-      alert("請至少選擇一樣商品的認領數量！");
-      return;
-    }
-
-    try {
-      const { data: orderData, error: orderErr } = await db.from('orders').insert([{
-        "團務名稱": activeSurplusGroup + " (餘量認領)",
-        "買家名稱": name,
-        "手機號碼": phone,
-        "Email": email,
-        "訂單內容": selectedItems,
-        "總金額": totalPrice,
-        "處理狀態": "待處理",
-        "備註": "餘量認領"
-      }]).select();
-
-      if (orderErr) throw orderErr;
-
-      // 取得剛剛自動生成的訂單編號
-      let newOrderId = orderData && orderData.length > 0 ? orderData[0].id : "未知";
-
-      // 即時扣減庫存
-      for (let item of selectedItems) {
-        let targetProd = currentSurplusProducts.find(p => p.id === item.id);
-        if (targetProd) {
-          let currentSurplus = parseInt(targetProd["餘量"]) || 0;
-          let newSurplus = Math.max(0, currentSurplus - item.qty);
-          await db.from('products').update({ "餘量": newSurplus }).eq('id', item.id);
-        }
-      }
-
-      if (typeof sendPreOrderEmail === 'function') {
-        try {
-          let paymentMethod = "餘量認領";
-          const { data: groupData } = await db.from('groups').select('付款方式').eq('團務名稱', activeSurplusGroup).single();
-          if (groupData && groupData["付款方式"]) paymentMethod = groupData["付款方式"];
-
-          let productDetailsText = selectedItems.map(i => {
-            let matchedProd = currentSurplusProducts.find(p => p.id === i.id);
-            let cat = matchedProd && matchedProd["商品分類"] ? `[${matchedProd["商品分類"]}] ` : "";
-            return `${cat}${i.name} x ${i.qty} ($${i.price} / 小計: ${i.price * i.qty})`;
-          }).join("\n");
-          
-          await sendPreOrderEmail({
-            customerEmail: email,
-            lineName: name,
-            groupName: activeSurplusGroup + " (餘量認領)",
-            productDetails: productDetailsText,
-            totalPrice: totalPrice,
-            paymentMethod: paymentMethod,
-            status: "待確認",
-            changeReason: "無",
-            orderId: newOrderId
-          });
-        } catch (emailErr) {
-          console.error("餘量認領寄信失敗：", emailErr);
-        }
-      }
-
-      alert(`餘量認領已送出！您的訂單編號為 [${newOrderId}]，庫存已先為您保留，請等待管理員審核確認。`);
-      selectGroupAndLoadSurplus(activeSurplusGroup);
-    } catch (err) {
-      alert("認領失敗：" + err.message);
-    }
+  if (!name || !phone || !email) {
+    alert("請填寫 暱稱、手機號碼 與 Email！");
+    return;
   }
 
- // 🔐 管理員後台控制（支援 sessionStorage 保持登入狀態）
-  function checkAdminHash() {
-    const adminDash = document.getElementById('adminDashboard');
-    
-    // 1. 如果本分頁已經驗證過密碼，直接顯示後台
-    if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
-      if (adminDash) {
-        adminDash.style.display = 'block';
-        // 載入後台相關資料
-        if (typeof loadPendingOrders === 'function') loadPendingOrders();
-        if (typeof loadAllOrders === 'function') loadAllOrders(); 
-        if (typeof loadOrderStats === 'function') loadOrderStats();
-        if (typeof loadExportGroupOptions === 'function') loadExportGroupOptions();
-      }
-      return;
-    }
+  // 💡 記憶買家在餘量認領填寫的聯絡資訊
+  if (name) localStorage.setItem('reo_buyer_lineName', name);
+  if (phone) localStorage.setItem('reo_buyer_phone', phone);
+  if (email) localStorage.setItem('reo_buyer_email', email);
 
-    // 2. 如果網址帶有 #admin 且尚未登入，才跳出密碼提示
-    if (window.location.hash === '#admin') {
-      const pwd = prompt("🔐 請輸入管理員密碼：");
-      
-      if (pwd === "qingyuan") {
-        // 記錄登入狀態到 sessionStorage（關閉分頁後會自動清除）
-        sessionStorage.setItem('isAdminLoggedIn', 'true');
+  let selectedItems = [];
+  let totalPrice = 0;
 
-        if (adminDash) {
-          adminDash.style.display = 'block';
-          
-          // 載入後台相關資料
-          if (typeof loadPendingOrders === 'function') loadPendingOrders();
-          if (typeof loadAllOrders === 'function') loadAllOrders(); 
-          if (typeof loadOrderStats === 'function') loadOrderStats();
-          if (typeof loadExportGroupOptions === 'function') loadExportGroupOptions();
-          
-          alert("🎉 管理員登入成功！");
-        }
-      } else if (pwd !== null) {
-        alert("❌ 密碼錯誤！");
-      }
-    }
-  }
-
-// 監聽網址 Hash 變化與頁面載入
-window.addEventListener('DOMContentLoaded', checkAdminHash);
-window.addEventListener('hashchange', checkAdminHash);
-
-  // 統計數據
-  async function loadOrderStats() {
-    let selectElem = document.getElementById('adminStatsGroup');
-    let groupName = selectElem ? selectElem.value : '';
-    let resultDiv = document.getElementById('orderStatsResult');
-    if (!resultDiv) return;
-
-    if (!groupName) {
-      resultDiv.innerHTML = "請選擇團務以查看統計";
-      return;
-    }
-
-    resultDiv.innerHTML = "正在計算統計資料...";
-
-    try {
-      const { data: orders, error } = await db
-        .from('orders')
-        .select('訂單內容')
-        .eq('團務名稱', groupName)
-        .in('處理狀態', ['已成立', '已變更']);
-
-      if (error) throw error;
-
-      if (!orders || orders.length === 0) {
-        resultDiv.innerHTML = "<p style='color:#aaa;'>該團務目前沒有已成立或已變更的訂單。</p>";
-        return;
-      }
-
-      let itemCounts = {};
-      orders.forEach(order => {
-        let items = order["訂單內容"] || [];
-        items.forEach(item => {
-          let name = item.name;
-          let qty = parseInt(item.qty) || 0;
-          itemCounts[name] = (itemCounts[name] || 0) + qty;
-        });
+  currentSurplusProducts.forEach((p, index) => {
+    let qtySelect = document.getElementById(`surplus_qty_${index}`);
+    let qty = qtySelect ? parseInt(qtySelect.value) : 0;
+    if (qty > 0) {
+      let price = parseFloat(p["單價"]) || 0;
+      selectedItems.push({
+        id: p.id,
+        name: p["商品名稱"],
+        category: p["商品分類"] || "",
+        price: price,
+        qty: qty
       });
-
-      let html = `<table style="width:100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; color: #fff;">
-        <thead>
-          <tr style="background: #18181b; text-align: left; border-bottom: 1px solid #444;">
-            <th style="padding: 6px 8px;">商品名稱</th>
-            <th style="padding: 6px 8px; text-align: right; width: 100px;">已喊總數</th>
-          </tr>
-        </thead>
-        <tbody>`;
-
-      let entries = Object.entries(itemCounts);
-      if (entries.length === 0) {
-        resultDiv.innerHTML = "<p style='color:#aaa;'>無下單商品統計。</p>";
-        return;
-      }
-
-      entries.forEach(([name, count]) => {
-        html += `<tr style="border-bottom: 1px solid #333;">
-          <td style="padding: 6px 8px;">${name}</td>
-          <td style="padding: 6px 8px; text-align: right; font-weight: bold; color: #f59e0b;">${count} 個</td>
-        </tr>`;
-      });
-
-      html += `</tbody></table>`;
-      resultDiv.innerHTML = html;
-
-    } catch (err) {
-      resultDiv.innerHTML = `<p style="color:#f87171;">統計載入失敗：${err.message}</p>`;
+      totalPrice += price * qty;
     }
+  });
+
+  if (selectedItems.length === 0) {
+    alert("請至少選擇一樣商品的認領數量！");
+    return;
   }
 
-  async function submitBatchProducts() {
-  try {
-    // 1. 改用正確的下拉選單 id: editGroupSelect
-    let groupSelect = document.getElementById('editGroupSelect');
-    if (!groupSelect) {
-      alert("找不到群組選擇元件 (editGroupSelect)");
-      return;
-    }
-    
-    let selectedId = groupSelect.value;
-    if (!selectedId) {
-      alert("請先選擇團務！");
-      return;
-    }
-
-    // 取得選中的團務名稱（從 allGroupsData 裡面找到對應的團務名稱）
-    let group = allGroupsData ? allGroupsData.find(g => String(g.id) === String(selectedId)) : null;
-    let targetGroup = group ? group["團務名稱"] : document.getElementById('newGroupName').value;
-
-    if (!targetGroup) {
-      alert("無法取得目前的團務名稱，請確認是否已選擇團務！");
-      return;
-    }
-
-    // 2. 檢查輸入框
-    let inputElem = document.getElementById('batchProductsInput');
-    if (!inputElem) {
-      alert("找不到輸入框元件 (batchProductsInput)");
-      return;
-    }
-    let rawText = inputElem.value.trim();
-    if (!rawText) {
-      alert("請輸入要新增的商品資料！");
-      return;
-    }
-
-    let msgElem = document.getElementById('batchMsg');
-    if (msgElem) {
-      msgElem.style.color = "#aaa";
-      msgElem.innerText = "正在解析並新增商品...";
-    }
-
-    // 3. 處理文字與換行（支援從試算表複製過來的 Tab 與多行格式）
-    let lines = rawText.split('\n');
-    let newProducts = [];
-
-    for (let line of lines) {
-      line = line.trim();
-      if (!line) continue;
-
-      let parts = line.includes('\t') ? line.split('\t') : line.split(/\s+/);
-      parts = parts.map(p => p.trim()).filter(p => p !== "");
-
-      if (parts.length >= 3) {
-        let pCat = parts[0] || "一般";
-        let pName = parts[1] || "";
-        let pPrice = parseFloat(parts[2]) || 0;
-        let pImg = parts[3] || "";
-        let pDesc = parts.slice(4).join(" ");
-
-        // 修正 Google 雲端硬碟或其他網址內的空格問題
-        pImg = pImg.replace(/(\?|\&)\s+/g, '$1');
-
-        if (pName && !isNaN(pPrice)) {
-          newProducts.push({
-            "團務名稱": targetGroup,
-            "商品分類": pCat,
-            "商品名稱": pName,
-            "單價": pPrice,
-            "圖片": typeof formatImageUrl === 'function' ? formatImageUrl(pImg) : pImg,
-            "商品說明": pDesc,
-            "isExpired": false
-          });
-        }
-      }
-    }
-
-    if (newProducts.length === 0) {
-      if (msgElem) {
-        msgElem.style.color = "#f87171";
-        msgElem.innerText = "解析失敗！沒有成功抓到任何商品（請確認順序：分類, 名稱, 單價）。";
-      } else {
-        alert("解析失敗！沒有成功抓到任何商品。");
-      }
-      return;
-    }
-
-    // 4. 寫入 Supabase 資料庫
-    if (typeof db === 'undefined') {
-      alert("資料庫物件 (db) 未定義！");
-      return;
-    }
-
-    const { error } = await db.from('products').insert(newProducts);
-    if (error) throw error;
-    
-    if (msgElem) {
-      msgElem.style.color = "#10b981";
-      msgElem.innerText = `✓ 成功批次新增 ${newProducts.length} 項商品！`;
-    } else {
-      alert(`✓ 成功批次新增 ${newProducts.length} 項商品！`);
-    }
-
-    inputElem.value = "";
-    
-    // 重新載入該團務的商品列表
-    if (typeof loadProductsForEdit === 'function') {
-      loadProductsForEdit(selectedId);
-    }
-
-  } catch (err) {
-    console.error(err);
-    alert("批次新增發生錯誤：" + err.message);
+  isSubmittingSurplusClaim = true;
+  const submitBtn = document.querySelector('#surplusSubmitBtn, [onclick*="submitSurplusClaim"]');
+  const originalBtnText = submitBtn ? submitBtn.innerText : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = '送出中...';
   }
-}
 
-window.submitBatchProducts = submitBatchProducts;
- async function updateOrderStatus(orderId, newStatus,buyerEmail) {
   try {
-    // 1. 如果是改為「已取消」，先跳出輸入框讓管理員填寫原因
-    let changeReason = "無";
-    if (newStatus === "已取消") {
-      let inputReason = prompt("請輸入取消訂單的原因或備註說明（例如：未填寫實名表單 / 官方砍單）：", "未填寫實名表單");
-      if (inputReason === null) return; // 如果管理員點「取消」，不執行更新
-      changeReason = inputReason.trim() || "無";
-    }
+    const { data: orderData, error: orderErr } = await db.from('orders').insert([{
+      "團務名稱": activeSurplusGroup + " (餘量認領)",
+      "買家名稱": name,
+      "手機號碼": phone,
+      "Email": email,
+      "訂單內容": selectedItems,
+      "總金額": totalPrice,
+      "處理狀態": "待處理",
+      "備註": "餘量認領"
+    }]).select();
 
-    // 2. 撈取原訂單內容
-    const { data: order, error: fetchErr } = await db
-      .from('orders')
-      .select('*')
-      .eq('id', orderId)
-      .single();
+    if (orderErr) throw orderErr;
 
-    if (fetchErr) throw fetchErr;
+    // 取得剛剛自動生成的訂單編號
+    let newOrderId = orderData && orderData.length > 0 ? orderData[0].id : "未知";
 
-    let oldStatus = order["處理狀態"];
-    if (oldStatus === newStatus && newStatus !== "已取消") return;
-
-    let groupName = order["團務名稱"] || "";
-    let remark = order["備註"] || "";
-    let isSurplusOrder = groupName.includes("餘量認領") || remark.includes("餘量認領");
-
-    // 3. 若改為已取消且為餘量訂單，自動退還庫存
-    if (isSurplusOrder && newStatus === "已取消" && oldStatus !== "已取消") {
-      let items = order["訂單內容"] || [];
-      let cleanGroupName = groupName.replace(" (餘量認領)", "").replace(" (餘量認領)", "").trim();
-      
-      console.log("清理後的團務名稱：", cleanGroupName); // 👈 檢查這裡印出來的是什麼
-
-      for (let item of items) {
-        console.log("正在找尋商品：", item.name); // 👈 檢查尋找的商品名稱是什麼
-        
-        const { data: prodData, error: findErr } = await db
-          .from('products')
-          .select('*')
-          .eq('團務名稱', cleanGroupName)
-          .eq('商品名稱', item.name)
-          .single();
-
-        if (findErr) {
-          console.error("找不到對應商品錯誤：", findErr); // 👈 如果這裡報錯，就能知道為什麼找不到
-        }
-
-        if (prodData) {
-          let currentSurplus = parseInt(prodData["餘量"]) || 0;
-          let restoreQty = parseInt(item.qty) || 0;
-          console.log(`原庫存: ${currentSurplus}, 欲加回: ${restoreQty}`); // 👈 檢查有沒有執行到這步
-          
-          await db.from('products').update({ "餘量": currentSurplus + restoreQty }).eq('id', prodData.id);
-        } else {
-          console.warn("在資料庫中找不到對應的商品記錄！");
-        }
+    // 即時扣減庫存
+    for (let item of selectedItems) {
+      let targetProd = currentSurplusProducts.find(p => p.id === item.id);
+      if (targetProd) {
+        let currentSurplus = parseInt(targetProd["餘量"]) || 0;
+        let newSurplus = Math.max(0, currentSurplus - item.qty);
+        await db.from('products').update({ "餘量": newSurplus }).eq('id', item.id);
       }
     }
 
-    // 4. 更新資料庫中的處理狀態與備註欄位
-    let updatePayload = { "處理狀態": newStatus };
-    if (newStatus === "已取消") {
-      updatePayload["備註"] = changeReason; // 同步寫入備註欄位，供買家查詢紀錄看到
-    }
-
-    const { error: updateErr } = await db
-      .from('orders')
-      .update(updatePayload)
-      .eq('id', orderId);
-
-    if (updateErr) throw updateErr;
-
-   // 5. 發送 Email 通知信（帶入取消原因與正確的付款方式）
-    if (typeof sendPreOrderEmail === 'function' && order["Email"]) {
+    if (typeof sendPreOrderEmail === 'function') {
       try {
-        let items = order["訂單內容"] || [];
-        let productDetailsText = selectedItems.map(i => {
-            let cat = i.category ? `[${i.category}] ` : "";
-            return `${cat}${i.name} x ${i.qty} ($${i.price} / 小計: ${i.price * i.qty})`;
-          }).join("\n");
+        let paymentMethod = "餘量認領";
+        const { data: groupData } = await db.from('groups').select('付款方式').eq('團務名稱', activeSurplusGroup).single();
+        if (groupData && groupData["付款方式"]) paymentMethod = groupData["付款方式"];
 
-        // 修正：從資料庫的 order 物件中抓取付款方式，若無則預設為一般匯款
-       // 修正：從資料庫的 groups 表格查詢該團的付款方式
-        let currentPaymentMethod = "一般匯款";
-        if (groupName) {
-          // 清理團務名稱（如果包含「 (餘量認領)」先移除以對應 groups 表格）
-          let cleanGroupName = groupName.replace(" (餘量認領)", "").trim();
-          
-          const { data: groupData, error: groupErr } = await db
-            .from('groups')
-            .select('付款方式')
-            .eq('團務名稱', cleanGroupName)
-            .single();
-          
-          if (!groupErr && groupData && groupData["付款方式"]) {
-            currentPaymentMethod = groupData["付款方式"];
-          }
-        }
+        let productDetailsText = selectedItems.map(i => {
+          let matchedProd = currentSurplusProducts.find(p => p.id === i.id);
+          let cat = matchedProd && matchedProd["商品分類"] ? `[${matchedProd["商品分類"]}] ` : "";
+          return `${cat}${i.name} x ${i.qty} ($${i.price} / 小計: ${i.price * i.qty})`;
+        }).join("\n");
 
         await sendPreOrderEmail({
-          customerEmail: order["Email"],
-          lineName: order["買家名稱"],
-          groupName: groupName,
+          customerEmail: email,
+          lineName: name,
+          groupName: activeSurplusGroup + " (餘量認領)",
           productDetails: productDetailsText,
-          totalPrice: order["總金額"],
-          paymentMethod: currentPaymentMethod, // 帶入正確從 groups 查到的付款方式
-          status: newStatus,
-          changeReason: changeReason,
-           orderId: orderId
+          totalPrice: totalPrice,
+          paymentMethod: paymentMethod,
+          status: "待確認",
+          changeReason: "無",
+          orderId: newOrderId
         });
-      } catch (mailErr) {
-        console.error("狀態變更寄信失敗：", mailErr);
+      } catch (emailErr) {
+        console.error("餘量認領寄信失敗：", emailErr);
       }
     }
 
-    alert(`訂單狀態已更新為：${newStatus}`);
-
-    if (typeof loadAllOrders === 'function') loadAllOrders();
-    if (typeof loadPendingOrders === 'function') loadPendingOrders();
-
+    alert(`餘量認領已送出！您的訂單編號為 [${newOrderId}]，庫存已先為您保留，請等待管理員審核確認。`);
+    selectGroupAndLoadSurplus(activeSurplusGroup);
   } catch (err) {
-    alert("狀態更新失敗：" + err.message);
+    alert("認領失敗：" + err.message);
+  } finally {
+    isSubmittingSurplusClaim = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = originalBtnText || '確認送出餘量認領';
+    }
   }
 }
-window.updateOrderStatus = updateOrderStatus;
 
-  async function loadPendingOrders() {
-    let container = document.getElementById('pendingOrdersList');
-    if (!container) return;
-
-    container.innerHTML = "載入待審核訂單中...";
-
-    try {
-      const { data: orders, error } = await db
-        .from('orders')
-        .select('*')
-        .or('處理狀態.eq.待處理,處理狀態.eq.待確認')
-        .order('id', { ascending: false });
-
-      if (error) throw error;
-
-      if (!orders || orders.length === 0) {
-        container.innerHTML = "<p style='color:#aaa; font-size:13px; text-align:center; padding:20px;'>目前沒有待審核的訂單！</p>";
-        return;
-      }
-
-      let html = "";
-      orders.forEach(order => {
-        let groupName = order["團務名稱"] || "";
-        let remark = order["備註"] || "";
-        let isSurplus = groupName.includes("餘量認領") || remark.includes("餘量認領");
-
-        let typeBadge = isSurplus 
-          ? `<span style="background: #059669; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">現貨餘量登記</span>`
-          : `<span style="background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">預購填單</span>`;
-
-        let itemsHtml = "";
-        let items = order["訂單內容"] || [];
-        items.forEach(item => {
-          itemsHtml += `<div style="font-size: 13px; color: #e4e4e7; margin-bottom: 4px;">
-            • ${item.name || item["商品名稱"]} x ${item.qty || item["數量"]} ($${item.price || item["單價"] || 0})
-          </div>`;
-        });
-
-        html += `
-          <div style="background: #18181b; border: 1px solid #27272a; padding: 14px; border-radius: 8px; margin-bottom: 12px; color: #fff; text-align: left;">
-            <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-              <div>團務：${groupName} ${typeBadge}</div>
-              <div style="font-size: 12px; color: #f59e0b;">狀態：${order["處理狀態"]}</div>
-            </div>
-            <div style="font-size: 13px; color: #aaa; margin-bottom: 6px;">
-              買家：${order["買家名稱"]} | 手機：${order["手機號碼"]} | Email：${order["Email"] || "無"}
-            </div>
-            <div style="background: #09090b; padding: 8px; border-radius: 6px; margin-bottom: 8px;">
-              ${itemsHtml}
-            </div>
-            <div style="font-size: 13px; font-weight: bold; margin-bottom: 10px;">
-              總金額：<span style="color: #60a5fa;">$${order["總金額"]}</span>
-            </div>
-           <div style="display: flex; gap: 8px;">
-              <button onclick="updateOrderStatus(${order.id}, '已成立', '${order["Email"] || ""}')" style="flex: 1; padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">審核通過 (成立)</button>
-              <button onclick="updateOrderStatus(${order.id}, '已取消', '${order["Email"] || ""}')" style="flex: 1; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">拒絕申請 (取消)</button>
-              <button onclick="updateOrderStatus(${order.id}, '已變更', '${order["Email"] || ""}')" style="background:#3b82f6; color:white; border:none; border-radius:4px; ...">變更</button>
-            </div>
-          </div>
-        `;
-      });
-
-      container.innerHTML = html;
-
-    } catch (err) {
-      console.error("載入待處理訂單失敗：", err);
-      container.innerHTML = `<p style="color:#ef4444; font-size:13px; text-align:center;">載入失敗：${err.message}</p>`;
-    }
-  }
-
- // 目前選取的訂單記錄頁籤（預設為已成立）
-let currentRecordStatus = "已成立";
-
-// 切換按鈕樣式並載入資料
-function switchOrderRecordTab(status) {
-  currentRecordStatus = status;
-
-  // 切換按鈕 Active 樣式
-  let btnConfirmed = document.getElementById('btnConfirmedOrders');
-  let btnCancelled = document.getElementById('btnCancelledOrders');
-
-  if (btnConfirmed && btnCancelled) {
-    if (status === '已成立') {
-      btnConfirmed.classList.add('active');
-      btnCancelled.classList.remove('active');
-    } else {
-      btnCancelled.classList.add('active');
-      btnConfirmed.classList.remove('active');
-    }
-  }
-
-  loadAllOrders(status);
-}
-window.switchOrderRecordTab = switchOrderRecordTab;
-
-// 📦 載入所有訂單紀錄（已強化資料結構相容性）
-async function loadAllOrders() {
-  const tbody = document.getElementById('allOrdersTbody');
-  if (!tbody) return;
-  
-  tbody.innerHTML = "<tr><td colspan='10' style='text-align:center; padding:15px; color:#888;'>載入訂單中...</td></tr>";
-
-  try {
-    const res = await db.from('orders').select('*').order('created_at', { ascending: false });
-
-    if (res.error) throw res.error;
-
-    // 💡 智慧相容：不管資料是被包在 res.data 還是直接回傳陣列，都能正確抓到！
-    let ordersData = [];
-    if (Array.isArray(res)) {
-      ordersData = res;
-    } else if (res && Array.isArray(res.data)) {
-      ordersData = res.data;
-    } else if (res && res.success && Array.isArray(res.data)) {
-      ordersData = res.data;
-    }
-
-    window.allOrdersData = ordersData;
-    console.log("成功解析的訂單資料陣列：", window.allOrdersData);
-
-    // 呼叫渲染表格
-    if (typeof renderOrdersTable === 'function') {
-      renderOrdersTable(window.allOrdersData);
-    } else {
-      console.warn("renderOrdersTable 函式尚未定義！");
-    }
-    
-    if (typeof updateFilterGroupOptions === 'function') {
-      updateFilterGroupOptions(window.allOrdersData);
-    }
-
-  } catch (err) {
-    console.error("載入訂單失敗：", err);
-    tbody.innerHTML = `<tr><td colspan='10' style='text-align:center; padding:15px; color:#f87171;'>載入失敗：${err.message}</td></tr>`;
-  }
-}
-window.loadAllOrders = loadAllOrders;
-
-// 🎨 渲染訂單表格（已加強 DOM 可見性與防護）
-function renderOrdersTable(orders) {
-  // 💡 強制確保訂單分頁容器是顯示的，避免因為 display: none 導致渲染失敗
-  const tabOrders = document.getElementById('tab-orders');
-  if (tabOrders) {
-    tabOrders.style.display = 'block';
-  }
-
-  const tbody = document.getElementById('allOrdersTbody');
-  if (!tbody) {
-    console.error("找不到 #allOrdersTbody 元素！");
-    return;
-  }
-
-  if (!orders || orders.length === 0) {
-    tbody.innerHTML = "<tr><td colspan='10' style='text-align:center; padding:15px; color:#888;'>目前沒有任何訂單紀錄</td></tr>";
-    return;
-  }
-
-  let html = "";
-  orders.forEach(o => {
-    let orderId = o.id || ""; 
-    let timeStr = o.created_at ? new Date(o.created_at).toLocaleString() : "未知時間";
-    
-    let buyerRemark = o["買家備註"] || "-";
-    let adminRemark = o["備註"] || "-";
-    
-    let statusColor = "#10b981"; 
-    if (o["處理狀態"] === "已變更") statusColor = "#f59e0b";
-    if (o["處理狀態"] === "已取消") statusColor = "#ef4444";
-
-    let detailsText = "";
-    let items = o["訂單內容"];
-    if (typeof items === "string") {
-      try { items = JSON.parse(items); } catch (e) {}
-    }
-    
-    if (Array.isArray(items)) {
-      detailsText = items.map(i => `${i.name || i["商品名稱"]} x ${i.qty || i["數量"]} ($${i.price || 0})`).join("<br>");
-    } else {
-      detailsText = items || "無明細";
-    }
-
-    html += `
-      <tr style="border-bottom: 1px solid #333;">
-        <td style="padding: 8px; color: #38bdf8; font-weight: bold;">#${orderId}</td>
-        <td style="padding: 8px; color: #aaa;">${timeStr}</td>
-        <td style="padding: 8px; color: #fff; font-weight: bold;">${o["買家名稱"] || '未填寫'}</td>
-        <td style="padding: 8px; color: #60a5fa;">${o["團務名稱"] || '-'}</td>
-        <td style="padding: 8px; color: #ddd; line-height: 1.4; font-size: 11px;">${detailsText}</td>
-        <td style="padding: 8px; color: #f87171; font-weight: bold;">$${o["總金額"] || 0}</td>
-        <td style="padding: 8px; font-weight: bold; color: ${statusColor};">${o["處理狀態"] || '待確認'}</td>
-        <td style="padding: 8px; color: #cbd5e1; font-size: 11px; max-width: 150px; word-break: break-all;">${buyerRemark}</td>
-        <td style="padding: 8px; color: #fbbf24; font-size: 11px; max-width: 150px; word-break: break-all;">${adminRemark}</td>
-        <td style="padding: 8px; display: flex; gap: 4px; flex-wrap: wrap;">
-          <button onclick="updateOrderStatus('${o.id}', '已成立')" style="background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✓ 成立</button>
-          <button onclick='openModifyModal(${JSON.stringify(o)})' style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✏ 變更</button>
-          <button onclick="updateOrderStatus('${o.id}', '已取消')" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✕ 取消</button>
-        </td>
-      </tr>
-    `;
-  });
-  
-  tbody.innerHTML = html;
-  console.log("成功渲染訂單表格，共筆數：", orders.length);
-}
-window.renderOrdersTable = renderOrdersTable;
-
-// 🔍 搜尋與篩選訂單
-function filterOrders() {
-  const keyword = document.getElementById('searchOrderInput').value.toLowerCase();
-  const selectedGroup = document.getElementById('filterGroupSelect').value;
-  const selectedStatus = document.getElementById('filterStatusSelect') ? document.getElementById('filterStatusSelect').value : ""; // 💡 取得選中的狀態
-
-  if (!window.allOrdersData) return;
-
-  let filtered = window.allOrdersData.filter(o => {
-    let orderIdStr = o.id ? String(o.id).toLowerCase() : ""; 
-    
-    let matchKeyword = !keyword || 
-      orderIdStr.includes(keyword) || 
-      (o["買家名稱"] && o["買家名稱"].toLowerCase().includes(keyword)) ||
-      (o["手機號碼"] && o["手機號碼"].toLowerCase().includes(keyword)) ||
-      (o["Email"] && o["Email"].toLowerCase().includes(keyword));
-
-    let matchGroup = !selectedGroup || o["團務名稱"] === selectedGroup;
-
-    // 💡 檢查訂單狀態是否符合（若沒選代表全部，若有選則必須完全相符，沒填狀態的預設視為「待確認」）
-    const currentStatus = String(o["處理狀態"] || '待確認').trim();
-    let matchStatus = !selectedStatus || currentStatus === selectedStatus;
-
-    return matchKeyword && matchGroup && matchStatus;
-  });
-
-  renderOrdersTable(filtered);
-}
-window.filterOrders = filterOrders;
-
-// 📋 更新篩選團務的下拉選單
-function updateFilterGroupOptions(orders) {
-  const select = document.getElementById('filterGroupSelect');
-  if (!select) return;
-
-  let groups = [...new Set(orders.map(o => o["團務名稱"]).filter(Boolean))];
-  let currentVal = select.value;
-
-  let html = '<option value="">所有團務</option>';
-  groups.forEach(g => {
-    html += `<option value="${g}">${g}</option>`;
-  });
-  select.innerHTML = html;
-  select.value = currentVal;
-}
 // 📦 開啟前台拆團看板 Modal
 async function openFrontendSplitBoardModal() {
   const modal = document.getElementById('frontendSplitBoardModal');
